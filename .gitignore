@@ -1,0 +1,15 @@
+docs/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.DS_Store
+node_modules/
+dist/
+*.log
+db.sqlite3
+media/
+static/
+project-context.md

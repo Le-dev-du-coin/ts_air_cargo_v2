@@ -1,0 +1,60 @@
+e{% load static tailwind_tags compress %}
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TS Air Cargo{% endblock %}</title>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"
+        integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+        crossorigin="anonymous"></script>
+
+    {% compress css %}
+    {% tailwind_css %}
+    {% endcompress %}
+
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900 font-sans antialiased" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+    {% if messages %}
+    <div class="fixed top-4 right-4 z-50 space-y-2">
+        {% for message in messages %}
+        <div class="bg-white border-l-4 {% if message.tags == 'success' %}border-green-500{% elif message.tags == 'error' %}border-red-500{% else %}border-blue-500{% endif %} shadow-lg rounded p-4 flex items-center pr-10 relative"
+            x-data="{ show: true }" x-show="show" x-transition.duration.500ms>
+            <div class="flex-grow">
+                <p class="text-sm text-gray-700">{{ message }}</p>
+            </div>
+            <button @click="show = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="min-h-screen">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        document.body.addEventListener('htmx:configRequest', (event) => {
+            event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        });
+    </script>
+</body>
+
+</html>

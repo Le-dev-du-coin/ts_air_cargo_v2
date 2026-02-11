@@ -1,0 +1,114 @@
+{% extends "chine/base.html" %}
+
+{% block header %}Tableau de bord{% endblock %}
+
+{% block chine_content %}
+<div class="py-4">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <!-- Stats Card 1 -->
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">
+                                Lots Ouverts
+                            </dt>
+                            <dd>
+                                <div class="text-lg font-medium text-gray-900">
+                                    {{ lots_ouverts_count|default:"0" }}
+                                </div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm">
+                    <a href="{% url 'chine:lot_list' %}" class="font-medium text-indigo-600 hover:text-indigo-900">
+                        Voir tous les lots
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Card 2 -->
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">
+                                Colis Reçus
+                            </dt>
+                            <dd>
+                                <div class="text-lg font-medium text-gray-900">
+                                    {{ colis_total_count|default:"0" }}
+                                </div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8">
+        <h2 class="text-lg leading-6 font-medium text-gray-900 mb-4">Lots Récents</h2>
+
+        <div class="bg-white shadow overflow-hidden sm:rounded-md">
+            <ul class="divide-y divide-gray-200">
+                {% for lot in recent_lots %}
+                <li>
+                    <a href="{% url 'chine:lot_detail' lot.pk %}" class="block hover:bg-gray-50">
+                        <div class="px-4 py-4 sm:px-6">
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm font-medium text-indigo-600 truncate">
+                                    Lot {{ lot.numero }}
+                                </p>
+                                <div class="ml-2 flex-shrink-0 flex">
+                                    <p
+                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        {{ lot.get_status_display }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-2 sm:flex sm:justify-between">
+                                <div class="sm:flex">
+                                    <p class="flex items-center text-sm text-gray-500">
+                                        {{ lot.get_type_transport_display }} vers {{ lot.country.name }}
+                                    </p>
+                                </div>
+                                <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                    <p>
+                                        Créé le {{ lot.created_at|date:"d/m/Y" }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </li>
+                {% empty %}
+                <li class="px-4 py-4 sm:px-6 text-sm text-gray-500">
+                    Aucun lot pour le moment.
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

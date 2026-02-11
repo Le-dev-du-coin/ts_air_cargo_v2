@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Mali - TS Air Cargo{% endblock %}
+
+{% block content %}
+<div class="flex h-screen overflow-hidden bg-gray-100">
+    <!-- Sidebar -->
+    <div class="hidden md:flex md:flex-shrink-0">
+        <div class="flex flex-col w-64">
+            <div class="flex flex-col h-0 flex-1 bg-gray-800">
+                <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+                    <div class="flex items-center flex-shrink-0 px-4">
+                        <span class="text-xl font-bold text-white tracking-tighter">TS Air Cargo</span>
+                        <span class="ml-2 text-xs font-medium bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded">V.2
+                            Beta</span>
+                        <span class="ml-2 text-xs text-gray-400">ML</span>
+                    </div>
+                    <nav class="mt-5 flex-1 px-2 space-y-1">
+                        <a href="#"
+                            class="bg-gray-900 text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                            <svg class="mr-3 flex-shrink-0 h-6 w-6 text-gray-300" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            Tableau de bord
+                        </a>
+                        <a href="#"
+                            class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                            <svg class="mr-3 flex-shrink-0 h-6 w-6 text-gray-400 group-hover:text-gray-300"
+                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            Clients
+                        </a>
+                        <!-- Add more menu items -->
+                    </nav>
+                </div>
+                <div class="flex-shrink-0 flex bg-gray-700 p-4">
+                    <div class="flex-shrink-0 w-full group block">
+                        <div class="flex items-center">
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-white">{{ user.username }}</p>
+                                <a href="{% url 'core:logout' %}"
+                                    class="text-xs font-medium text-gray-300 group-hover:text-gray-200">Déconnexion</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="flex flex-col w-0 flex-1 overflow-hidden">
+        <main class="flex-1 relative z-0 overflow-y-auto focus:outline-none">
+            <div class="py-6">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+                    <h1 class="text-2xl font-semibold text-gray-900">Tableau de bord - Mali</h1>
+                </div>
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+                    <!-- Replace with your content -->
+                    <div class="py-4">
+                        <div
+                            class="border-4 border-dashed border-gray-200 rounded-lg h-96 flex items-center justify-center">
+                            <span class="text-gray-500">Contenu à venir : Gestion des Colis et Clients</span>
+                        </div>
+                    </div>
+                    <!-- /End replace -->
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
