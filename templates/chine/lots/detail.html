@@ -1,6 +1,5 @@
 {% extends "chine/base.html" %}
-
-{% load currency_tags %}
+{% load currency_tags humanize %}
 {% block header %}Détail du Lot : {{ lot.numero }}{% endblock %}
 
 {% block chine_content %}
@@ -28,32 +27,37 @@
                     {{ lot.get_status_display }}
                 </span>
 
-                {# ACTIONS LIFECYCLE #}
-                {% if lot.status == 'OUVERT' %}
-                    <a href="{% url 'chine:lot_update' lot.pk %}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium pt-1">Modifier</a>
-                    <form action="{% url 'chine:lot_close' lot.pk %}" method="POST" onsubmit="return confirm('Fermer ce lot ? Il ne pourra plus recevoir de colis.');">
-                        {% csrf_token %}
-                        <button type="submit"
-                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                            Fermer le Lot
-                        </button>
-                    </form>
-                {% elif lot.status == 'FERME' %}
-                     <form action="{% url 'chine:lot_reopen' lot.pk %}" method="POST" onsubmit="return confirm('Réouvrir ce lot pour modification ?');">
-                        {% csrf_token %}
-                        <button type="submit"
-                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Réouvrir le Lot
-                        </button>
-                    </form>
-                     
-                     <form action="{% url 'chine:lot_ship' lot.pk %}" method="POST" onsubmit="return confirm('Expédier ce lot ? ACTION IRRÉVERSIBLE. Le lot passera en lecture seule.');">
-                        {% csrf_token %}
-                        <button type="submit"
-                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Expédier le Lot
-                        </button>
-                    </form>
+                {# ACTIONS LIFECYCLE (RÉSERVÉ AUX AGENTS) #}
+                {% if user.role == 'AGENT_CHINE' %}
+                    {% if lot.status == 'OUVERT' %}
+                        <a href="{% url 'chine:lot_update' lot.pk %}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium pt-1">Modifier</a>
+                        <form id="form-close-lot" action="{% url 'chine:lot_close' lot.pk %}" method="POST">
+                            {% csrf_token %}
+                            <button type="button" 
+                                onclick="confirmAction('Fermer ce lot ?', 'Il ne pourra plus recevoir de colis.', 'form-close-lot', 'Fermer', '#F59E0B')"
+                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                                Fermer le Lot
+                            </button>
+                        </form>
+                    {% elif lot.status == 'FERME' %}
+                         <form id="form-reopen-lot" action="{% url 'chine:lot_reopen' lot.pk %}" method="POST">
+                            {% csrf_token %}
+                            <button type="button"
+                                onclick="confirmAction('Réouvrir ce lot ?', 'Vous pourrez à nouveau y ajouter des colis.', 'form-reopen-lot', 'Réouvrir', '#4F46E5')"
+                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Réouvrir le Lot
+                            </button>
+                        </form>
+                         
+                         <form id="form-ship-lot" action="{% url 'chine:lot_ship' lot.pk %}" method="POST">
+                            {% csrf_token %}
+                            <button type="button"
+                                onclick="confirmAction('Expédier ce lot ?', 'ACTION IRRÉVERSIBLE. Le lot passera en lecture seule.', 'form-ship-lot', 'Expédier', '#4F46E5')"
+                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Expédier le Lot
+                            </button>
+                        </form>
+                    {% endif %}
                 {% endif %}
                 
                 {# NOTE (TOUJOURS DISPONIBLE) #}
@@ -66,7 +70,7 @@
         <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
             <dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
                 <div class="sm:col-span-1">
-                    <dt class="text-sm font-medium text-gray-500">Type de Transport</dt>
+                    <dt class="text-sm font-medium text-gray-500">Type d'Expédition</dt>
                     <dd class="mt-1 text-sm text-gray-900">{{ lot.get_type_transport_display }}</dd>
                 </div>
                 <div class="sm:col-span-1">
@@ -82,13 +86,13 @@
                     <dd class="mt-1 text-sm font-bold text-gray-900">{{ total_cbm|default:"0" }} m³</dd>
                 </div>
 
-                {% if user.role == 'ADMIN_CHINE' %}
+                {% if user.role == 'ADMIN_CHINE' or user.role == 'AGENT_CHINE' %}
                 <div class="sm:col-span-1 border-t border-gray-100 pt-4">
                     <dt class="text-xs font-medium text-gray-500 uppercase">Recettes (Colis)</dt>
                     <dd class="mt-1 text-lg font-bold text-green-600">{{ total_montant_colis|default:"0"|fcfa }}</dd>
                 </div>
                 <div class="sm:col-span-1 border-t border-gray-100 pt-4">
-                    <dt class="text-xs font-medium text-gray-500 uppercase">Dépenses (Transport)</dt>
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Dépenses (Expédition)</dt>
                     <dd class="mt-1 text-sm font-semibold text-red-600">- {{ lot.frais_transport|default:"0"|fcfa }}</dd>
                 </div>
                 <div class="sm:col-span-1 border-t border-gray-100 pt-4">
@@ -666,9 +670,11 @@
                 <p class="text-sm text-red-600 mb-6">
                     La suppression d'un lot est une action <strong>irréversible</strong>. Toutes les données associées (colis, photos, historique) seront définitivement effacées de la base de données.
                 </p>
-                <form action="{% url 'chine:lot_delete' lot.pk %}" method="POST">
+                <form id="form-delete-lot" action="{% url 'chine:lot_delete' lot.pk %}" method="POST">
                     {% csrf_token %}
-                    <button type="submit" onclick="return confirm('Supprimer ce lot ?');" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-lg transition-transform hover:scale-105 active:scale-95">
+                    <button type="button" 
+                        onclick="confirmAction('Supprimer Définitivement ?', 'Toutes les données associées seront effacées de manière irréversible.', 'form-delete-lot', 'Supprimer', '#DC2626')"
+                        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-lg transition-transform hover:scale-105 active:scale-95">
                         <svg class="mr-2 -ml-1 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>

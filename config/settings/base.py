@@ -119,6 +119,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Tailwind
 TAILWIND_APP_NAME = "theme"
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
+
+NPM_BIN_PATH = env("NPM_BIN_PATH", default="/usr/local/bin/npm")
+
+# Authentication URLs
+LOGIN_URL = "/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
 
 # Compressor
 COMPRESS_ROOT = STATIC_ROOT

@@ -73,7 +73,8 @@ class Lot(TenantAwareModel):
     class Status(models.TextChoices):
         OUVERT = "OUVERT", _("Ouvert")
         FERME = "FERME", _("Fermé")
-        EXPEDIE = "EXPEDIE", _("Expédié")
+        EN_TRANSIT = "EN_TRANSIT", _("En Transit")
+        EXPEDIE = "EXPEDIE", _("Expédié")  # Fallback/Compat
         ARRIVE = "ARRIVE", _("Arrivé au Pays")
         DOUANE = "DOUANE", _("En Douane")
         DISPONIBLE = "DISPONIBLE", _("Disponible pour retrait")
@@ -228,7 +229,9 @@ class Colis(TenantAwareModel):
         if not self.reference:
             import uuid
 
-            self.reference = str(uuid.uuid4()).split("-")[0].upper()
+            # Génère une réf courte avec préfixe TS
+            uid = str(uuid.uuid4()).split("-")[0].upper()
+            self.reference = f"TS-{uid}"
         super().save(*args, **kwargs)
 
     def __str__(self):

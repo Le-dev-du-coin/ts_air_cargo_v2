@@ -1,0 +1,35 @@
+{% if error_locked %}
+    <div class="text-xs font-bold text-red-500 bg-red-50 p-2 rounded border border-red-200">
+        ⚠️ SAISIR FRAIS DOUANE D'ABORD
+    </div>
+{% elif colis.status == 'ARRIVE' %}
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
+        <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+        </svg>
+        POINTÉ (ARRIVÉ)
+    </span>
+{% elif not lot.frais_douane %}
+    <div class="text-center">
+        <span class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-400 bg-gray-50 cursor-not-allowed" title="Saisissez les frais de douane du lot pour débloquer le pointage">
+            En attente frais douane
+        </span>
+    </div>
+{% else %}
+    <form hx-post="{% url 'mali:colis_arrive' colis.pk %}" 
+          hx-target="#colis-status-{{ colis.pk }}"
+          hx-swap="innerHTML"
+          hx-indicator="#loading-{{ colis.pk }}">
+        {% csrf_token %}
+        <button type="submit" 
+                class="inline-flex items-center px-4 py-2 border border-orange-300 shadow-sm text-sm font-bold rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
+            <span id="loading-{{ colis.pk }}" class="htmx-indicator mr-2">
+                <svg class="animate-spin h-4 w-4 text-orange-600" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </span>
+            Pointer l'arrivée
+        </button>
+    </form>
+{% endif %}

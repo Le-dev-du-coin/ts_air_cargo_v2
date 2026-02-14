@@ -50,7 +50,7 @@ class RoleRequiredMixin(UserPassesTestMixin):
             self.request,
             "Accès non autorisé : vous n'avez pas les droits nécessaires pour accéder à cette page.",
         )
-        return redirect("chine:dashboard")
+        return redirect("index")
 
 
 class AgentChineRequiredMixin(RoleRequiredMixin):
@@ -86,10 +86,10 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         # Stats spécifiques Agent Chine
         if self.request.user.role == "AGENT_CHINE":
             context["lots_transit_count"] = Lot.objects.filter(
-                status=Lot.Status.EXPEDIE
+                status="EN_TRANSIT"
             ).count()
             context["lots_arrives_mali_count"] = Lot.objects.filter(
-                status=Lot.Status.DISPONIBLE, destination__code="ML"
+                status__in=[Lot.Status.ARRIVE, Lot.Status.DOUANE, Lot.Status.DISPONIBLE]
             ).count()
 
             # Stats financières Agent Chine
@@ -177,9 +177,13 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
             context["chart_data"] = chart_data
 
         # Pagination pour les lots récents
+        lots_list = (
+            Lot.objects.prefetch_related("colis")
+            .annotate(total_recettes=Sum("colis__prix_final"))
+            .order_by("-created_at")
+        )
         from django.core.paginator import Paginator
 
-        lots_list = Lot.objects.order_by("-created_at")
         paginator = Paginator(lots_list, 10)  # 10 lots par page
         page_number = self.request.GET.get("page", 1)
         context["recent_lots"] = paginator.get_page(page_number)
@@ -575,7 +579,7 @@ class LotStatusUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Vie
                 )
                 return redirect("chine:lot_detail", pk=pk)
 
-            lot.status = "EXPEDIE"
+            lot.status = "EN_TRANSIT"
             lot.date_expedition = timezone.now()
             lot.save()
             # Also update colis status? Generally yes.

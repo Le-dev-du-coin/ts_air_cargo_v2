@@ -1,0 +1,217 @@
+{% extends "mali/base.html" %}
+{% load currency_tags %}
+
+{% block header %}Détail Lot : {{ lot.numero }}{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-10">
+    <!-- Lot Info Card -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+            <div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Informations du Lot
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Transport : <span class="font-bold text-gray-800">{{ lot.get_type_transport_display }}</span> | 
+                    Status : <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ lot.get_status_display }}</span>
+                </p>
+            </div>
+            
+            <!-- Actions Frais -->
+            <div class="flex items-center space-x-4">
+                {% if not lot.frais_transport or not lot.frais_douane %}
+                <form action="{% url 'mali:lot_arrive' lot.pk %}" method="POST" class="flex items-end space-x-2 bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
+                    {% csrf_token %}
+                    {% if not lot.frais_transport %}
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Frais d'Expédition (FCFA)</label>
+                        <input type="number" name="frais_transport" value="" 
+                               class="block w-40 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Saisir frais exp.">
+                    </div>
+                    {% endif %}
+                    
+                    {% if not lot.frais_douane %}
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Frais Douane (FCFA)</label>
+                        <input type="number" name="frais_douane" value="" 
+                               class="block w-40 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Saisir frais douane">
+                    </div>
+                    {% endif %}
+                    
+                    <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                        Enregistrer
+                    </button>
+                </form>
+                {% else %}
+                <div class="bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200 flex items-center shadow-sm">
+                    <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span class="text-sm font-bold uppercase tracking-tight">Tous les Frais Enregistrés</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+            <dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Poids Total Estimé</dt>
+                    <dd class="mt-1 text-sm font-bold text-gray-900">{{ total_poids|default:"0"|floatformat:1 }} kg</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Volume Total</dt>
+                    <dd class="mt-1 text-sm font-bold text-gray-900">{{ total_cbm|default:"0" }} m³</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Total Colis</dt>
+                    <dd class="mt-1 text-sm font-bold text-gray-900">{{ lot.colis.count }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Date d'Expédition</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ lot.date_expedition|date:"d F Y"|default:"Non expédié" }}</dd>
+                </div>
+
+                <!-- Statistiques Financières Mali -->
+                <div class="sm:col-span-1 border-t border-gray-100 pt-4">
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Recettes (Colis)</dt>
+                    <dd class="mt-1 text-lg font-bold text-green-600">{{ total_montant_colis|default:"0"|fcfa }}</dd>
+                </div>
+                <div class="sm:col-span-1 border-t border-gray-100 pt-4">
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Frais d'Expédition</dt>
+                    <dd class="mt-1 text-sm font-semibold text-red-600">- {{ lot.frais_transport|default:"0"|fcfa }}</dd>
+                </div>
+                <div class="sm:col-span-1 border-t border-gray-100 pt-4">
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Frais de Douane</dt>
+                    <dd class="mt-1 text-sm font-semibold text-red-600">- {{ lot.frais_douane|default:"0"|fcfa }}</dd>
+                </div>
+                <div class="sm:col-span-1 border-t border-gray-100 pt-4 bg-gray-50 p-2 rounded">
+                    <dt class="text-xs font-bold text-gray-700 uppercase">Bénéfice Net Mali</dt>
+                    <dd class="mt-1 text-xl font-extrabold {% if benefice > 0 %}text-green-600{% elif benefice < 0 %}text-red-600{% else %}text-gray-900{% endif %}">
+                        {{ benefice|fcfa }}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Colis List (Pointage) -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+            <div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Pointage des Colis</h3>
+                <p class="mt-1 text-sm text-gray-500">Marquez chaque colis comme "Arrivé" lors du déchargement.</p>
+            </div>
+            
+            <!-- Recherche de Colis -->
+            <form method="GET" class="flex w-full max-w-sm">
+                <div class="relative w-full">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" name="qc" value="{{ qc|default:'' }}"
+                        class="block w-full pl-9 pr-3 py-2 border border-blue-200 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm"
+                        placeholder="Réf ou Nom Client...">
+                </div>
+                <button type="submit" class="ml-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm">
+                    Filtrer
+                </button>
+                {% if qc %}
+                <a href="?" class="ml-2 inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-colors">
+                    Effacer
+                </a>
+                {% endif %}
+            </form>
+        </div>
+        
+        <ul class="divide-y divide-gray-200">
+            {% for colis in colis_list %}
+            <li class="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center min-w-0 flex-1">
+                        <div class="flex-shrink-0 h-12 w-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                            {% if colis.photo %}
+                            <img src="{{ colis.photo.url }}" alt="Colis" class="h-12 w-12 object-cover cursor-pointer" onclick="window.open(this.src)">
+                            {% else %}
+                            <svg class="h-full w-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            {% endif %}
+                        </div>
+                        <div class="ml-4 min-w-0">
+                            <div class="text-sm font-bold text-indigo-600 truncate uppercase">
+                                {{ colis.reference }}
+                            </div>
+                            <div class="text-sm text-gray-900">
+                                Client : <span class="font-medium text-gray-700">{{ colis.client.nom }} {{ colis.client.prenom }}</span>
+                            </div>
+                            {% if colis.client.telephone %}
+                            <div class="text-xs text-gray-600 italic">
+                                Tél : {{ colis.client.telephone }}
+                            </div>
+                            {% endif %}
+                            <div class="text-xs text-gray-500">
+                                {% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} pièces{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="colis-status-{{ colis.pk }}">
+                        {% include "mali/partials/colis_status_badge.html" with colis=colis lot=lot %}
+                    </div>
+                </div>
+            </li>
+            {% empty %}
+            <li class="px-4 py-8 text-center text-gray-500 italic">
+                Aucun colis trouvé{% if qc %} pour "{{ qc }}"{% endif %} dans ce lot.
+            </li>
+            {% endfor %}
+        </ul>
+        
+        <!-- Pagination -->
+        {% if colis_list.has_other_pages %}
+        <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6">
+            <nav class="flex items-center justify-between">
+                <!-- Mobile -->
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if colis_list.has_previous %}
+                    <a href="?page={{ colis_list.previous_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md px-4 py-2 hover:bg-gray-50">Précédent</a>
+                    {% endif %}
+                    {% if colis_list.has_next %}
+                    <a href="?page={{ colis_list.next_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md px-4 py-2 hover:bg-gray-50">Suivant</a>
+                    {% endif %}
+                </div>
+                <!-- Desktop -->
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Page <span class="font-medium">{{ colis_list.number }}</span> sur <span class="font-medium">{{ colis_list.paginator.num_pages }}</span>
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if colis_list.has_previous %}
+                            <a href="?page={{ colis_list.previous_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Précédent
+                            </a>
+                            {% endif %}
+                            
+                            {% if colis_list.has_next %}
+                            <a href="?page={{ colis_list.next_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Suivant
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -85,7 +85,7 @@
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
-                        <dt class="text-xs font-bold text-blue-600 uppercase">Frais Transport</dt>
+                        <dt class="text-xs font-bold text-blue-600 uppercase">Frais d'Expédition</dt>
                         <dd class="text-2xl font-black text-gray-900">{{ montant_total_transport|default:"0"|floatformat:0|intcomma }} FCFA</dd>
                     </div>
                 </div>
@@ -392,11 +392,23 @@
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Transport
+                                        Expédition
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Statut
+                                    </th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Montant Total Colis
+                                    </th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Frais Expédition
+                                    </th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Date Exp.
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -416,7 +428,7 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ lot.country.name }}</div>
+                                        <div class="text-sm text-gray-900">{{ lot.destination.name }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-500">{{ lot.get_type_transport_display }}</div>
@@ -427,6 +439,19 @@
                                             {% if lot.status == 'OUVERT' %}bg-green-100 text-green-800{% elif lot.status == 'FERME' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}">
                                             {{ lot.get_status_display }}
                                         </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-bold text-green-600">
+                                            {{ lot.total_recettes|default:"0"|floatformat:0|intcomma }} FCFA
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-bold text-red-600">
+                                            - {{ lot.frais_transport|default:"0"|floatformat:0|intcomma }} FCFA
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ lot.date_expedition|date:"d/m/Y"|default:"-" }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ lot.created_at|date:"d M Y" }}

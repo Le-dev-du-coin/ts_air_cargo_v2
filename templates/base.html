@@ -26,6 +26,9 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         [x-cloak] {
             display: none !important;
@@ -83,6 +86,25 @@
         document.body.addEventListener('htmx:configRequest', (event) => {
             event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
         });
+
+        // Global Confirmation with SweetAlert2
+        function confirmAction(title, text, formId, confirmButtonText = 'Confirmer', color = '#4F46E5') {
+            Swal.fire({
+                title: title,
+                text: text,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: color,
+                cancelButtonColor: '#6B7280',
+                confirmButtonText: confirmButtonText,
+                cancelButtonText: 'Annuler',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(formId).submit();
+                }
+            });
+        }
     </script>
 </body>
 
