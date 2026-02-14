@@ -24,9 +24,7 @@ class User(AbstractUser):
         GLOBAL_ADMIN = "GLOBAL_ADMIN", _("Global Admin")
         ADMIN_CHINE = "ADMIN_CHINE", _("Admin Chine")
         AGENT_CHINE = "AGENT_CHINE", _("Agent Chine")
-        ADMIN_MALI = "ADMIN_MALI", _("Admin Mali")
         AGENT_MALI = "AGENT_MALI", _("Agent Mali")
-        ADMIN_RCI = "ADMIN_RCI", _("Admin RCI")
         AGENT_RCI = "AGENT_RCI", _("Agent RCI")
         CLIENT = "CLIENT", _("Client")
 

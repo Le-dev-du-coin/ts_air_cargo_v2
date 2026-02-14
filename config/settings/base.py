@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    
+    "django.contrib.humanize",  # Pour les filtres intcomma, etc.
     # Third-party
     "tailwind",
     "django_htmx",
@@ -31,7 +31,6 @@ INSTALLED_APPS = [
     # "django_celery_results",
     # "django_celery_beat",
     "storages",
-    
     # Local Apps
     "core",
     "admin_app",
@@ -40,7 +39,7 @@ INSTALLED_APPS = [
     "ivoire",
     "notification",
     "report",
-    "theme", # Added after tailwind init
+    "theme",  # Added after tailwind init
 ]
 
 MIDDLEWARE = [
@@ -53,7 +52,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
-    "core.middleware.TenantMiddleware", # Uncomment when middleware created
+    "core.middleware.TenantMiddleware",  # Uncomment when middleware created
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -86,7 +85,9 @@ AUTH_USER_MODEL = "core.User"
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -117,7 +118,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Tailwind
-TAILWIND_APP_NAME = 'theme'
+TAILWIND_APP_NAME = "theme"
 
 # Compressor
 COMPRESS_ROOT = STATIC_ROOT
@@ -132,7 +133,12 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [(env("REDIS_HOST", default="localhost"), env.int("REDIS_PORT", default=6379))],
+            "hosts": [
+                (
+                    env("REDIS_HOST", default="localhost"),
+                    env.int("REDIS_PORT", default=6379),
+                )
+            ],
         },
     },
 }

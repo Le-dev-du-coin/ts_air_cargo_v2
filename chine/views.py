@@ -14,6 +14,8 @@ from django.views.generic import (
     View,
 )
 import os
+import uuid
+import base64
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.contrib import messages
@@ -71,7 +73,7 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Stats pour l'Agent Chine
+        # Stats communes
         context["lots_ouverts_count"] = Lot.objects.filter(
             status=Lot.Status.OUVERT
         ).count()
@@ -81,28 +83,62 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         context["colis_total_count"] = Colis.objects.count()
         context["total_clients_count"] = Client.objects.count()
 
-        # Stats avancées pour l'Admin Chine
-        if self.request.user.role == "ADMIN_CHINE":
-            # Lots par Pays/Status
-            context["lots_mali_count"] = Lot.objects.filter(
-                destination__code="ML"
-            ).count()
-            context["lots_ci_count"] = Lot.objects.filter(
-                destination__code="CI"
-            ).count()
+        # Stats spécifiques Agent Chine
+        if self.request.user.role == "AGENT_CHINE":
             context["lots_transit_count"] = Lot.objects.filter(
                 status=Lot.Status.EXPEDIE
             ).count()
-            context["lots_chine_count"] = Lot.objects.filter(
-                status__in=[Lot.Status.OUVERT, Lot.Status.FERME]
+            context["lots_arrives_mali_count"] = Lot.objects.filter(
+                status=Lot.Status.DISPONIBLE, destination__code="ML"
             ).count()
+
+            # Stats financières Agent Chine
+            context["montant_total_colis_agent"] = (
+                Colis.objects.aggregate(total=Sum("prix_final"))["total"] or 0
+            )
+
+            context["montant_total_transport_agent"] = (
+                Lot.objects.aggregate(total=Sum("frais_transport"))["total"] or 0
+            )
+
+        # Stats avancées pour l'Admin Chine
+        if self.request.user.role == "ADMIN_CHINE":
+            # Métriques financières globales
+            all_colis = Colis.objects.all()
+            context["montant_total_colis"] = (
+                all_colis.aggregate(total=Sum("prix_final"))["total"] or 0
+            )
+
+            context["total_poids_kg"] = (
+                all_colis.aggregate(total=Sum("poids"))["total"] or 0
+            )
+
+            all_lots = Lot.objects.all()
+            context["montant_total_transport"] = (
+                all_lots.aggregate(total=Sum("frais_transport"))["total"] or 0
+            )
+
+            context["montant_total_douane"] = (
+                all_lots.aggregate(total=Sum("frais_douane"))["total"] or 0
+            )
+
+            # Bénéfice global = revenus colis - (transport + douane)
+            context["benefice_global"] = (
+                context["montant_total_colis"]
+                - context["montant_total_transport"]
+                - context["montant_total_douane"]
+            )
+
+            # Totaux supplémentaires pour compléter le dashboard (8 cartes)
+            context["total_lots"] = Lot.objects.count()
+            context["total_colis"] = Colis.objects.count()
 
             # Totaux globaux
             context["total_agents_count"] = (
                 User.objects.exclude(role="CLIENT").exclude(is_superuser=True).count()
             )
 
-            # Bénéfices mensuels (Mali & CI)
+            # Bénéfices mensuels (Mali & CI) - conservé pour graphiques
             now = timezone.now()
             start_of_month = now.replace(
                 day=1, hour=0, minute=0, second=0, microsecond=0
@@ -140,8 +176,14 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
                 chart_data.append({"month": month_start.strftime("%b"), "count": count})
             context["chart_data"] = chart_data
 
-        # Liste simplifiée des derniers lots
-        context["recent_lots"] = Lot.objects.order_by("-created_at")[:5]
+        # Pagination pour les lots récents
+        from django.core.paginator import Paginator
+
+        lots_list = Lot.objects.order_by("-created_at")
+        paginator = Paginator(lots_list, 10)  # 10 lots par page
+        page_number = self.request.GET.get("page", 1)
+        context["recent_lots"] = paginator.get_page(page_number)
+
         return context
 
 
@@ -558,7 +600,9 @@ class LotDetailView(LoginRequiredMixin, AgentChineRequiredMixin, DetailView):
         aggregates = self.object.colis.aggregate(
             total_poids=Sum("poids"),
             total_cbm=Sum("cbm"),
-            total_montant=Sum("prix_transport"),
+            total_montant=Sum(
+                "prix_final"
+            ),  # Utiliser prix_final pour les recettes réelles
         )
 
         context["total_poids"] = aggregates["total_poids"] or 0
@@ -635,16 +679,25 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
             "est_paye": form.cleaned_data["est_paye"],
         }
 
-        # Handling photo: Save temporarily
-        photo = form.cleaned_data.get("photo")
-        if photo:
-            # FASTEST SAVE: Just save to tmp and move on
-            temp_path = default_storage.save(
-                f"tmp/{photo.name}", ContentFile(photo.read())
-            )
-            params["temp_photo_path"] = default_storage.path(temp_path)
+        # Ultra-fast: Don't save photo now, just pass Base64 or file info to Celery
+        compressed_photo_data = self.request.POST.get("compressed_photo")
 
-        # Create BackgroundTask record
+        if compressed_photo_data and compressed_photo_data.startswith("data:image"):
+            # Pass Base64 directly to Celery - no disk I/O here
+            params["photo_base64"] = compressed_photo_data
+        else:
+            # For file upload, read to memory (fast) and pass as base64
+            photo = form.cleaned_data.get("photo")
+            if photo:
+                try:
+                    photo_data = photo.read()
+                    params["photo_base64"] = (
+                        f"data:image/jpeg;base64,{base64.b64encode(photo_data).decode('utf-8')}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error reading photo: {e}")
+
+        # Create BackgroundTask record (fast DB insert)
         task_record = BackgroundTask.objects.create(
             name=f"Création Colis - Lot {lot.numero}",
             parameters=params,
@@ -652,17 +705,28 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
             country=lot.country,
         )
 
-        # Trigger Celery task
+        # Trigger Celery task asynchronously
+        success_msg = "Colis ajouté ! Traitement en cours..."
         try:
-            process_colis_creation.delay(task_record.pk)
-            messages.success(self.request, "Colis en cours d'enregistrement...")
+            process_colis_creation.apply_async(
+                args=[task_record.pk],
+                priority=5,
+                countdown=0.1,  # Tiny delay to avoid overwhelming
+            )
         except Exception as e:
             logger.error(f"Error triggering Celery task: {e}")
-            # Fallback for reliability but warn user
-            process_colis_creation(task_record.pk)
-            messages.warning(self.request, "Colis enregistré (Mode secours).")
+            success_msg = "Colis enregistré (traitement différé)."
 
-        # ALWAYS redirect back to the form for extreme speed
+        if self.request.htmx:
+            response = render(
+                self.request,
+                "chine/partials/messages.html",
+                {"success_message": success_msg},
+            )
+            response["HX-Trigger"] = "colisAdded"
+            return response
+
+        messages.success(self.request, success_msg)
         return redirect(
             reverse_lazy("chine:lot_detail", kwargs={"pk": lot.pk})
             + "#colis-calculator"
@@ -704,15 +768,13 @@ class TaskListView(LoginRequiredMixin, TaskMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        from django.db.models import Count
+        from django.db.models import Count, Q
 
         stats = BackgroundTask.objects.filter(created_by=self.request.user).aggregate(
-            pending=Count("id", filter=models.Q(status=BackgroundTask.Status.PENDING)),
-            processing=Count(
-                "id", filter=models.Q(status=BackgroundTask.Status.PROCESSING)
-            ),
-            success=Count("id", filter=models.Q(status=BackgroundTask.Status.SUCCESS)),
-            failure=Count("id", filter=models.Q(status=BackgroundTask.Status.FAILURE)),
+            pending=Count("id", filter=Q(status=BackgroundTask.Status.PENDING)),
+            processing=Count("id", filter=Q(status=BackgroundTask.Status.PROCESSING)),
+            success=Count("id", filter=Q(status=BackgroundTask.Status.SUCCESS)),
+            failure=Count("id", filter=Q(status=BackgroundTask.Status.FAILURE)),
         )
         context["stats"] = stats
         return context

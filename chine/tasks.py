@@ -38,18 +38,36 @@ def process_colis_creation(self, task_record_id):
             est_paye=params["est_paye"],
         )
 
-        # Handle photo if temp path provided
-        temp_photo_path = params.get("temp_photo_path")
-        if temp_photo_path and os.path.exists(temp_photo_path):
-            with open(temp_photo_path, "rb") as f:
-                colis.photo.save(
-                    os.path.basename(temp_photo_path), ContentFile(f.read()), save=False
-                )
-            # Cleanup temp file
+        # Handle photo - prioritize Base64 from client
+        photo_base64 = params.get("photo_base64")
+        if photo_base64 and photo_base64.startswith("data:image"):
             try:
-                os.remove(temp_photo_path)
+                import base64
+
+                format, imgstr = photo_base64.split(";base64,")
+                ext = format.split("/")[-1]
+                photo_content = ContentFile(
+                    base64.b64decode(imgstr), name=f"colis_{lot.pk}_{client.pk}.{ext}"
+                )
+                colis.photo.save(photo_content.name, photo_content, save=False)
+                logger.info(f"Photo saved from Base64 for colis")
             except Exception as e:
-                logger.error(f"Error removing temp file {temp_photo_path}: {e}")
+                logger.error(f"Error decoding Base64 photo: {e}")
+        else:
+            # Fallback: temp_photo_path (legacy)
+            temp_photo_path = params.get("temp_photo_path")
+            if temp_photo_path and os.path.exists(temp_photo_path):
+                with open(temp_photo_path, "rb") as f:
+                    colis.photo.save(
+                        os.path.basename(temp_photo_path),
+                        ContentFile(f.read()),
+                        save=False,
+                    )
+                # Cleanup temp file
+                try:
+                    os.remove(temp_photo_path)
+                except Exception as e:
+                    logger.error(f"Error removing temp file {temp_photo_path}: {e}")
 
         colis.save()
 

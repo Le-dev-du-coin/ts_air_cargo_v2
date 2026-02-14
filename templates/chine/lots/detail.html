@@ -127,8 +127,14 @@
                     <div id="colis-calculator" x-data="colisCalculator({{ tarif_json|default:'{}' }})" class="mt-5">
                         {% if user.role == 'AGENT_CHINE' %}
                         <div id="colis-message-area"></div>
-                        <form id="colis-form" action="{% url 'chine:colis_add' lot.pk %}#colis-calculator" 
-                               method="post" enctype="multipart/form-data" class="space-y-4">
+                        <form id="colis-form" 
+                              x-ref="colisForm"
+                              hx-post="{% url 'chine:colis_add' lot.pk %}" 
+                              hx-target="#colis-message-area"
+                              hx-indicator="#colis-spinner"
+                              enctype="multipart/form-data" 
+                              class="space-y-4"
+                              @submit="handleFormSubmit($event)">
                             {% csrf_token %}
 
                              <!-- Client & Description -->
@@ -215,15 +221,57 @@
                             </div>
 
                             <!-- Photo & Submit -->
-                            <div>
-                                <label for="{{ colis_form.photo.id_for_label }}" class="block text-sm font-medium text-gray-700">Photo</label>
-                                {{ colis_form.photo }}
+                            <div x-data="photoHandler()" class="space-y-3">
+                                <label class="block text-sm font-medium text-gray-700">Photo du Colis</label>
+                                
+                                <div class="flex gap-2">
+                                    <button type="button" @click="openWebcam()" 
+                                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                        <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        Webcam
+                                    </button>
+                                    <input type="file" id="colis-photo-input" name="photo" accept="image/*" @change="handleFile($event)"
+                                           class="block w-full text-xs text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                </div>
+
+                                <!-- Webcam Preview -->
+                                <div x-show="showWebcam" x-cloak class="relative rounded-lg overflow-hidden bg-black aspect-video mt-2">
+                                    <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                                    <div class="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
+                                        <button type="button" @click="capturePhoto()" class="bg-indigo-600 text-white p-2 rounded-full shadow-lg hover:bg-indigo-700">
+                                            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+                                        </button>
+                                        <button type="button" @click="closeWebcam()" class="bg-gray-600 text-white p-2 rounded-full shadow-lg hover:bg-gray-700">
+                                            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Photo Preview -->
+                                <div x-show="photoPreview" x-cloak class="mt-2 relative inline-block">
+                                    <img :src="photoPreview" class="h-24 w-auto rounded-lg shadow-sm border border-gray-200">
+                                    <button type="button" @click="clearPhoto()" class="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 border border-red-200 hover:bg-red-200">
+                                        <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                </div>
+
+                                <!-- Hidden compressed field -->
+                                <input type="hidden" name="compressed_photo" x-model="compressedBlobBase64">
                             </div>
-                            <div class="pt-4">
+                            <div class="pt-4 flex items-center gap-3">
                                 <button type="submit"
-                                    class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    class="flex-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     Ajouter au Lot
                                 </button>
+                                <div id="colis-spinner" class="htmx-indicator">
+                                    <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
                             </div>
                         </form>
                         {% else %}
@@ -245,7 +293,123 @@
                     </div>
 
                     <script>
+                        let tomSelectClient;
+                        document.addEventListener('DOMContentLoaded', function() {
+                            tomSelectClient = new TomSelect('#id_client', {
+                                create: false,
+                                sortField: {
+                                    field: "text",
+                                    direction: "asc"
+                                },
+                                placeholder: "Rechercher par nom ou téléphone...",
+                                allowEmptyOption: true,
+                            });
+
+                            // Listen for HTMX success
+                            document.body.addEventListener('htmx:afterRequest', function(event) {
+                                if (event.detail.successful && event.target.id === 'colis-form') {
+                                    // Get Alpine instance and call reset
+                                    const calculator = Alpine.$data(document.querySelector('#colis-calculator'));
+                                    if (calculator && calculator.resetForm) {
+                                        calculator.resetForm();
+                                    }
+                                }
+                            });
+                        });
+
                         document.addEventListener('alpine:init', () => {
+                            Alpine.data('photoHandler', () => ({
+                                showWebcam: false,
+                                photoPreview: null,
+                                compressedBlobBase64: '',
+                                stream: null,
+
+                                async openWebcam() {
+                                    this.showWebcam = true;
+                                    try {
+                                        this.stream = await navigator.mediaDevices.getUserMedia({ 
+                                            video: { facingMode: "environment" } 
+                                        });
+                                        this.$refs.video.srcObject = this.stream;
+                                    } catch (err) {
+                                        console.error("Webcam error:", err);
+                                        alert("Impossible d'accéder à la caméra.");
+                                        this.showWebcam = false;
+                                    }
+                                },
+
+                                capturePhoto() {
+                                    const video = this.$refs.video;
+                                    const canvas = document.createElement('canvas');
+                                    // Set reasonable capture size
+                                    const scale = 1200 / Math.max(video.videoWidth, video.videoHeight);
+                                    canvas.width = video.videoWidth * Math.min(1, scale);
+                                    canvas.height = video.videoHeight * Math.min(1, scale);
+                                    
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                    
+                                    // Compress to JPEG
+                                    this.photoPreview = canvas.toDataURL('image/jpeg', 0.7);
+                                    this.compressedBlobBase64 = this.photoPreview; // This will be sent as hidden field
+                                    
+                                    this.closeWebcam();
+                                },
+
+                                async handleFile(event) {
+                                    const file = event.target.files[0];
+                                    if (!file) return;
+
+                                    // Preview immediately
+                                    this.photoPreview = URL.createObjectURL(file);
+
+                                    // Compress in background
+                                    const reader = new FileReader();
+                                    reader.onload = (e) => {
+                                        const img = new Image();
+                                        img.onload = () => {
+                                            const canvas = document.createElement('canvas');
+                                            const MAX_SIZE = 1200;
+                                            let width = img.width;
+                                            let height = img.height;
+
+                                            if (width > height) {
+                                                if (width > MAX_SIZE) {
+                                                    height *= MAX_SIZE / width;
+                                                    width = MAX_SIZE;
+                                                }
+                                            } else {
+                                                if (height > MAX_SIZE) {
+                                                    width *= MAX_SIZE / height;
+                                                    height = MAX_SIZE;
+                                                }
+                                            }
+                                            canvas.width = width;
+                                            canvas.height = height;
+                                            const ctx = canvas.getContext('2d');
+                                            ctx.drawImage(img, 0, 0, width, height);
+                                            this.compressedBlobBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                                        };
+                                        img.src = e.target.result;
+                                    };
+                                    reader.readAsDataURL(file);
+                                },
+
+                                closeWebcam() {
+                                    if (this.stream) {
+                                        this.stream.getTracks().forEach(track => track.stop());
+                                    }
+                                    this.showWebcam = false;
+                                },
+
+                                clearPhoto() {
+                                    this.photoPreview = null;
+                                    this.compressedBlobBase64 = '';
+                                    const input = document.getElementById('colis-photo-input');
+                                    if (input) input.value = '';
+                                }
+                            }));
+
                             Alpine.data('colisCalculator', (tarifs) => ({
                                 type_colis: 'STANDARD',
                                 poids: 0,
@@ -256,6 +420,7 @@
                                 cbm: 0,
                                 transportType: '{{ lot.type_transport }}',
                                 tarifs: tarifs,
+                                lastClient: null,
                                 
                                 init() {
                                     this.$watch('longueur', () => this.calculate());
@@ -264,6 +429,56 @@
                                     this.$watch('poids', () => this.calculate());
                                     this.$watch('type_colis', () => this.calculate());
                                     this.$watch('nombre_pieces', () => this.calculate());
+                                },
+
+                                handleFormSubmit(event) {
+                                    // Sauvegarder client sélectionné
+                                    if(typeof tomSelectClient !== 'undefined') {
+                                        this.lastClient = tomSelectClient.getValue();
+                                    }
+                                    
+                                    // VALIDATION PHOTO OBLIGATOIRE
+                                    const compressedPhoto = document.getElementById('compressed_photo');
+                                    const photoInput = document.getElementById('colis-photo-input');
+                                    
+                                    // Vérifier si une photo est présente (webcam ou upload)
+                                    const hasWebcamPhoto = compressedPhoto && compressedPhoto.value && compressedPhoto.value.startsWith('data:image');
+                                    const hasFilePhoto = photoInput && photoInput.files && photoInput.files.length > 0;
+                                    
+                                    if (!hasWebcamPhoto && !hasFilePhoto) {
+                                        event.preventDefault();
+                                        alert('⚠️ Photo obligatoire !\n\nVeuillez capturer une photo avec la webcam ou uploader un fichier avant d\'ajouter le colis.');
+                                        return false;
+                                    }
+                                    // Don't prevent default - let HTMX handle it
+                                },
+
+                                resetForm() {
+                                    // Reset all form fields
+                                    this.type_colis = 'STANDARD';
+                                    this.poids = 0;
+                                    this.nombre_pieces = 1;
+                                    this.longueur = 0;
+                                    this.largeur = 0;
+                                    this.hauteur = 0;
+                                    this.cbm = 0;
+                                    
+                                    // Reset photo via Alpine.store or direct access
+                                    const photoHandler = Alpine.$data(document.querySelector('[x-data*="photoHandler"]'));
+                                    if (photoHandler) {
+                                        photoHandler.clearPhoto();
+                                    }
+                                    
+                                    // Reset form element
+                                    const form = this.$refs.colisForm;
+                                    if (form) form.reset();
+                                    
+                                    // Restore client selection
+                                    if (this.lastClient && typeof tomSelectClient !== 'undefined') {
+                                        setTimeout(() => {
+                                            tomSelectClient.setValue(this.lastClient);
+                                        }, 10);
+                                    }
                                 },
                                 
                                 getTelephonePrice() {
@@ -331,7 +546,11 @@
                     <h3 class="text-lg leading-6 font-medium text-gray-900">Colis dans ce lot</h3>
                     <span class="text-sm text-gray-500">{{ lot.colis.count }} colis</span>
                 </div>
-                <ul class="divide-y divide-gray-200">
+                <div id="colis-list-container" 
+                     hx-get="{% url 'chine:lot_detail' lot.pk %}" 
+                     hx-select="#colis-list-items" 
+                     hx-trigger="colisAdded from:body">
+                    <ul id="colis-list-items" class="divide-y divide-gray-200">
                     {% for colis in colis_list %}
                     <li class="px-4 py-4 sm:px-6 hover:bg-gray-50">
                         <div class="flex items-center justify-between">
@@ -361,7 +580,11 @@
                             </div>
                             <div class="flex flex-col items-end">
                                 <div class="text-sm font-medium text-gray-900">
-                                    {{ colis.poids|floatformat:1 }} kg
+                                    {% if colis.type_colis == 'TELEPHONE' %}
+                                        {{ colis.nombre_pieces }} pièce{{ colis.nombre_pieces|pluralize }}
+                                    {% else %}
+                                        {{ colis.poids|floatformat:1 }} kg
+                                    {% endif %}
                                 </div>
                                 {% if colis.cbm %}
                                 <div class="text-xs text-gray-500">
@@ -383,6 +606,7 @@
                     </li>
                     {% endfor %}
                 </ul>
+                </div>
                 
                 <!-- Colis Pagination -->
                 {% if colis_list.has_other_pages %}

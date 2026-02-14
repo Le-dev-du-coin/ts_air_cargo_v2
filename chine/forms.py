@@ -231,6 +231,23 @@ class ColisForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["description"].required = False
+        # Ne pas marquer photo comme required car compressed_photo peut être utilisé
+        self.fields["photo"].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Vérifier qu'une photo est fournie (soit via photo, soit via compressed_photo dans POST)
+        photo = cleaned_data.get("photo")
+        compressed_photo = self.data.get("compressed_photo")
+
+        # Une photo est obligatoire : soit un fichier uploadé, soit une photo webcam compressée
+        if not photo and not compressed_photo:
+            self.add_error(
+                "photo",
+                "La photo du colis est obligatoire. Utilisez la webcam ou uploadez un fichier.",
+            )
+
+        return cleaned_data
 
 
 from core.models import Tarif
@@ -347,6 +364,15 @@ class AgentForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Filtrer les rôles CLIENT et GLOBAL_ADMIN pour les agents
+        if "role" in self.fields:
+            self.fields["role"].choices = [
+                (key, value)
+                for key, value in self.fields["role"].choices
+                if key not in ["CLIENT", "GLOBAL_ADMIN", ""]
+            ]
+
         if self.instance.pk:
             self.fields["password"].required = False
             self.fields["password"].help_text = (
