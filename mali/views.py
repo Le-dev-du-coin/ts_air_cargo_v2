@@ -200,10 +200,10 @@ class LotsEnTransitView(LoginRequiredMixin, AgentMaliRequiredMixin, ListView):
             # Recherche par numéro lot ou client (nom, prénom, téléphone, ou nom complet)
             queryset = (
                 queryset.annotate(
-                    full_name_search=Concat(
+                    nom_complet=Concat(
                         "colis__client__nom", Value(" "), "colis__client__prenom"
                     ),
-                    full_name_alt=Concat(
+                    prenom_complet=Concat(
                         "colis__client__prenom", Value(" "), "colis__client__nom"
                     ),
                 )
@@ -212,8 +212,8 @@ class LotsEnTransitView(LoginRequiredMixin, AgentMaliRequiredMixin, ListView):
                     | Q(colis__client__nom__icontains=query)
                     | Q(colis__client__prenom__icontains=query)
                     | Q(colis__client__telephone__icontains=query)
-                    | Q(full_name_search__icontains=query)
-                    | Q(full_name_alt__icontains=query)
+                    | Q(nom_complet__icontains=query)
+                    | Q(prenom_complet__icontains=query)
                 )
                 .distinct()
             )
