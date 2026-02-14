@@ -1,0 +1,107 @@
+{% extends "chine/base.html" %}
+
+{% block header %}Nouveau Client{% endblock %}
+
+{% block chine_content %}
+<div class="max-w-3xl mx-auto">
+    <form method="post" class="space-y-8 divide-y divide-gray-200">
+        {% csrf_token %}
+        <div class="space-y-8 divide-y divide-gray-200 sm:space-y-5">
+            <div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Information du Client</h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Ce client sera automatiquement lié à votre pays de destination ({{ user.country.name }}).
+                </p>
+
+                <div class="mt-6 sm:mt-5 space-y-6 sm:space-y-5">
+
+                    {% if form.non_field_errors %}
+                    <div class="rounded-md bg-red-50 p-4">
+                        <div class="flex">
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">Erreur</h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    {{ form.non_field_errors }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
+                        <label for="{{ form.nom.id_for_label }}"
+                            class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+                            Nom <span class="text-red-500">*</span>
+                        </label>
+                        <div class="mt-1 sm:mt-0 sm:col-span-2">
+                            {{ form.nom }}
+                            {% if form.nom.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.nom.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
+                        <label for="{{ form.prenom.id_for_label }}"
+                            class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+                            Prénom
+                        </label>
+                        <div class="mt-1 sm:mt-0 sm:col-span-2">
+                            {{ form.prenom }}
+                        </div>
+                    </div>
+
+                    <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
+                        <label for="{{ form.telephone.id_for_label }}"
+                            class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+                            Téléphone <span class="text-red-500">*</span>
+                        </label>
+                        <div class="mt-1 sm:mt-0 sm:col-span-2">
+                            {{ form.telephone }}
+                            <p class="mt-2 text-sm text-gray-500">Indispensable pour les notifications WhatsApp.</p>
+                        </div>
+                    </div>
+
+                    <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
+                        <label for="{{ form.country.id_for_label }}"
+                            class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+                            Pays <span class="text-red-500">*</span>
+                        </label>
+                        <div class="mt-1 sm:mt-0 sm:col-span-2">
+                            {{ form.country }}
+                            {% if form.country.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.country.errors.0 }}</p>
+                            {% endif %}
+                            <p class="mt-2 text-sm text-gray-500">Pays de destination (ex: Mali ou Côte d'Ivoire).</p>
+                        </div>
+                    </div>
+
+                    <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
+                        <label for="{{ form.adresse.id_for_label }}"
+                            class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+                            Adresse
+                        </label>
+                        <div class="mt-1 sm:mt-0 sm:col-span-2">
+                            {{ form.adresse }}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="pt-5">
+            <div class="flex justify-end">
+                <a href="{% url 'chine:client_list' %}"
+                    class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Annuler
+                </a>
+                <button type="submit"
+                    class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Enregistrer
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

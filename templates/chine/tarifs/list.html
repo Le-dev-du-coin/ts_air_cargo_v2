@@ -1,0 +1,95 @@
+{% extends "chine/base.html" %}
+
+{% load currency_tags %}
+{% block header %}Gestion des Tarifs{% endblock %}
+
+{% block chine_content %}
+<div class="space-y-6">
+    <!-- Action Bar -->
+    <div class="sm:flex sm:items-center sm:justify-between">
+        <div class="flex items-center space-x-4">
+            <div>
+                <p class="mt-1 text-sm text-gray-500">Configuration des prix par destination.</p>
+            </div>
+            <!-- Filter Form -->
+            <form method="get" class="flex items-center space-x-2">
+                <select name="country" onchange="this.form.submit()" 
+                    class="block w-48 pl-3 pr-10 py-1.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                    <option value="">Toutes les destinations</option>
+                    {% for c in countries %}
+                        <option value="{{ c.id }}" {% if current_country == c.id|stringformat:"i" %}selected{% endif %}>
+                            {{ c.flag_emoji }} {{ c.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% if current_country %}
+                    <a href="{% url 'chine:tarif_list' %}" class="text-xs text-gray-400 hover:text-gray-600">Réinitialiser</a>
+                {% endif %}
+            </form>
+        </div>
+        <div class="mt-4 sm:mt-0 sm:ml-4">
+            <a href="{% url 'chine:tarif_add' %}"
+                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                Nouveau Tarif
+            </a>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transport</th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Prix/Kg</th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Prix/m³</th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Prix/Pièce (Tél.)</th>
+                    <th scope="col" class="relative px-6 py-3">
+                        <span class="sr-only">Actions</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for tarif in tarifs %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <div class="flex items-center">
+                            <span class="text-xl mr-2">{{ tarif.destination.flag_emoji }}</span>
+                            {{ tarif.destination.name }}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if tarif.type_transport == 'BATEAU' %}bg-blue-100 text-blue-800{% elif tarif.type_transport == 'TELEPHONE' %}bg-yellow-100 text-yellow-800{% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ tarif.get_type_transport_display }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-mono">
+                        {% if tarif.prix_kilo > 0 %}{{ tarif.prix_kilo|fcfa }}{% else %}-{% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-mono">
+                        {% if tarif.prix_cbm > 0 %}{{ tarif.prix_cbm|fcfa }}{% else %}-{% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-mono">
+                        {% if tarif.prix_piece > 0 %}{{ tarif.prix_piece|fcfa }}{% else %}-{% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <a href="{% url 'chine:tarif_update' tarif.pk %}" class="text-indigo-600 hover:text-indigo-900 mr-4">Modifier</a>
+                        <a href="{% url 'chine:tarif_delete' tarif.pk %}" class="text-red-600 hover:text-red-900">Supprimer</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                        Aucun tarif configuré. Commencez par en ajouter un.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

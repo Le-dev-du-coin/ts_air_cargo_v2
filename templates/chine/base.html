@@ -3,63 +3,119 @@
 {% block title %}TS Air Cargo - Chine{% endblock %}
 
 {% block content %}
-<div class="flex h-screen overflow-hidden bg-gray-100">
+<div class="flex h-screen overflow-hidden bg-gray-50">
     <!-- Sidebar -->
     <div class="hidden md:flex md:flex-shrink-0">
-        <div class="flex flex-col w-64">
-            <div class="flex flex-col h-0 flex-1 bg-gray-800">
-                <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-                    <div class="flex items-center flex-shrink-0 px-4">
-                        <span class="text-xl font-bold text-white tracking-tighter">TS Air Cargo</span>
-                        <span class="ml-2 text-xs font-medium bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded">V.2
-                            Beta</span>
-                        <span class="ml-2 text-xs text-gray-400">CN</span>
+        <div class="flex flex-col w-64 bg-slate-900 border-r border-gray-800">
+            <!-- Header/Logo -->
+            <div class="flex items-center h-16 flex-shrink-0 px-6 bg-slate-900 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl font-bold text-white tracking-tight">TS Air Cargo</span>
+                    <span
+                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        CN
+                </span>
+            </div>
+        </div>
+
+            <!-- Navigation -->
+            <div class="flex-1 flex flex-col overflow-y-auto">
+                <nav class="flex-1 px-4 py-6 space-y-2">
+                    <!-- Dashboard -->
+                    <a href="{% url 'chine:dashboard' %}"
+                        class="{% if request.resolver_match.url_name == 'dashboard' %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
+                        <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if request.resolver_match.url_name == 'dashboard' %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        Tableau de bord
+                    </a>
+
+                    <div class="px-3 mt-6 mb-2">
+                        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gestion</h3>
                     </div>
-                    <nav class="mt-5 flex-1 px-2 space-y-1">
-                        <a href="{% url 'chine:dashboard' %}"
-                            class="{% if request.resolver_match.url_name == 'dashboard' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                            <svg class="mr-3 flex-shrink-0 h-6 w-6 {% if request.resolver_match.url_name == 'dashboard' %}text-gray-300{% else %}text-gray-400 group-hover:text-gray-300{% endif %}"
-                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                            </svg>
-                            Tableau de bord
-                        </a>
 
-                        <a href="{% url 'chine:client_list' %}"
-                            class="{% if 'client' in request.resolver_match.url_name %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                            <svg class="mr-3 flex-shrink-0 h-6 w-6 {% if 'client' in request.resolver_match.url_name %}text-gray-300{% else %}text-gray-400 group-hover:text-gray-300{% endif %}"
-                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            Clients
-                        </a>
+                    <!-- Clients -->
+                    <a href="{% url 'chine:client_list' %}"
+                        class="{% if 'client' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
+                        <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'client' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        Clients
+                    </a>
 
-                        <a href="{% url 'chine:lot_list' %}"
-                            class="{% if 'lot' in request.resolver_match.url_name %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                            <svg class="mr-3 flex-shrink-0 h-6 w-6 {% if 'lot' in request.resolver_match.url_name %}text-gray-300{% else %}text-gray-400 group-hover:text-gray-300{% endif %}"
-                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                            Lots & Expéditions
-                        </a>
-                    </nav>
-                </div>
-                <div class="flex-shrink-0 flex bg-gray-700 p-4">
-                    <div class="flex-shrink-0 w-full group block">
-                        <div class="flex items-center">
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-white">{{ user.username }}</p>
-                                <a href="{% url 'core:logout' %}"
-                                    class="text-xs font-medium text-gray-300 group-hover:text-gray-200">Déconnexion</a>
-                            </div>
+                    <!-- Lots -->
+                    <a href="{% url 'chine:lot_list' %}"
+                        class="{% if 'lot' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
+                        <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'lot' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        Lots & Expéditions
+                    </a>
+
+                    <!-- Tarifs (Admin Only) -->
+                    {% if user.role == 'ADMIN_CHINE' %}
+                    <a href="{% url 'chine:agent_list' %}"
+                        class="{% if 'agent' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
+                        <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'agent' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        Gestion des Agents
+                    </a>
+                    <a href="{% url 'chine:tarif_list' %}"
+                        class="{% if 'tarif' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
+                        <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'tarif' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Tarifs
+                    </a>
+                    {% endif %}
+
+                    <!-- Background Tasks -->
+                    {% if user.role == 'AGENT_CHINE' %}
+                    <a href="{% url 'chine:task_list' %}"
+                        class="{% if 'task' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
+                        <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'task' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Tâches
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
+
+            <!-- User Profile -->
+            <div class="flex-shrink-0 flex bg-slate-950 p-4 border-t border-slate-800">
+                <div class="flex items-center w-full">
+                    <div class="flex-shrink-0">
+                        <div
+                            class="h-9 w-9 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+                            {{ user.username|make_list|first|upper }}
                         </div>
                     </div>
+                    <div class="ml-3 min-w-0 flex-1">
+                        <p class="text-sm font-medium text-white truncate">{{ user.username }}</p>
+                        <p class="text-xs text-slate-400 truncate">{{ user.get_role_display }}</p>
+                    </div>
+                    <a href="{% url 'core:logout' %}" class="ml-2 text-slate-400 hover:text-white transition-colors"
+                        title="Déconnexion">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </a>
                 </div>
             </div>
         </div>
@@ -69,12 +125,25 @@
     <div class="flex flex-col w-0 flex-1 overflow-hidden">
         <main class="flex-1 relative z-0 overflow-y-auto focus:outline-none">
             <div class="py-6">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-                    <h1 class="text-2xl font-semibold text-gray-900">{% block header %}Tableau de bord{% endblock %}
-                    </h1>
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mb-6">
+                    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">{% block header %}Tableau de bord{%endblock %}</h1>
                 </div>
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-                    {% block chine_content %}{% endblock %}
+                    <!-- Standard Django Messages -->
+                    {% if messages %}
+                        <div id="standard-messages">
+                            {% for message in messages %}
+                                <div class="rounded-md p-4 mb-4 {% if message.tags == 'success' %}bg-green-50 text-green-700{% elif message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-blue-50 text-blue-700{% endif %}">
+                                    <p class="text-sm font-medium">{{ message }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Notifications area for HTMX -->
+                    <div id="messages-container"></div>
+        
+        {% block chine_content %}{% endblock %}
                 </div>
             </div>
         </main>

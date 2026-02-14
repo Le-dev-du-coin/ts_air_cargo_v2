@@ -1,0 +1,459 @@
+{% extends "chine/base.html" %}
+
+{% load currency_tags %}
+{% block header %}Détail du Lot : {{ lot.numero }}{% endblock %}
+
+{% block chine_content %}
+<div class="space-y-10">
+    <!-- Lot Info Card -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+            <div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Informations Générales
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Destination : <span class="font-bold text-gray-800">{{ lot.destination.name }}</span>
+                </p>
+            </div>
+            {% if lot.photo %}
+            <div class="flex-shrink-0">
+                <img src="{{ lot.photo.url }}" alt="Photo Lot" class="h-16 w-16 rounded-lg object-cover border border-gray-200 shadow-sm transition hover:scale-110 cursor-pointer" onclick="window.open(this.src)">
+            </div>
+            {% endif %}
+            <div class="flex space-x-3">
+                <span
+                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                    {% if lot.status == 'OUVERT' %}bg-green-100 text-green-800{% elif lot.status == 'FERME' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                    {{ lot.get_status_display }}
+                </span>
+
+                {# ACTIONS LIFECYCLE #}
+                {% if lot.status == 'OUVERT' %}
+                    <a href="{% url 'chine:lot_update' lot.pk %}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium pt-1">Modifier</a>
+                    <form action="{% url 'chine:lot_close' lot.pk %}" method="POST" onsubmit="return confirm('Fermer ce lot ? Il ne pourra plus recevoir de colis.');">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                            Fermer le Lot
+                        </button>
+                    </form>
+                {% elif lot.status == 'FERME' %}
+                     <form action="{% url 'chine:lot_reopen' lot.pk %}" method="POST" onsubmit="return confirm('Réouvrir ce lot pour modification ?');">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Réouvrir le Lot
+                        </button>
+                    </form>
+                     
+                     <form action="{% url 'chine:lot_ship' lot.pk %}" method="POST" onsubmit="return confirm('Expédier ce lot ? ACTION IRRÉVERSIBLE. Le lot passera en lecture seule.');">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Expédier le Lot
+                        </button>
+                    </form>
+                {% endif %}
+                
+                {# NOTE (TOUJOURS DISPONIBLE) #}
+                <a href="{% url 'chine:lot_note' lot.pk %}" 
+                   class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                   {% if lot.note %}Modifier Note{% else %}Ajouter Note{% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+            <dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Type de Transport</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ lot.get_type_transport_display }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Date de Création</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ lot.created_at|date:"d F Y H:i" }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Poids Total</dt>
+                    <dd class="mt-1 text-sm font-bold text-gray-900">{{ total_poids|default:"0"|floatformat:1 }} kg</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500">Volume Total</dt>
+                    <dd class="mt-1 text-sm font-bold text-gray-900">{{ total_cbm|default:"0" }} m³</dd>
+                </div>
+
+                {% if user.role == 'ADMIN_CHINE' %}
+                <div class="sm:col-span-1 border-t border-gray-100 pt-4">
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Recettes (Colis)</dt>
+                    <dd class="mt-1 text-lg font-bold text-green-600">{{ total_montant_colis|default:"0"|fcfa }}</dd>
+                </div>
+                <div class="sm:col-span-1 border-t border-gray-100 pt-4">
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Dépenses (Transport)</dt>
+                    <dd class="mt-1 text-sm font-semibold text-red-600">- {{ lot.frais_transport|default:"0"|fcfa }}</dd>
+                </div>
+                <div class="sm:col-span-1 border-t border-gray-100 pt-4">
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Dépenses (Douane)</dt>
+                    <dd class="mt-1 text-sm font-semibold text-red-600">- {{ lot.frais_douane|default:"0"|fcfa }}</dd>
+                </div>
+                <div class="sm:col-span-1 border-t border-gray-100 pt-4 bg-gray-50 p-2 rounded">
+                    <dt class="text-xs font-bold text-gray-700 uppercase">Bénéfice Net</dt>
+                    <dd class="mt-1 text-xl font-extrabold {% if benefice >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                        {{ benefice|default:"0"|fcfa }}
+                    </dd>
+                </div>
+                {% endif %}
+            </dl>
+            
+            {% if lot.note %}
+            <div class="mt-16 border-t border-gray-200 pt-8 pb-4">
+                <h4 class="text-sm font-bold text-gray-900 pl-6">Note / Observations :</h4>
+                <div class="mt-4 mx-6 text-sm text-gray-700 bg-yellow-50 p-6 rounded-md border border-yellow-200 shadow-sm mb-4">
+                    {{ lot.note|linebreaksbr }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Colis Management -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-16">
+        <!-- Add Colis Form -->
+        {% if lot.status == 'OUVERT' %}
+        <div class="lg:col-span-1">
+            <div class="bg-white shadow sm:rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Ajouter un Colis</h3>
+                    
+                    <div id="colis-calculator" x-data="colisCalculator({{ tarif_json|default:'{}' }})" class="mt-5">
+                        {% if user.role == 'AGENT_CHINE' %}
+                        <div id="colis-message-area"></div>
+                        <form id="colis-form" action="{% url 'chine:colis_add' lot.pk %}#colis-calculator" 
+                               method="post" enctype="multipart/form-data" class="space-y-4">
+                            {% csrf_token %}
+
+                             <!-- Client & Description -->
+                             <div class="space-y-4">
+                                 <div>
+                                     <label for="{{ colis_form.client.id_for_label }}" class="block text-sm font-medium text-gray-700">Client</label>
+                                     <div class="mt-1">
+                                         {{ colis_form.client }}
+                                     </div>
+                                     <p class="mt-1 text-xs text-gray-500"><a href="{% url 'chine:client_add' %}" class="text-indigo-600 hover:text-indigo-500">Nouveau client ?</a></p>
+                                 </div>
+                                 <div>
+                                     <label for="{{ colis_form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">Description <span class="text-gray-400 font-normal">(optionnel)</span></label>
+                                     <div class="mt-1">
+                                         {{ colis_form.description }}
+                                     </div>
+                                 </div>
+                             </div>
+
+                            <!-- Type & Poids -->
+                            <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                                <div class="sm:col-span-3">
+                                    <label for="{{ colis_form.type_colis.id_for_label }}" class="block text-sm font-medium text-gray-700">Type de Colis</label>
+                                    {{ colis_form.type_colis }}
+                                </div>
+                                
+                                <div class="sm:col-span-3" x-show="type_colis === 'TELEPHONE'">
+                                    <label for="{{ colis_form.nombre_pieces.id_for_label }}" class="block text-sm font-medium text-gray-700">Nombre de Pièces</label>
+                                    {{ colis_form.nombre_pieces }}
+                                    <p class="mt-1 text-xs text-gray-500">Tarif Téléphone: <span x-text="getTelephonePrice()"></span> FCFA/pièce</p>
+                                </div>
+
+                                <div class="sm:col-span-3" x-show="type_colis !== 'TELEPHONE'">
+                                    <label for="{{ colis_form.poids.id_for_label }}" class="block text-sm font-medium text-gray-700">Poids (kg)</label>
+                                    {{ colis_form.poids }}
+                                    <!-- Hint for Cargo -->
+                                    <template x-if="transportType !== 'BATEAU' && type_colis === 'STANDARD'">
+                                        <p class="mt-1 text-xs text-gray-500">Base calcul: <span x-text="transportType in tarifs ? tarifs[transportType].prix_kilo : '-'"></span> FCFA/kg</p>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Dimensions (Required/Auto-calc for Boat) -->
+                            <div class="border-t border-gray-100 pt-4" x-show="transportType === 'BATEAU'">
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Dimensions & Volume</h4>
+                                <div class="grid grid-cols-4 gap-4">
+                                    <div>
+                                        <label for="{{ colis_form.longueur.id_for_label }}" class="block text-xs font-medium text-gray-700">Long. (cm)</label>
+                                        {{ colis_form.longueur }}
+                                    </div>
+                                    <div>
+                                        <label for="{{ colis_form.largeur.id_for_label }}" class="block text-xs font-medium text-gray-700">Larg. (cm)</label>
+                                        {{ colis_form.largeur }}
+                                    </div>
+                                    <div>
+                                        <label for="{{ colis_form.hauteur.id_for_label }}" class="block text-xs font-medium text-gray-700">Haut. (cm)</label>
+                                        {{ colis_form.hauteur }}
+                                    </div>
+                                    <div>
+                                        <label for="{{ colis_form.cbm.id_for_label }}" class="block text-xs font-medium text-gray-700">CBM (m³)</label>
+                                        {{ colis_form.cbm }}
+                                    </div>
+                                </div>
+                                <p class="mt-1 text-xs text-blue-600">Transport Maritime : Le prix est basé sur le CBM ({{ tarif_json.BATEAU.prix_cbm|default:'-' }} FCFA/m³).</p>
+                            </div>
+
+                            <!-- Prix & Paiement -->
+                            <div class="border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
+                                <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6 items-end">
+                                    <div class="sm:col-span-3">
+                                        <label for="{{ colis_form.prix_final.id_for_label }}" class="block text-sm font-bold text-gray-900">Prix Final (FCFA)</label>
+                                        {{ colis_form.prix_final }}
+                                        <p class="mt-1 text-xs text-gray-500">Calculé automatiquement, modifiable.</p>
+                                    </div>
+                                    <div class="sm:col-span-3 pb-2">
+                                        <div class="flex items-center">
+                                            {{ colis_form.est_paye }}
+                                            <label for="{{ colis_form.est_paye.id_for_label }}" class="ml-2 block text-sm text-gray-900">
+                                                Déjà Payé en Chine ?
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Photo & Submit -->
+                            <div>
+                                <label for="{{ colis_form.photo.id_for_label }}" class="block text-sm font-medium text-gray-700">Photo</label>
+                                {{ colis_form.photo }}
+                            </div>
+                            <div class="pt-4">
+                                <button type="submit"
+                                    class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Ajouter au Lot
+                                </button>
+                            </div>
+                        </form>
+                        {% else %}
+                        <div class="rounded-md bg-blue-50 p-4 mt-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm text-blue-700">
+                                        Seuls les agents peuvent ajouter des colis à ce lot.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <script>
+                        document.addEventListener('alpine:init', () => {
+                            Alpine.data('colisCalculator', (tarifs) => ({
+                                type_colis: 'STANDARD',
+                                poids: 0,
+                                nombre_pieces: 1,
+                                longueur: 0,
+                                largeur: 0,
+                                hauteur: 0,
+                                cbm: 0,
+                                transportType: '{{ lot.type_transport }}',
+                                tarifs: tarifs,
+                                
+                                init() {
+                                    this.$watch('longueur', () => this.calculate());
+                                    this.$watch('largeur', () => this.calculate());
+                                    this.$watch('hauteur', () => this.calculate());
+                                    this.$watch('poids', () => this.calculate());
+                                    this.$watch('type_colis', () => this.calculate());
+                                    this.$watch('nombre_pieces', () => this.calculate());
+                                },
+                                
+                                getTelephonePrice() {
+                                    if (this.tarifs && this.tarifs.TELEPHONE) {
+                                        return this.tarifs.TELEPHONE.prix_piece;
+                                    }
+                                    return 0;
+                                },
+
+                                calculate() {
+                                    const l = parseFloat(this.longueur) || 0;
+                                    const w = parseFloat(this.largeur) || 0;
+                                    const h = parseFloat(this.hauteur) || 0;
+                                    
+                                    if (l > 0 && w > 0 && h > 0) {
+                                        this.cbm = (l * w * h) / 1000000;
+                                        document.getElementById('id_cbm').value = this.cbm.toFixed(4);
+                                    } else {
+                                        this.cbm = 0;
+                                    }
+
+                                    if (this.type_colis === 'ELECTRONIQUE') return;
+
+                                    if (!this.tarifs) return; 
+                                    let prix = 0;
+                                    
+                                    if (this.type_colis === 'TELEPHONE') {
+                                        const pieces = parseInt(this.nombre_pieces) || 0;
+                                        if (this.tarifs.TELEPHONE) {
+                                            prix = pieces * this.tarifs.TELEPHONE.prix_piece;
+                                        }
+                                    } else {
+                                        if (this.transportType === 'BATEAU') {
+                                            if (this.tarifs.BATEAU) {
+                                                prix = this.cbm * this.tarifs.BATEAU.prix_cbm;
+                                            }
+                                        } else if (this.transportType === 'CARGO') {
+                                            const p = parseFloat(this.poids) || 0;
+                                            if (this.tarifs.CARGO) {
+                                                prix = p * this.tarifs.CARGO.prix_kilo;
+                                            }
+                                        } else if (this.transportType === 'EXPRESS') {
+                                            const p = parseFloat(this.poids) || 0;
+                                            if (this.tarifs.EXPRESS) {
+                                                prix = p * this.tarifs.EXPRESS.prix_kilo;
+                                            }
+                                        }
+                                    }
+                                    
+                                    document.getElementById('id_prix_final').value = Math.ceil(prix);
+                                }
+                            }))
+                        });
+
+                    </script>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Colis List -->
+        <div class="{% if lot.status == 'OUVERT' %}lg:col-span-2{% else %}lg:col-span-3{% endif %}">
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="px-4 py-5 sm:px-6 flex justify-between">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Colis dans ce lot</h3>
+                    <span class="text-sm text-gray-500">{{ lot.colis.count }} colis</span>
+                </div>
+                <ul class="divide-y divide-gray-200">
+                    {% for colis in colis_list %}
+                    <li class="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-12 w-12 bg-gray-100 rounded-lg overflow-hidden">
+                                    {% if colis.photo %}
+                                    <img src="{{ colis.photo.url }}" alt="Colis" class="h-12 w-12 object-cover">
+                                    {% else %}
+                                    <svg class="h-full w-full text-gray-400" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-indigo-600 truncate">
+                                        {{ colis.reference }}
+                                    </div>
+                                    <div class="text-sm text-gray-900">
+                                        {{ colis.client.nom }} {{ colis.client.prenom }}
+                                    </div>
+                                    <div class="text-sm text-gray-500">
+                                        {{ colis.description }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ colis.poids|floatformat:1 }} kg
+                                </div>
+                                {% if colis.cbm %}
+                                <div class="text-xs text-gray-500">
+                                    {{ colis.cbm }} m³
+                                </div>
+                                {% endif %}
+                                <div class="mt-1 flex items-center justify-end">
+                                    <span class="text-sm font-bold text-gray-900 mr-2">{{ colis.prix_final|fcfa }}</span>
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        {{ colis.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="px-4 py-8 text-center text-gray-500">
+                        Aucun colis dans ce lot pour le moment.
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <!-- Colis Pagination -->
+                {% if colis_list.has_other_pages %}
+                <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-b-lg">
+                    <div class="flex-1 flex justify-between sm:hidden">
+                        {% if colis_list.has_previous %}
+                        <a href="?page={{ colis_list.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Précédent</a>
+                        {% endif %}
+                        {% if colis_list.has_next %}
+                        <a href="?page={{ colis_list.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Suivant</a>
+                        {% endif %}
+                    </div>
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-gray-700">
+                                Page <span class="font-medium">{{ colis_list.number }}</span> sur <span class="font-medium">{{ colis_list.paginator.num_pages }}</span>
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                {% if colis_list.has_previous %}
+                                <a href="?page={{ colis_list.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Précédent</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                                {% endif %}
+                                {% if colis_list.has_next %}
+                                <a href="?page={{ colis_list.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Suivant</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                                {% endif %}
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if user.role == 'ADMIN_CHINE' %}
+    <!-- Danger Zone -->
+    <div class="mt-12 bg-red-50 border-t-4 border-red-500 rounded-xl p-8 shadow-sm">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <svg class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <div class="ml-4">
+                <h3 class="text-xl font-bold text-red-900 mb-2">Zone de Danger</h3>
+                <p class="text-sm text-red-600 mb-6">
+                    La suppression d'un lot est une action <strong>irréversible</strong>. Toutes les données associées (colis, photos, historique) seront définitivement effacées de la base de données.
+                </p>
+                <form action="{% url 'chine:lot_delete' lot.pk %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" onclick="return confirm('Supprimer ce lot ?');" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-lg transition-transform hover:scale-105 active:scale-95">
+                        <svg class="mr-2 -ml-1 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Supprimer Définitivement ce Lot
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

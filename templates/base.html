@@ -1,4 +1,4 @@
-e{% load static tailwind_tags compress %}
+{% load static tailwind_tags compress %}
 <!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
 
@@ -19,9 +19,28 @@ e{% load static tailwind_tags compress %}
     {% tailwind_css %}
     {% endcompress %}
 
+    <!-- Tom Select -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         [x-cloak] {
             display: none !important;
+        }
+        /* Custom Tom Select Styling to match Tailwind */
+        .ts-control {
+            border-radius: 0.375rem !important;
+            padding: 0.5rem 0.75rem !important;
+            border-color: #D1D5DB !important;
+            font-size: 0.875rem !important;
+            line-height: 1.25rem !important;
+        }
+        .ts-control:focus {
+            border-color: #6366F1 !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
         }
     </style>
 </head>

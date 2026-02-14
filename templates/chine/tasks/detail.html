@@ -1,0 +1,72 @@
+{% extends "chine/base.html" %}
+
+{% block header %}Détail de la Tâche{% endblock %}
+
+{% block chine_content %}
+<div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+        <div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900">{{ task.name }}</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">ID: {{ task.task_id|default:"N/A" }}</p>
+        </div>
+        <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full 
+            {% if task.status == 'SUCCESS' %}bg-green-100 text-green-800
+            {% elif task.status == 'FAILURE' %}bg-red-100 text-red-800
+            {% elif task.status == 'PROCESSING' %}bg-blue-100 text-blue-800
+            {% else %}bg-gray-100 text-gray-800{% endif %}">
+            {{ task.get_status_display }}
+        </span>
+    </div>
+    <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
+        <dl class="sm:divide-y sm:divide-gray-200">
+            <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Date de création</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ task.created_at|date:"d F Y H:i:s" }}</dd>
+            </div>
+            {% if task.started_at %}
+            <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Début du traitement</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ task.started_at|date:"H:i:s" }}</dd>
+            </div>
+            {% endif %}
+            {% if task.completed_at %}
+            <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Fin du traitement</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ task.completed_at|date:"H:i:s" }}</dd>
+            </div>
+            {% endif %}
+            {% if task.error_message %}
+            <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500 text-red-600">Erreur</dt>
+                <dd class="mt-1 text-sm text-red-600 sm:mt-0 sm:col-span-2">
+                    {{ task.error_message }}
+                </dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+</div>
+
+<div class="mt-6 flex space-x-3">
+    <a href="{% url 'chine:task_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        Retour à la liste
+    </a>
+    
+    {% if task.status == 'FAILURE' %}
+    <form action="{% url 'chine:task_retry' task.pk %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Relancer la tâche
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+{% if task.status == 'PROCESSING' or task.status == 'PENDING' %}
+<script>
+    setTimeout(() => {
+        window.location.reload();
+    }, 3000);
+</script>
+{% endif %}
+{% endblock %}

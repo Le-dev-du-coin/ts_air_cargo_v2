@@ -159,7 +159,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
-                        contact@tsaircargo.com
+                        contact@ts-aircargo.com
                     </a>
                 </div>
             </div>
@@ -177,8 +177,8 @@
                             </h3>
                             <p class="mt-5 text-base text-gray-400">
                                 Adresse : Warehouse 12, District Baiyun<br>
-                                Tél : <span class="text-white font-semibold">+86 123 4567 8900</span><br>
-                                WeChat : ts_cargo_cn
+                                Tél : <span class="text-white font-semibold">+86 151 1222 3234</span><br>
+                                WhatsApp : ts_cargo_cn
                             </p>
                         </div>
                     </div>
@@ -195,8 +195,8 @@
                             <h3 class="mt-8 text-lg font-medium text-white tracking-tight">Guichet Mali (Bamako)</h3>
                             <p class="mt-5 text-base text-gray-400">
                                 Adresse : Grand Marché, Bamako<br>
-                                Tél : <span class="text-white font-semibold">+223 70 00 00 00</span><br>
-                                WhatsApp : +223 70 00 00 00
+                                Tél : <span class="text-white font-semibold">+223 70 70 21 50</span><br>
+                                WhatsApp : +223 70 70 21 50
                             </p>
                         </div>
                     </div>
@@ -228,13 +228,28 @@
     <footer class="bg-gray-900 border-t border-gray-800">
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 md:flex md:items-center md:justify-between">
             <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 md:order-2">
-                <span class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Accès Réservé</span>
-                <a href="{% url 'core:login' %}" class="text-gray-400 hover:text-white transition-colors text-sm">
-                    Connexion Agent
-                </a>
-                <a href="{% url 'core:login' %}" class="text-gray-400 hover:text-white transition-colors text-sm">
-                    Administration
-                </a>
+                <div class="flex flex-col space-y-2">
+                    <span class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Agents</span>
+                    <a href="{% url 'core:login_agent_chine' %}"
+                        class="text-gray-400 hover:text-white transition-colors text-sm flex items-center">
+                        <span class="mr-2">🇨🇳</span> Chine
+                    </a>
+                    <a href="{% url 'core:login_agent_mali' %}"
+                        class="text-gray-400 hover:text-white transition-colors text-sm flex items-center">
+                        <span class="mr-2">🇲🇱</span> Mali
+                    </a>
+                    <a href="{% url 'core:login_agent_rci' %}"
+                        class="text-gray-400 hover:text-white transition-colors text-sm flex items-center">
+                        <span class="mr-2">🇨🇮</span> Côte d'Ivoire
+                    </a>
+                </div>
+                <div class="flex flex-col space-y-2">
+                    <span class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Admin</span>
+                    <a href="{% url 'core:login_admin_chine' %}"
+                        class="text-gray-400 hover:text-white transition-colors text-sm flex items-center">
+                        <span class="mr-2">🇨🇳</span> Chine
+                    </a>
+                </div>
             </div>
             <div class="mt-8 md:mt-0 md:order-1">
                 <p class="text-center text-base text-gray-500">

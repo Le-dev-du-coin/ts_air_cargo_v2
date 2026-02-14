@@ -1,25 +1,80 @@
 from django.urls import path
 from .views import (
-    DashboardView, 
-    ClientListView, ClientCreateView,
-    LotListView, LotCreateView, LotDetailView,
-    ColisCreateView
+    DashboardView,
+    ClientListView,
+    ClientCreateView,
+    LotListView,
+    LotCreateView,
+    LotDetailView,
+    LotUpdateView,
+    LotCloseView,
+    LotDeleteView,
+    LotStatusUpdateView,
+    LotNoteUpdateView,
+    LotReopenView,
+    ColisCreateView,
+    CountryCreateView,
+    ClientExportView,
+    ClientImportView,
+    ClientUpdateView,
+    ClientDeleteView,
+    ClientBulkDeleteView,
+    TarifListView,
+    TarifCreateView,
+    TarifUpdateView,
+    TarifDeleteView,
+    TaskListView,
+    TaskDetailView,
+    TaskRetryView,
+    TaskBulkDeleteView,
+    AgentListView,
+    AgentCreateView,
+    AgentUpdateView,
+    AgentDeleteView,
 )
 
 app_name = "chine"
 
 urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
-    
-    # Clients
+    # Background Tasks
+    path("tasks/", TaskListView.as_view(), name="task_list"),
+    path("tasks/<int:pk>/", TaskDetailView.as_view(), name="task_detail"),
+    path("tasks/<int:pk>/retry/", TaskRetryView.as_view(), name="task_retry"),
+    path("tasks/bulk-delete/", TaskBulkDeleteView.as_view(), name="task_bulk_delete"),
     path("clients/", ClientListView.as_view(), name="client_list"),
     path("clients/add/", ClientCreateView.as_view(), name="client_add"),
-    
+    path("clients/export/", ClientExportView.as_view(), name="client_export"),
+    path("clients/import/", ClientImportView.as_view(), name="client_import"),
+    path(
+        "clients/bulk-delete/",
+        ClientBulkDeleteView.as_view(),
+        name="client_bulk_delete",
+    ),
+    path("clients/<int:pk>/update/", ClientUpdateView.as_view(), name="client_update"),
+    path("clients/<int:pk>/delete/", ClientDeleteView.as_view(), name="client_delete"),
+    # Countries
+    path("countries/add/", CountryCreateView.as_view(), name="country_add"),
     # Lots
     path("lots/", LotListView.as_view(), name="lot_list"),
     path("lots/create/", LotCreateView.as_view(), name="lot_create"),
     path("lots/<int:pk>/", LotDetailView.as_view(), name="lot_detail"),
-    
+    path("lots/<int:pk>/update/", LotUpdateView.as_view(), name="lot_update"),
+    path("lots/<int:pk>/note/", LotNoteUpdateView.as_view(), name="lot_note"),
+    path("lots/<int:pk>/close/", LotCloseView.as_view(), name="lot_close"),
+    path("lots/<int:pk>/reopen/", LotReopenView.as_view(), name="lot_reopen"),
+    path("lots/<int:pk>/ship/", LotStatusUpdateView.as_view(), name="lot_ship"),
+    path("lots/<int:pk>/delete/", LotDeleteView.as_view(), name="lot_delete"),
     # Colis (Nested under lot)
     path("lots/<int:lot_id>/colis/add/", ColisCreateView.as_view(), name="colis_add"),
+    # Tarifs
+    path("tarifs/", TarifListView.as_view(), name="tarif_list"),
+    path("tarifs/add/", TarifCreateView.as_view(), name="tarif_add"),
+    path("tarifs/<int:pk>/update/", TarifUpdateView.as_view(), name="tarif_update"),
+    path("tarifs/<int:pk>/delete/", TarifDeleteView.as_view(), name="tarif_delete"),
+    # Agents
+    path("agents/", AgentListView.as_view(), name="agent_list"),
+    path("agents/add/", AgentCreateView.as_view(), name="agent_add"),
+    path("agents/<int:pk>/update/", AgentUpdateView.as_view(), name="agent_update"),
+    path("agents/<int:pk>/delete/", AgentDeleteView.as_view(), name="agent_delete"),
 ]
