@@ -93,45 +93,50 @@
 
     <table class="data-table">
         <colgroup>
-            <col style="width: 10%">
+            <col style="width: 30%">
             <col style="width: 25%">
-            <col style="width: 29%">
-            <col style="width: 15%">
             <col style="width: 20%">
+            <col style="width: 10%">
+            <col style="width: 15%">
         </colgroup>
         <thead>
             <tr>
-                <th>Heure</th>
                 <th>Référence</th>
                 <th>Client</th>
                 <th>Lot</th>
-                <th class="text-right">Montant</th>
+                <th class="text-right">JC</th>
+                <th class="text-right">Net à Payer</th>
             </tr>
         </thead>
         <tbody>
             {% for colis in colis_livres %}
             <tr>
-                <td>{{ colis.updated_at|date:"H:i" }}</td>
                 <td>{{ colis.reference }}</td>
                 <td>{{ colis.client.nom }} {{ colis.client.prenom }}</td>
                 <td>{{ colis.lot.numero }}</td>
                 <td class="text-right">
-                    {{ colis.net_price|intcomma }} FCFA
                     {% if colis.montant_jc > 0 %}
-                    <br><span style="font-size: 8px; color: #666;">(JC: {{ colis.montant_jc|intcomma }})</span>
+                        {{ colis.montant_jc|intcomma }}
+                    {% else %}
+                        -
                     {% endif %}
                 </td>
+                <td class="text-right">{{ colis.net_price|intcomma }} FCFA</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" class="text-center">Aucune livraison enregistrée ce jour.</td>
+                <td colspan="5" class="text-center">Aucune livraison enregistrée ce jour.</td>
             </tr>
             {% endfor %}
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td colspan="4" class="text-right">TOTAL ENCAISSÉ</td>
-                <td class="text-right">{{ total_encaissements|intcomma }} FCFA</td>
+                <td colspan="3" class="text-right">TOTAL JC</td>
+                <td colspan="2" class="text-right">{{ total_jc|intcomma }} FCFA</td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="3" class="text-right">TOTAL ENCAISSÉ (NET)</td>
+                <td colspan="2" class="text-right">{{ total_encaissements|intcomma }} FCFA</td>
             </tr>
         </tfoot>
     </table>

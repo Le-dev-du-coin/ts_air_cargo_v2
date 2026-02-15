@@ -9,7 +9,7 @@
 {% block actions %}
 <div class="flex items-center space-x-4">
     <div class="text-sm text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100">
-        <span class="font-bold text-green-700">{{ "now"|date:"l d F Y" }}</span>
+        <span class="font-bold text-green-700">{% now "l d F Y" %}</span>
     </div>
     <a href="{% url 'mali:rapport_jour_pdf' %}" target="_blank" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none transition-all">
         <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -86,7 +86,7 @@
                     <p class="text-sm text-gray-600">Mali - Rapport Quotidien</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-lg font-semibold">{{ "now"|date:"d/m/Y" }}</p>
+                    <p class="text-lg font-semibold">{% now "d/m/Y" %}</p>
                     <p class="text-sm text-gray-600">Agent: {{ user.get_full_name|default:user.username }}</p>
                 </div>
             </div>
@@ -128,7 +128,8 @@
                             <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Référence</th>
                             <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Client</th>
                             <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Lot</th>
-                            <th class="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Montant</th>
+                            <th class="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">JC</th>
+                            <th class="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Net à Payer</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -138,7 +139,14 @@
                             <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{{ colis.reference }}</td>
                             <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">{{ colis.client.nom }} {{ colis.client.prenom }}</td>
                             <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-green-700">{{ colis.lot.numero }}</td>
-                            <td class="px-3 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">{{ colis.prix_final|fcfa }}</td>
+                            <td class="px-3 py-4 whitespace-nowrap text-sm text-right text-gray-500">
+                                {% if colis.montant_jc > 0 %}
+                                    {{ colis.montant_jc|fcfa }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="px-3 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">{{ colis.net_price|fcfa }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -153,9 +161,13 @@
 
         <!-- Total Encaissements -->
         <div class="border-t-2 border-gray-100 pt-6">
-            <div class="flex justify-end">
+            <div class="flex justify-end space-x-4">
+                <div class="text-right bg-gray-50 px-6 py-4 rounded-xl border border-gray-100 shadow-sm">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Total JC</p>
+                    <p class="text-xl font-bold text-gray-600">{{ total_jc_jour|fcfa }}</p>
+                </div>
                 <div class="text-right bg-green-50 px-6 py-4 rounded-xl border border-green-100 shadow-sm">
-                    <p class="text-xs font-bold text-green-700 uppercase tracking-widest mb-1">Total Encaissements Jour</p>
+                    <p class="text-xs font-bold text-green-700 uppercase tracking-widest mb-1">Total Encaissements (Net)</p>
                     <p class="text-3xl font-black text-green-600">{{ encaissements_jour|fcfa }}</p>
                 </div>
             </div>
@@ -171,7 +183,7 @@
                 </div>
                 <div class="text-center">
                     <p class="text-sm font-bold text-gray-800">Horodatage</p>
-                    <p class="mt-4 font-mono text-xs">{{ "now"|date:"d/m/Y H:i:s" }}</p>
+                    <p class="mt-4 font-mono text-xs">{% now "d/m/Y H:i:s" %}</p>
                     <div class="mt-8">
                         <svg class="h-16 w-16 text-gray-200 mx-auto opacity-50" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>

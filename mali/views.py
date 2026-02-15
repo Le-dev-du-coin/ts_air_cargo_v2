@@ -159,17 +159,22 @@ class AujourdhuiView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
         # Données pour le rapport du jour
         context["colis_livres_detail"] = (
             Colis.objects.filter(
-                lot__destination=mali, status="LIVRE", updated_at__date=today
+                lot__destination=mali,
+                status="LIVRE",
+                est_paye=True,
+                updated_at__date=today,
             )
             .select_related("client", "lot")
+            .annotate(net_price=F("prix_final") - F("montant_jc"))
             .order_by("-updated_at")
         )
 
         # Encaissements du jour pour la recette
-        encaissements = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", updated_at__date=today
-        ).aggregate(total=Sum("prix_final"))
-        context["encaissements_jour"] = encaissements["total"] or 0
+        aggregates = context["colis_livres_detail"].aggregate(
+            total_net=Sum("net_price"), total_jc=Sum("montant_jc")
+        )
+        context["encaissements_jour"] = aggregates["total_net"] or 0
+        context["total_jc_jour"] = aggregates["total_jc"] or 0
 
         return context
 
@@ -724,10 +729,12 @@ class RapportJourPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         )
 
         encaissements = colis_livres.aggregate(total=Sum("net_price"))["total"] or 0
+        total_jc = colis_livres.aggregate(total=Sum("montant_jc"))["total"] or 0
 
         # Contexte pour le template
         context = {
             "date": today,
+            "total_jc": total_jc,
             "colis_livres": colis_livres,
             "total_encaissements": encaissements,
             "user": request.user,
@@ -766,6 +773,7 @@ class LotTransitPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             "lot": lot,
             "colis_list": colis_list,
             "total_poids": lot.colis.aggregate(Sum("poids"))["poids__sum"] or 0,
+            "total_cbm": lot.colis.aggregate(Sum("cbm"))["cbm__sum"] or 0,
             "total_colis": lot.colis.count(),
             "user": request.user,
             "date_impression": timezone.now(),

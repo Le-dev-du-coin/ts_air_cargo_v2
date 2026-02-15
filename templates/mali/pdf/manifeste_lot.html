@@ -2,130 +2,262 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Manifeste Lot {{ lot.numero }}</title>
+    <title>Manifeste Lot {{ lot.numero }} - TS Air Cargo</title>
     <style>
         @page {
             size: A4;
-            margin: 2cm;
-        }
-        body {
-            font-family: Helvetica, Arial, sans-serif;
-            font-size: 11px;
-            color: #333;
-        }
-        .header {
-            margin-bottom: 20px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 10px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 20px;
+            margin: 1.5cm;
         }
         
-        /* xhtml2pdf layout helpers */
-        .layout-table {
-            width: 100%;
-            border: none;
-            margin-bottom: 15px;
-        }
-        .layout-table td {
-            border: none;
-            padding: 5px;
-            vertical-align: top;
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 10px;
+            color: #1f2937;
+            line-height: 1.4;
         }
 
-        .info-lot {
+        /* En-tête */
+        .header {
+            width: 100%;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #166534; /* Brand Green */
+        }
+        
+        .header-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #166534;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        
+        .header-subtitle {
+            font-size: 14px;
+            font-weight: bold;
+            color: #4b5563;
+        }
+
+        .header-meta {
+            font-size: 10px;
+            color: #6b7280;
+            text-align: right;
+        }
+
+        /* Détails du lot */
+        .lot-info {
+            width: 100%;
             background-color: #f9fafb;
-            padding: 10px;
-            margin-bottom: 20px;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 4px; /* xhtml2pdf support minimal */
             border: 1px solid #e5e7eb;
         }
         
+        .lot-info-item {
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+        
+        .label {
+            font-weight: bold;
+            color: #4b5563;
+            text-transform: uppercase;
+            font-size: 9px;
+            width: 100px;
+            display: inline-block;
+        }
+        
+        .value {
+            font-weight: bold;
+            color: #111827;
+        }
+
+        /* Tableau de données */
         .data-table {
             width: 100%;
             table-layout: fixed;
             border-collapse: collapse;
+            font-size: 10px;
         }
-        .data-table th, .data-table td {
-            border: 1px solid #ccc;
-            padding: 6px;
-            text-align: left;
-        }
+        
         .data-table th {
-            background-color: #eee;
+            background-color: #f0fdf4; /* Light green bg */
+            color: #166534; /* Brand Green text */
             font-weight: bold;
+            text-transform: uppercase;
+            padding: 10px 8px;
+            border-bottom: 2px solid #166534;
+            border-top: 1px solid #e5e7eb;
+            text-align: left;
+            font-size: 9px;
         }
+        
+        .data-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: middle;
+            color: #374151;
+        }
+        
+        .data-table tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        /* Colonne numéro */
+        .col-num {
+            color: #9ca3af;
+            text-align: center;
+            font-size: 9px;
+        }
+        
+        /* Référence */
+        .col-ref {
+            font-weight: bold;
+            color: #111827;
+            font-family: "Courier New", Courier, monospace;
+        }
+
+        /* Totaux */
+        .total-row td {
+            background-color: #f0fdf4;
+            font-weight: bold;
+            color: #166534;
+            border-top: 2px solid #166534;
+            padding-top: 20px;
+            padding-bottom: 10px;
+            font-size: 11px;
+        }
+
+        /* Utilitaires */
         .text-right { text-align: right; }
         .text-center { text-align: center; }
+        .sub-text { font-size: 8px; color: #6b7280; }
+        
+        /* Helpers table layout pour xhtml2pdf */
+        table.layout { width: 100%; border: none; }
+        table.layout td { border: none; padding: 0; vertical-align: top; }
+        
     </style>
 </head>
 <body>
+
+    <!-- SECTION EN-TÊTE -->
     <div class="header">
-        <table class="layout-table">
+        <table class="layout">
             <tr>
-                <td>
-                    <h1>TS Air Cargo - Manifeste de Transport</h1>
-                    <p>Lot N° <strong>{{ lot.numero }}</strong></p>
+                <td style="width: 70%">
+                    <div class="header-title">TS AIR CARGO</div>
+                    <div class="header-subtitle">MANIFESTE DE TRANSPORT</div>
                 </td>
-                <td class="text-right">
-                    <p>Date : {{ date_impression|date:"d/m/Y H:i" }}</p>
+                <td style="width: 30%; text-align: right; vertical-align: bottom;">
+                    <div class="header-meta">
+                        Date d'impression : {{ date_impression|date:"d/m/Y H:i" }}<br>
+                        Par : {{ user.get_full_name|default:user.username|upper }}
+                    </div>
                 </td>
             </tr>
         </table>
     </div>
 
-    <div class="info-lot">
-        <table class="layout-table">
+    <!-- SECTION INFO LOT -->
+    <div class="lot-info">
+        <table class="layout">
             <tr>
-                <td><strong>Type :</strong> {{ lot.get_type_transport_display }}</td>
-                <td><strong>Destination :</strong> {{ lot.destination.name }}</td>
-                <td><strong>Date Expédition :</strong> {{ lot.date_expedition|date:"d/m/Y"|default:"-" }}</td>
+                <td style="width: 50%">
+                    <div class="lot-info-item">
+                        <span class="label">Numéro de Lot</span>
+                        <span class="value" style="font-size: 14px;">{{ lot.numero }}</span>
+                    </div>
+                    <div class="lot-info-item">
+                        <span class="label">Type</span>
+                        <span class="value">{{ lot.get_type_transport_display|upper }}</span>
+                    </div>
+                </td>
+                <td style="width: 50%">
+                    <div class="lot-info-item">
+                        <span class="label">Destination</span>
+                        <span class="value">{{ lot.destination.name|upper }}</span>
+                    </div>
+                    <div class="lot-info-item">
+                        <span class="label">Date Expédition</span>
+                        <span class="value">{{ lot.date_expedition|date:"d F Y"|default:"-"|upper }}</span>
+                    </div>
+                </td>
             </tr>
         </table>
     </div>
 
+    <!-- TABLEAU DES COLIS -->
     <table class="data-table">
         <colgroup>
-            <col style="width: 5%">
-            <col style="width: 15%">
-            <col style="width: 25%">
-            <col style="width: 15%">
-            <col style="width: 10%">
-            <col style="width: 10%">
-            <col style="width: 20%">
+            <col style="width: 5%">  <!-- # -->
+            <col style="width: 20%"> <!-- Référence -->
+            <col style="width: 25%"> <!-- Client -->
+            <col style="width: 20%"> <!-- Contact -->
+            <col style="width: 15%"> <!-- Poids/Volume -->
+            <col style="width: 15%"> <!-- Description -->
         </colgroup>
         <thead>
             <tr>
-                <th>#</th>
+                <th class="text-left">#</th>
                 <th>Référence</th>
-                <th>Client</th>
-                <th>Contact</th>
-                <th class="text-right">Poids</th>
-                <th class="text-right">Volume</th>
+                <th class="text-center">Client</th>
+                <th class="text-center">Contact</th>
+                {% if lot.type_transport == 'BATEAU' %}
+                    <th class="text-center">Volume (m³)</th>
+                {% else %}
+                    <th class="text-center">Poids (kg)</th>
+                {% endif %}
                 <th>Description</th>
             </tr>
         </thead>
         <tbody>
             {% for colis in colis_list %}
             <tr>
-                <td class="text-center">{{ forloop.counter }}</td>
-                <td><strong>{{ colis.reference }}</strong></td>
-                <td>{{ colis.client.nom }} {{ colis.client.prenom }}</td>
+                <td class="col-num">{{ forloop.counter }}</td>
+                <td class="col-ref">{{ colis.reference }}</td>
+                <td>
+                    <b>{{ colis.client.nom }} {{ colis.client.prenom }}</b>
+                </td>
                 <td>{{ colis.client.telephone }}</td>
-                <td class="text-right">{{ colis.poids }} kg</td>
-                <td class="text-right">{{ colis.cbm }} m3</td>
-                <td>{{ colis.type_colis }} - {{ colis.nombre_pieces }} pcs</td>
+                
+                {% if lot.type_transport == 'BATEAU' %}
+                    <td class="text-center">
+                        <b>{{ colis.cbm|floatformat:"-3" }}</b>
+                    </td>
+                {% else %}
+                    <td class="text-center">
+                        <b>{{ colis.poids|floatformat:"-2" }}</b>
+                    </td>
+                {% endif %}
+                
+                <td>
+                    {{ colis.get_type_colis_display }}
+                    {% if colis.nombre_pieces > 1 %}
+                        <br><span class="sub-text">{{ colis.nombre_pieces }} pcs</span>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
         <tfoot>
-            <tr>
-                <td colspan="4" class="text-right"><strong>TOTAL</strong></td>
-                <td class="text-right"><strong>{{ total_poids }} kg</strong></td>
-                <td colspan="2"><strong>{{ total_colis }} Colis</strong></td>
+            <tr class="total-row">
+                <td colspan="4" class="text-right">TOTAUX</td>
+                {% if lot.type_transport == 'BATEAU' %}
+                     <td class="text-center">{{ total_cbm|floatformat:"-3" }} m³</td>
+                {% else %}
+                     <td class="text-center">{{ total_poids|floatformat:"-2" }} kg</td>
+                {% endif %}
+                <td class="text-center">{{ total_colis }} Colis</td>
             </tr>
         </tfoot>
     </table>
+
+    <!-- PIED DE PAGE -->
+    <div style="margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 10px; color: #9ca3af; font-size: 8px; text-align: center;">
+        Document généré automatiquement par le système TS Air Cargo
+    </div>
+
 </body>
 </html>
