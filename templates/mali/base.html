@@ -51,8 +51,8 @@
                                     </svg>
                                     Lots en Transit
                                 </a>
-                                <a href="#"
-                                    class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                <a href="{% url 'mali:lots_arrives' %}"
+                                    class="{% if request.resolver_match.url_name == 'lots_arrives' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                                     <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

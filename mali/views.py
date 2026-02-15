@@ -228,6 +228,57 @@ class LotsEnTransitView(LoginRequiredMixin, AgentMaliRequiredMixin, ListView):
         return context
 
 
+class LotsArrivesView(LotsEnTransitView):
+    """Vue historique des lots arrivés au Mali (statut ARRIVE ou LIVRE)"""
+
+    template_name = "mali/lots_arrives.html"
+
+    def get_queryset(self):
+        try:
+            mali = Country.objects.get(code="ML")
+        except Country.DoesNotExist:
+            return Lot.objects.none()
+
+        # On prend les lots ARRIVE ou LIVRE
+        queryset = (
+            Lot.objects.filter(destination=mali, status__in=["ARRIVE", "LIVRE"])
+            .select_related("destination")
+            .prefetch_related("colis")
+            .annotate(
+                nb_colis=Count("colis"),
+                poids_total=Sum("colis__poids"),
+                total_recettes=Sum("colis__prix_final"),
+            )
+        )
+
+        query = self.request.GET.get("q")
+        if query:
+            from django.db.models import Q, Value
+            from django.db.models.functions import Concat
+
+            queryset = (
+                queryset.annotate(
+                    nom_complet=Concat(
+                        "colis__client__nom", Value(" "), "colis__client__prenom"
+                    ),
+                    prenom_complet=Concat(
+                        "colis__client__prenom", Value(" "), "colis__client__nom"
+                    ),
+                )
+                .filter(
+                    Q(numero__icontains=query)
+                    | Q(colis__client__nom__icontains=query)
+                    | Q(colis__client__prenom__icontains=query)
+                    | Q(colis__client__telephone__icontains=query)
+                    | Q(nom_complet__icontains=query)
+                    | Q(prenom_complet__icontains=query)
+                )
+                .distinct()
+            )
+
+        return queryset.order_by("-date_arrivee", "-created_at")
+
+
 class LotDetailView(LoginRequiredMixin, AgentMaliRequiredMixin, DetailView):
     """Vue détaillée d'un lot pour l'agent Mali (avec pointage des colis)"""
 
@@ -284,6 +335,28 @@ class LotDetailView(LoginRequiredMixin, AgentMaliRequiredMixin, DetailView):
         return context
 
 
+class LotTransitDetailView(LotDetailView):
+    """Vue détaillée pour un lot en TRANSIT"""
+
+    template_name = "mali/lot_transit_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["is_transit_mode"] = True
+        return context
+
+
+class LotArriveDetailView(LotDetailView):
+    """Vue détaillée pour un lot ARRIVÉ"""
+
+    template_name = "mali/lot_arrived_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["is_arrive_mode"] = True
+        return context
+
+
 class ColisArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
     """Marquer un colis individuel comme ARRIVÉ (Pointage)"""
 
@@ -304,7 +377,7 @@ class ColisArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
                 request,
                 "Veuillez renseigner les frais de douane du lot avant de pointer les colis.",
             )
-            return redirect("mali:lot_detail", pk=colis.lot.pk)
+            return redirect("mali:lot_transit_detail", pk=colis.lot.pk)
 
         colis.status = "ARRIVE"
         colis.save()
@@ -319,7 +392,7 @@ class ColisArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             )
 
         messages.success(request, f"Colis {colis.reference} marqué comme Arrivé.")
-        return redirect("mali:lot_detail", pk=colis.lot.pk)
+        return redirect("mali:lot_transit_detail", pk=colis.lot.pk)
 
 
 class LotArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
@@ -348,4 +421,31 @@ class LotArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         # lot.colis.filter(status="EXPEDIE").update(status="ARRIVE")
 
         messages.success(request, f"Le lot {lot.numero} a été mis à jour avec succès.")
-        return redirect("mali:lot_detail", pk=lot.pk)
+        return redirect("mali:lot_arrived_detail", pk=lot.pk)
+
+
+class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Marquer un colis individuel comme LIVRÉ"""
+
+    def post(self, request, pk):
+        colis = get_object_or_404(Colis, pk=pk)
+
+        # On ne peut livrer qu'un colis ARRIVÉ
+        if colis.status != "ARRIVE":
+            messages.error(request, "Seuls les colis déjà arrivés peuvent être livrés.")
+            return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
+
+        colis.status = "LIVRE"
+        colis.save()
+
+        if request.headers.get("HX-Request"):
+            from django.shortcuts import render
+
+            return render(
+                request,
+                "mali/partials/colis_status_badge.html",
+                {"colis": colis, "lot": colis.lot},
+            )
+
+        messages.success(request, f"Colis {colis.reference} marqué comme Livré.")
+        return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)

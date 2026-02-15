@@ -1,359 +1,247 @@
-{% extends "base.html" %}
+{% extends "mali/base.html" %}
 {% load humanize %}
 {% load currency_tags %}
 
 {% block title %}Dashboard Mali - TS Air Cargo{% endblock %}
 
-{% block content %}
-<div class="flex h-screen overflow-hidden bg-gray-100">
-    <!-- Sidebar -->
-    <div class="hidden md:flex md:flex-shrink-0">
-        <div class="flex flex-col w-64">
-            <div class="flex flex-col h-0 flex-1 bg-gradient-to-b from-green-800 to-green-900">
-                <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-                    <div class="flex items-center flex-shrink-0 px-4">
-                        <span class="text-2xl font-extrabold text-white tracking-tighter">TS Air Cargo</span>
-                        <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-700 text-green-100">
-                            V.2 Beta
-                        </span>
-                    </div>
-                    <div class="mt-2 px-4">
-                        <span class="inline-flex items-center px-2 py-1 rounded-md text-sm font-medium bg-green-700 text-white">
-                            🇲🇱 Mali
-                        </span>
-                    </div>
-                    <nav class="mt-5 flex-1 px-2 space-y-1">
-                        <a href="{% url 'mali:dashboard' %}"
-                            class="bg-green-900 text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                            <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                            </svg>
-                            Tableau de bord
-                        </a>
+{% block header %}Tableau de bord{% endblock %}
 
-                        <!-- Section Gestion -->
-                        <div class="mt-8">
-                            <h3 class="px-3 text-xs font-semibold text-green-300 uppercase tracking-wider">
-                                Gestion
-                            </h3>
-                            <div class="mt-2 space-y-1">
-                                <a href="{% url 'mali:aujourdhui' %}"
-                                    class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    Aujourd'hui
-                                </a>
-                                <a href="{% url 'mali:lots_transit' %}"
-                                    class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                    </svg>
-                                    Lots en Transit
-                                </a>
-                                <a href="#"
-                                    class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    Lots Arrivés
-                                </a>
-                                <a href="#"
-                                    class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                                    </svg>
-                                    Lots Livrés
-                                </a>
-                            </div>
+{% block mali_content %}
+<div class="space-y-8">
+    <!-- Statistiques - 9 cartes réorganisées -->
+    <div class="mt-4">
+        <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <!-- LIGNE 1: LOTS -->
+            <!-- 1. Lots en Transit -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-orange-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots en Transit</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-orange-600">{{ lots_en_transit|intcomma }}</p>
+                </dd>
+            </div>
+
+            <!-- 2. Lots Arrivés (Incomplets) -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-teal-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots Arrivés (Incomplets)</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-teal-600">{{ lots_arrives_incomplets|intcomma }}</p>
+                </dd>
+            </div>
+
+            <!-- 3. Lots Livrés (Mois) -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-green-600 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots Livrés (Mois)</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-green-600">{{ lots_livres_mois|intcomma }}</p>
+                </dd>
+            </div>
+
+            <!-- Espace vide ou Carte Additionnelle -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 opacity-50 lg:block hidden bg-gray-50">
+                <p class="text-xs text-center text-gray-400 mt-4 italic">Statistiques Mali V2</p>
+            </div>
+
+            <!-- LIGNE 2: COLIS -->
+            <!-- 3. Colis à Traiter -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-yellow-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis à Traiter</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-yellow-600">{{ colis_a_traiter|intcomma }}</p>
+                </dd>
+            </div>
+
+            <!-- 4 Colis Attente Paiement -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-amber-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Attente Paiement</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-amber-600">{{ colis_attente_paiement|intcomma }}</p>
+                </dd>
+            </div>
+
+            <!-- 5. Colis Livrés (Mois) -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-indigo-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Livrés (Mois)</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-indigo-600">{{ colis_livres_mois|intcomma }}</p>
+                </dd>
+            </div>
+
+            <!-- 6. Colis Perdus (Mois) -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-gray-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Perdus (Mois)</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-gray-600">{{ colis_perdus_mois|intcomma }}</p>
+                </dd>
+            </div>
+
+            <!-- LIGNE 3: FINANCES + CLIENTS -->
+            <!-- 7. Encaissements du Jour -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-emerald-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Encaissements Jour</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-emerald-600">{{ encaissements_jour|fcfa }}</p>
+                </dd>
+            </div>
+
+            <!-- 8. Dépenses (Mois) -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-red-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Dépenses (Mois)</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-red-600">{{ depenses_mois|fcfa }}</p>
+                </dd>
+            </div>
+
+            <!-- 9. Total Clients Mali -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-purple-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Total Clients Mali</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-purple-600">{{ total_clients_mali|intcomma }}</p>
+                </dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Activité Récente -->
+    {% if activites_recentes %}
+    <div class="mt-8">
+        <div class="bg-white shadow rounded-lg border border-gray-100">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Activité du Jour</h3>
+                <p class="mt-1 text-sm text-gray-500">Derniers colis pointés et livrés aujourd'hui</p>
+            </div>
+            <ul class="divide-y divide-gray-200">
+                {% for colis in activites_recentes %}
+                <li class="px-4 py-4 hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-bold text-gray-900 truncate">
+                                Colis {{ colis.reference }}
+                            </p>
+                            <p class="text-sm text-gray-500">
+                                Client: {{ colis.client.nom }} {{ colis.client.prenom }}
+                                <span class="mx-2">•</span>
+                                Lot: <span class="font-medium text-green-700">{{ colis.lot.numero }}</span>
+                            </p>
                         </div>
-                    </nav>
-                </div>
-                <div class="flex-shrink-0 flex bg-green-950 p-4">
-                    <div class="flex-shrink-0 w-full group block">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    <div class="h-10 w-10 rounded-full bg-green-700 flex items-center justify-center">
-                                        <span class="text-white font-bold text-lg">{{ user.username.0|upper }}</span>
-                                    </div>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-white">{{ user.get_full_name|default:user.username }}</p>
-                                    <p class="text-xs text-green-300">{{ user.get_role_display }}</p>
-                                </div>
-                            </div>
-                            <a href="{% url 'core:logout' %}"
-                                class="flex-shrink-0 text-green-300 hover:text-white transition-colors"
-                                title="Déconnexion">
-                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                            </a>
+                        <div class="ml-4 flex-shrink-0 flex items-center space-x-3">
+                            {% if colis.status == 'ARRIVE' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
+                                ARRIVÉ
+                            </span>
+                            {% elif colis.status == 'LIVRE' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                LIVRÉ
+                            </span>
+                            {% endif %}
+                            <span class="text-xs font-medium text-gray-400">
+                                {{ colis.created_at|date:"H:i" }}
+                            </span>
                         </div>
                     </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% else %}
+    <div class="mt-8">
+        <div class="bg-white shadow rounded-lg border border-gray-100">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Activité du Jour</h3>
+                <p class="mt-1 text-sm text-gray-500">Derniers colis pointés et livrés aujourd'hui</p>
+            </div>
+            <div class="px-4 py-16 text-center">
+                <div class="inline-flex items-center justify-center p-4 bg-gray-50 rounded-full mb-4">
+                    <svg class="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
                 </div>
+                <p class="text-gray-500 font-medium">Aucune activité enregistrée aujourd'hui</p>
+                <p class="text-xs text-gray-400 mt-1">Les nouveaux colis pointés apparaîtront ici en temps réel.</p>
             </div>
         </div>
     </div>
-
-    <!-- Main content -->
-    <div class="flex flex-col w-0 flex-1 overflow-hidden">
-        <main class="flex-1 relative z-0 overflow-y-auto focus:outline-none">
-            <div class="py-6">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h1 class="text-3xl font-bold text-gray-900">Tableau de bord - Mali</h1>
-                            <p class="mt-1 text-sm text-gray-500">Statistiques mensuelles et activité du jour</p>
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            <span class="font-medium">{{ "now"|date:"l d F Y" }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-                    <!-- Statistiques - 9 cartes réorganisées -->
-                    <div class="mt-8">
-                        <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                            <!-- LIGNE 1: LOTS -->
-                            <!-- 1. Lots en Transit -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-orange-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots en Transit</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-orange-600">{{ lots_en_transit|intcomma }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- 2. Lots Arrivés (Incomplets) -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-teal-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots Arrivés (Incomplets)</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-teal-600">{{ lots_arrives_incomplets|intcomma }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- 3. Lots Livrés (Mois) -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-green-600 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots Livrés (Mois)</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-green-600">{{ lots_livres_mois|intcomma }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- Espace vide -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden opacity-0 pointer-events-none lg:block hidden">
-                            </div>
-
-                            <!-- LIGNE 2: COLIS -->
-                            <!-- 3. Colis à Traiter -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-yellow-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis à Traiter</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-yellow-600">{{ colis_a_traiter|intcomma }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- 4 Colis Attente Paiement -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-amber-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Attente Paiement</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-amber-600">{{ colis_attente_paiement|intcomma }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- 5. Colis Livrés (Mois) -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-indigo-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Livrés (Mois)</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-indigo-600">{{ colis_livres_mois|intcomma }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- 6. Colis Perdus (Mois) -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-gray-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Perdus (Mois)</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-gray-600">{{ colis_perdus_mois|intcomma }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- LIGNE 3: FINANCES + CLIENTS -->
-                            <!-- 7. Encaissements du Jour -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-emerald-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Encaissements Jour</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-emerald-600">{{ encaissements_jour|fcfa }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- 8. Dépenses (Mois) -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-red-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Dépenses (Mois)</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-red-600">{{ depenses_mois|fcfa }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- 9. Total Clients Mali -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-purple-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Total Clients Mali</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-purple-600">{{ total_clients_mali|intcomma }}</p>
-                                </dd>
-                            </div>
-                        </dl>
-                    </div>
-
-                    <!-- Activité Récente -->
-                    {% if activites_recentes %}
-                    <div class="mt-8">
-                        <div class="bg-white shadow rounded-lg">
-                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900">Activité du Jour</h3>
-                                <p class="mt-1 text-sm text-gray-500">Derniers colis pointés et livrés aujourd'hui</p>
-                            </div>
-                            <ul class="divide-y divide-gray-200">
-                                {% for colis in activites_recentes %}
-                                <li class="px-4 py-4 hover:bg-gray-50">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900 truncate">
-                                                Colis {{ colis.reference }}
-                                            </p>
-                                            <p class="text-sm text-gray-500">
-                                                Client: {{ colis.client.nom }} {{ colis.client.prenom }}
-                                                <span class="mx-2">•</span>
-                                                Lot: {{ colis.lot.numero }}
-                                            </p>
-                                        </div>
-                                        <div class="ml-4 flex-shrink-0 flex items-center space-x-2">
-                                            {% if colis.status == 'ARRIVE' %}
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                ✓ Arrivé
-                                            </span>
-                                            {% elif colis.status == 'LIVRE' %}
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                                ✓ Livré
-                                            </span>
-                                            {% endif %}
-                                            <span class="text-sm text-gray-500">
-                                                {{ colis.created_at|date:"H:i" }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="mt-8">
-                        <div class="bg-white shadow rounded-lg">
-                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900">Activité du Jour</h3>
-                                <p class="mt-1 text-sm text-gray-500">Derniers colis pointés et livrés aujourd'hui</p>
-                            </div>
-                            <div class="px-4 py-12 text-center">
-                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                </svg>
-                                <p class="mt-2 text-sm text-gray-500">Aucune activité aujourd'hui</p>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </main>
-    </div>
+    {% endif %}
 </div>
 {% endblock %}

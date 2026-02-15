@@ -1,109 +1,109 @@
 {% extends "mali/base.html" %}
+{% load humanize %}
 {% load currency_tags %}
 
-{% block header %}Détail Lot : {{ lot.numero }}{% endblock %}
+{% block title %}Lot {{ lot.numero }} - Mali - TS Air Cargo{% endblock %}
+
+{% block header %}
+    {% if is_arrived_lot %}
+        Gestion Livraison : Lot {{ lot.numero }}
+    {% else %}
+        Pointage Arrivée : Lot {{ lot.numero }}
+    {% endif %}
+{% endblock %}
+
+{% block actions %}
+<div class="flex items-center space-x-3">
+    <a href="{% if is_arrived_lot %}{% url 'mali:lots_arrives' %}{% else %}{% url 'mali:lots_transit' %}{% endif %}" 
+       class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+        <svg class="-ml-1 mr-2 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Retour
+    </a>
+</div>
+{% endblock %}
 
 {% block mali_content %}
-<div class="space-y-10">
-    <!-- Lot Info Card -->
-    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
-            <div>
-                <h3 class="text-lg leading-6 font-medium text-gray-900">
-                    Informations du Lot
-                </h3>
-                <p class="mt-1 max-w-2xl text-sm text-gray-500">
-                    Transport : <span class="font-bold text-gray-800">{{ lot.get_type_transport_display }}</span> | 
-                    Status : <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ lot.get_status_display }}</span>
-                </p>
-            </div>
-            
-            <!-- Actions Frais -->
-            <div class="flex items-center space-x-4">
-                {% if not lot.frais_transport or not lot.frais_douane %}
-                <form action="{% url 'mali:lot_arrive' lot.pk %}" method="POST" class="flex items-end space-x-2 bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
-                    {% csrf_token %}
-                    {% if not lot.frais_transport %}
+<div class="space-y-6">
+    <!-- Infos Lot -->
+    <div class="bg-white shadow rounded-lg border border-gray-100 overflow-hidden">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- Statut et Type -->
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Statut Actuel</p>
                     <div>
-                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Frais d'Expédition (FCFA)</label>
-                        <input type="number" name="frais_transport" value="" 
-                               class="block w-40 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                               placeholder="Saisir frais exp.">
+                        {% if lot.status == 'EN_TRANSIT' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-200 uppercase">EN TRANSIT</span>
+                        {% elif lot.status == 'ARRIVE' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 uppercase">ARRIVÉ</span>
+                        {% elif lot.status == 'LIVRE' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-800 border border-gray-200 uppercase text-xs">ARCHIVÉ</span>
+                        {% endif %}
                     </div>
-                    {% endif %}
-                    
-                    {% if not lot.frais_douane %}
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Frais Douane (FCFA)</label>
-                        <input type="number" name="frais_douane" value="" 
-                               class="block w-40 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                               placeholder="Saisir frais douane">
-                    </div>
-                    {% endif %}
-                    
-                    <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-                        Enregistrer
-                    </button>
-                </form>
-                {% else %}
-                <div class="bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200 flex items-center shadow-sm">
-                    <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span class="text-sm font-bold uppercase tracking-tight">Tous les Frais Enregistrés</span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        
-        <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
-            <dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
-                <div class="sm:col-span-1">
-                    <dt class="text-sm font-medium text-gray-500">Poids Total Estimé</dt>
-                    <dd class="mt-1 text-sm font-bold text-gray-900">{{ total_poids|default:"0"|floatformat:1 }} kg</dd>
-                </div>
-                <div class="sm:col-span-1">
-                    <dt class="text-sm font-medium text-gray-500">Volume Total</dt>
-                    <dd class="mt-1 text-sm font-bold text-gray-900">{{ total_cbm|default:"0" }} m³</dd>
-                </div>
-                <div class="sm:col-span-1">
-                    <dt class="text-sm font-medium text-gray-500">Total Colis</dt>
-                    <dd class="mt-1 text-sm font-bold text-gray-900">{{ lot.colis.count }}</dd>
-                </div>
-                <div class="sm:col-span-1">
-                    <dt class="text-sm font-medium text-gray-500">Date d'Expédition</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ lot.date_expedition|date:"d F Y"|default:"Non expédié" }}</dd>
                 </div>
 
-                <!-- Statistiques Financières Mali -->
-                <div class="sm:col-span-1 border-t border-gray-100 pt-4">
-                    <dt class="text-xs font-medium text-gray-500 uppercase">Recettes (Colis)</dt>
-                    <dd class="mt-1 text-lg font-bold text-green-600">{{ total_montant_colis|default:"0"|fcfa }}</dd>
+                <!-- Expédition -->
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Expédition</p>
+                    <p class="text-sm font-bold text-gray-900">{{ lot.date_expedition|date:"d M Y" }}</p>
                 </div>
-                <div class="sm:col-span-1 border-t border-gray-100 pt-4">
-                    <dt class="text-xs font-medium text-gray-500 uppercase">Frais d'Expédition</dt>
-                    <dd class="mt-1 text-sm font-semibold text-red-600">- {{ lot.frais_transport|default:"0"|fcfa }}</dd>
+
+                <!-- Transport -->
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Transport</p>
+                    <p class="text-sm font-black text-indigo-600 uppercase">{{ lot.get_type_transport_display }}</p>
                 </div>
-                <div class="sm:col-span-1 border-t border-gray-100 pt-4">
-                    <dt class="text-xs font-medium text-gray-500 uppercase">Frais de Douane</dt>
-                    <dd class="mt-1 text-sm font-semibold text-red-600">- {{ lot.frais_douane|default:"0"|fcfa }}</dd>
+
+                <!-- Volume/Poids -->
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Total Colis</p>
+                    <p class="text-sm font-bold text-gray-900">{{ lot.colis.count }} colis</p>
                 </div>
-                <div class="sm:col-span-1 border-t border-gray-100 pt-4 bg-gray-50 p-2 rounded">
-                    <dt class="text-xs font-bold text-gray-700 uppercase">Bénéfice Net Mali</dt>
-                    <dd class="mt-1 text-xl font-extrabold {% if benefice > 0 %}text-green-600{% elif benefice < 0 %}text-red-600{% else %}text-gray-900{% endif %}">
-                        {{ benefice|fcfa }}
-                    </dd>
-                </div>
-            </dl>
+            </div>
+
+            <!-- Formulaire de Frais (visible si non archivé) -->
+            {% if lot.status != 'LIVRE' %}
+            <div class="mt-8 pt-6 border-t border-gray-100">
+                <form action="{% url 'mali:lot_arrive' lot.pk %}" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {% csrf_token %}
+                    <div>
+                        <label class="block text-xs font-black text-gray-700 uppercase mb-1">Frais de Douane (Lot)</label>
+                        <input type="number" name="frais_douane" value="{{ lot.frais_douane|default:'' }}"
+                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold"
+                            placeholder="Montant en FCFA">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black text-gray-700 uppercase mb-1">Frais de Transport (Mali)</label>
+                        <input type="number" name="frais_transport" value="{{ lot.frais_transport|default:'' }}"
+                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold"
+                            placeholder="Montant en FCFA">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-black rounded-md text-white bg-green-600 hover:bg-green-700 shadow-sm transition-all uppercase">
+                            {% if lot.status == 'EN_TRANSIT' %}Confirmer Arrivée{% else %}Mettre à jour Frais{% endif %}
+                        </button>
+                    </div>
+                </form>
+                <p class="mt-2 text-[10px] text-gray-400 italic font-medium">
+                    * Saisir les frais de douane débloque le pointage des colis.
+                </p>
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- Colis List (Pointage) -->
-    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+    <!-- Colis List (Pointage / Livraison) -->
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
+        <div class="px-6 py-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 bg-gray-50/50">
             <div>
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Pointage des Colis</h3>
-                <p class="mt-1 text-sm text-gray-500">Marquez chaque colis comme "Arrivé" lors du déchargement.</p>
+                <h3 class="text-lg font-bold text-gray-900">
+                    {% if is_arrived_lot %}Livraison des Colis{% else %}Pointage du Lot{% endif %}
+                </h3>
+                <p class="mt-1 text-sm text-gray-500 font-medium">
+                    {{ colis_list.paginator.count }} colis au total dans ce lot.
+                </p>
             </div>
             
             <!-- Recherche de Colis -->
@@ -115,15 +115,17 @@
                         </svg>
                     </div>
                     <input type="text" name="qc" value="{{ qc|default:'' }}"
-                        class="block w-full pl-9 pr-3 py-2 border border-blue-200 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm"
-                        placeholder="Réf ou Nom Client...">
+                        class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm shadow-sm transition-all"
+                        placeholder="Référence ou Nom Client...">
                 </div>
-                <button type="submit" class="ml-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm">
+                <button type="submit" class="ml-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all">
                     Filtrer
                 </button>
                 {% if qc %}
-                <a href="?" class="ml-2 inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-colors">
-                    Effacer
+                <a href="?" class="ml-2 inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-colors">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </a>
                 {% endif %}
             </form>
@@ -131,83 +133,88 @@
         
         <ul class="divide-y divide-gray-200">
             {% for colis in colis_list %}
-            <li class="px-4 py-4 sm:px-6 hover:bg-gray-50">
+            <li class="px-6 py-5 hover:bg-green-50/30 transition-colors">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center min-w-0 flex-1">
-                        <div class="flex-shrink-0 h-12 w-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                        <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
                             {% if colis.photo %}
-                            <img src="{{ colis.photo.url }}" alt="Colis" class="h-12 w-12 object-cover cursor-pointer" onclick="window.open(this.src)">
+                            <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover cursor-pointer hover:scale-110 transition-transform" onclick="window.open(this.src)">
                             {% else %}
-                            <svg class="h-full w-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
+                            <div class="h-full w-full flex items-center justify-center">
+                                <svg class="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                </svg>
+                            </div>
                             {% endif %}
                         </div>
                         <div class="ml-4 min-w-0">
-                            <div class="text-sm font-bold text-indigo-600 truncate uppercase">
-                                {{ colis.reference }}
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-black text-indigo-700 uppercase tracking-wider">{{ colis.reference }}</span>
+                                {% if colis.status == 'LIVRE' %}
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-gray-100 text-gray-500 border border-gray-200 uppercase">Livré</span>
+                                {% endif %}
                             </div>
-                            <div class="text-sm text-gray-900">
-                                Client : <span class="font-medium text-gray-700">{{ colis.client.nom }} {{ colis.client.prenom }}</span>
+                            <div class="text-sm font-bold text-gray-900 mt-1">
+                                {{ colis.client.nom }} {{ colis.client.prenom }}
                             </div>
                             {% if colis.client.telephone %}
-                            <div class="text-xs text-gray-600 italic">
-                                Tél : {{ colis.client.telephone }}
+                            <div class="text-xs text-gray-500 flex items-center mt-0.5">
+                                <svg class="h-3 w-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 004.587 4.587l.773-1.548a1 1 0 011.06-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
+                                {{ colis.client.telephone }}
                             </div>
                             {% endif %}
-                            <div class="text-xs text-gray-500">
-                                {% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} pièces{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}
+                            <div class="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">
+                                {% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}
+                                <span class="mx-1">•</span>
+                                <span class="text-green-600">{{ colis.prix_final|fcfa }}</span>
                             </div>
                         </div>
                     </div>
                     
-                    <div id="colis-status-{{ colis.pk }}">
+                    <div id="colis-status-{{ colis.pk }}" class="flex-shrink-0">
                         {% include "mali/partials/colis_status_badge.html" with colis=colis lot=lot %}
                     </div>
                 </div>
             </li>
             {% empty %}
-            <li class="px-4 py-8 text-center text-gray-500 italic">
-                Aucun colis trouvé{% if qc %} pour "{{ qc }}"{% endif %} dans ce lot.
+            <li class="px-6 py-12 text-center">
+                <p class="text-sm text-gray-500 italic font-medium">Aucun colis trouvé{% if qc %} pour "{{ qc }}"{% endif %}.</p>
+                {% if qc %}
+                <a href="?" class="mt-4 inline-block text-xs font-bold text-indigo-600 hover:text-indigo-800">Voir tous les colis du lot</a>
+                {% endif %}
             </li>
             {% endfor %}
         </ul>
         
         <!-- Pagination -->
         {% if colis_list.has_other_pages %}
-        <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6">
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
             <nav class="flex items-center justify-between">
-                <!-- Mobile -->
                 <div class="flex-1 flex justify-between sm:hidden">
                     {% if colis_list.has_previous %}
-                    <a href="?page={{ colis_list.previous_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md px-4 py-2 hover:bg-gray-50">Précédent</a>
+                    <a href="?page={{ colis_list.previous_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 shadow-sm">Précédent</a>
                     {% endif %}
                     {% if colis_list.has_next %}
-                    <a href="?page={{ colis_list.next_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md px-4 py-2 hover:bg-gray-50">Suivant</a>
+                    <a href="?page={{ colis_list.next_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="ml-3 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 shadow-sm">Suivant</a>
                     {% endif %}
                 </div>
-                <!-- Desktop -->
                 <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-sm text-gray-700">
-                            Page <span class="font-medium">{{ colis_list.number }}</span> sur <span class="font-medium">{{ colis_list.paginator.num_pages }}</span>
-                        </p>
-                    </div>
-                    <div>
-                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                            {% if colis_list.has_previous %}
-                            <a href="?page={{ colis_list.previous_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                Précédent
-                            </a>
-                            {% endif %}
-                            
-                            {% if colis_list.has_next %}
-                            <a href="?page={{ colis_list.next_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                Suivant
-                            </a>
-                            {% endif %}
-                        </nav>
-                    </div>
+                    <p class="text-sm font-medium text-gray-600">
+                        Page <span class="text-indigo-700 font-black">{{ colis_list.number }}</span> sur {{ colis_list.paginator.num_pages }}
+                    </p>
+                    <nav class="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px border border-gray-200 overflow-hidden" aria-label="Pagination">
+                        {% if colis_list.has_previous %}
+                        <a href="?page={{ colis_list.previous_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-4 py-2 bg-white text-sm font-bold text-gray-700 hover:bg-gray-50 border-r border-gray-200">
+                            Précédent
+                        </a>
+                        {% endif %}
+                        
+                        {% if colis_list.has_next %}
+                        <a href="?page={{ colis_list.next_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-4 py-2 bg-white text-sm font-bold text-gray-700 hover:bg-gray-50">
+                            Suivant
+                        </a>
+                        {% endif %}
+                    </nav>
                 </div>
             </nav>
         </div>

@@ -1,294 +1,194 @@
-{% extends "base.html" %}
+{% extends "mali/base.html" %}
 {% load humanize %}
 {% load currency_tags %}
 
 {% block title %}Aujourd'hui - Mali - TS Air Cargo{% endblock %}
 
-{% block content %}
-<div class="flex h-screen overflow-hidden bg-gray-100">
-    <!-- Sidebar (même que dashboard) -->
-    <div class="hidden md:flex md:flex-shrink-0">
-        <div class="flex flex-col w-64">
-            <div class="flex flex-col h-0 flex-1 bg-gradient-to-b from-green-800 to-green-900">
-                <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-                    <div class="flex items-center flex-shrink-0 px-4">
-                        <span class="text-2xl font-extrabold text-white tracking-tighter">TS Air Cargo</span>
-                        <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-700 text-green-100">
-                            V.2 Beta
-                        </span>
-                    </div>
-                    <div class="mt-2 px-4">
-                        <span class="inline-flex items-center px-2 py-1 rounded-md text-sm font-medium bg-green-700 text-white">
-                            🇲🇱 Mali
-                        </span>
-                    </div>
-                    <nav class="mt-5 flex-1 px-2 space-y-1">
-                        <a href="{% url 'mali:dashboard' %}"
-                            class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                            <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                            </svg>
-                            Tableau de bord
-                        </a>
+{% block header %}Activité du Jour - Mali{% endblock %}
 
-                        <!-- Section Gestion -->
-                        <div class="mt-8">
-                            <h3 class="px-3 text-xs font-semibold text-green-300 uppercase tracking-wider">
-                                Gestion
-                            </h3>
-                            <div class="mt-2 space-y-1">
-                                <a href="{% url 'mali:aujourdhui' %}"
-                                    class="bg-green-900 text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    Aujourd'hui
-                                </a>
-                                <a href="{% url 'mali:lots_transit' %}"
-                                    class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                    </svg>
-                                    Lots en Transit
-                                </a>
-                                <a href="#"
-                                    class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    Lots Arrivés
-                                </a>
-                                <a href="#"
-                                    class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                                    </svg>
-                                    Lots Livrés
-                                </a>
-                            </div>
-                        </div>
-                    </nav>
+{% block actions %}
+<div class="flex items-center space-x-4">
+    <div class="text-sm text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100">
+        <span class="font-bold text-green-700">{{ "now"|date:"l d F Y" }}</span>
+    </div>
+    <button onclick="window.print()" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none transition-all print:hidden">
+        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
+        Imprimer Rapport
+    </button>
+</div>
+{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-8">
+    <!-- Statistiques Quotidiennes - 3 cartes -->
+    <div>
+        <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <!-- 1. Colis en Attente de Livraison -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-blue-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Attente Livraison</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-bold text-gray-900">{{ colis_attente_livraison|intcomma }}</p>
+                </dd>
+            </div>
+
+            <!-- 2. Colis Arrivés Aujourd'hui -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-green-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Arrivés Aujourd'hui</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-bold text-green-600">{{ colis_arrives_aujourdhui|intcomma }}</p>
+                </dd>
+            </div>
+
+            <!-- 3. Colis Livrés Aujourd'hui -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-indigo-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Livrés Aujourd'hui</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-bold text-indigo-600">{{ colis_livres_aujourdhui|intcomma }}</p>
+                </dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Rapport imprimable -->
+    <div class="bg-white shadow rounded-lg p-8 border border-gray-100 print:shadow-none print:border-none">
+        <!-- En-tête Rapport (visible en impression) -->
+        <div class="hidden print:block border-b-2 border-gray-300 pb-4 mb-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">TS AIR CARGO</h2>
+                    <p class="text-sm text-gray-600">Mali - Rapport Quotidien</p>
                 </div>
-                <div class="flex-shrink-0 flex bg-green-950 p-4">
-                    <div class="flex-shrink-0 w-full group block">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    <div class="h-10 w-10 rounded-full bg-green-700 flex items-center justify-center">
-                                        <span class="text-white font-bold text-lg">{{ user.username.0|upper }}</span>
-                                    </div>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-white">{{ user.get_full_name|default:user.username }}</p>
-                                    <p class="text-xs text-green-300">{{ user.get_role_display }}</p>
-                                </div>
-                            </div>
-                            <a href="{% url 'core:logout' %}"
-                                class="flex-shrink-0 text-green-300 hover:text-white transition-colors"
-                                title="Déconnexion">
-                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                            </a>
-                        </div>
+                <div class="text-right">
+                    <p class="text-lg font-semibold">{{ "now"|date:"d/m/Y" }}</p>
+                    <p class="text-sm text-gray-600">Agent: {{ user.get_full_name|default:user.username }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-bold text-gray-900 flex items-center">
+                <svg class="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Résumé de l'Activité
+            </h3>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mb-10">
+            <div class="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 shadow-sm">
+                <p class="text-2xl font-extrabold text-blue-600">{{ colis_attente_livraison }}</p>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">En Attente</p>
+            </div>
+            <div class="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 shadow-sm">
+                <p class="text-2xl font-extrabold text-green-600">{{ colis_arrives_aujourdhui }}</p>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Arrivés</p>
+            </div>
+            <div class="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 shadow-sm">
+                <p class="text-2xl font-extrabold text-indigo-600">{{ colis_livres_aujourdhui }}</p>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Livrés</p>
+            </div>
+        </div>
+
+        <!-- Détail Livraisons -->
+        {% if colis_livres_detail %}
+        <div class="mb-8">
+            <h3 class="text-md font-bold text-gray-800 mb-4 border-l-4 border-indigo-500 pl-3">Détail des Livraisons</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Heure</th>
+                            <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Référence</th>
+                            <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Client</th>
+                            <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Lot</th>
+                            <th class="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for colis in colis_livres_detail %}
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">{{ colis.created_at|date:"H:i" }}</td>
+                            <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{{ colis.reference }}</td>
+                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">{{ colis.client.nom }} {{ colis.client.prenom }}</td>
+                            <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-green-700">{{ colis.lot.numero }}</td>
+                            <td class="px-3 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">{{ colis.prix_final|fcfa }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="py-12 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 mb-8">
+            <p class="text-sm text-gray-500">Aucune livraison enregistrée pour le moment.</p>
+        </div>
+        {% endif %}
+
+        <!-- Total Encaissements -->
+        <div class="border-t-2 border-gray-100 pt-6">
+            <div class="flex justify-end">
+                <div class="text-right bg-green-50 px-6 py-4 rounded-xl border border-green-100 shadow-sm">
+                    <p class="text-xs font-bold text-green-700 uppercase tracking-widest mb-1">Total Encaissements Jour</p>
+                    <p class="text-3xl font-black text-green-600">{{ encaissements_jour|fcfa }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signature (uniquement impression) -->
+        <div class="hidden print:block mt-16 pt-8 border-t border-gray-300">
+            <div class="flex justify-between">
+                <div class="text-center">
+                    <p class="text-sm font-bold text-gray-800">Signature Agent</p>
+                    <div class="mt-16 border-b border-gray-400 w-64"></div>
+                    <p class="mt-2 text-xs text-gray-500">{{ user.get_full_name|default:user.username }}</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-sm font-bold text-gray-800">Horodatage</p>
+                    <p class="mt-4 font-mono text-xs">{{ "now"|date:"d/m/Y H:i:s" }}</p>
+                    <div class="mt-8">
+                        <svg class="h-16 w-16 text-gray-200 mx-auto opacity-50" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                        </svg>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Main content -->
-    <div class="flex flex-col w-0 flex-1 overflow-hidden">
-        <main class="flex-1 relative z-0 overflow-y-auto focus:outline-none">
-            <div class="py-6">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h1 class="text-3xl font-bold text-gray-900">Activité du Jour - Mali</h1>
-                            <p class="mt-1 text-sm text-gray-500">Statistiques quotidiennes et rapports imprimables</p>
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            <span class="font-medium">{{ "now"|date:"l d F Y" }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-                    <!-- Statistiques Quotidiennes - 3 cartes -->
-                    <div class="mt-8">
-                        <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                            <!-- 1. Colis en Attente de Livraison -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-blue-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Attente Livraison</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-gray-900">{{ colis_attente_livraison|intcomma }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- 2. Colis Arrivés Aujourd'hui -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-green-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Arrivés Aujourd'hui</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-green-600">{{ colis_arrives_aujourdhui|intcomma }}</p>
-                                </dd>
-                            </div>
-
-                            <!-- 3. Colis Livrés Aujourd'hui -->
-                            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div class="absolute bg-indigo-500 rounded-md p-3">
-                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Livrés Aujourd'hui</p>
-                                </dt>
-                                <dd class="ml-16 flex items-baseline">
-                                    <p class="text-2xl font-semibold text-indigo-600">{{ colis_livres_aujourdhui|intcomma }}</p>
-                                </dd>
-                            </div>
-                        </dl>
-                    </div>
-
-                    <!-- Boutons Impression -->
-                    <div class="mt-8 flex space-x-4 print:hidden">
-                        <button onclick="window.print()" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none">
-                            <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
-                            Imprimer Rapport du Jour
-                        </button>
-                    </div>
-
-                    <!-- Rapport imprimable -->
-                    <div class="mt-8 bg-white shadow rounded-lg p-8 print:shadow-none">
-                        <!-- En-tête Rapport -->
-                        <div class="border-b-2 border-gray-300 pb-4 mb-6">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h2 class="text-2xl font-bold text-gray-900">TS AIR CARGO</h2>
-                                    <p class="text-sm text-gray-600">Mali - Rapport Quotidien</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-lg font-semibold">{{ "now"|date:"d/m/Y" }}</p>
-                                    <p class="text-sm text-gray-600">Agent: {{ user.get_full_name|default:user.username }}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Statistiques -->
-                        <div class="mb-6">
-                            <h3 class="text-lg font-semibold mb-3">Résumé de l'Activité</h3>
-                            <div class="grid grid-cols-3 gap-4">
-                                <div class="text-center p-3 bg-gray-50 rounded">
-                                    <p class="text-2xl font-bold text-blue-600">{{ colis_attente_livraison }}</p>
-                                    <p class="text-xs text-gray-600">En Attente</p>
-                                </div>
-                                <div class="text-center p-3 bg-gray-50 rounded">
-                                    <p class="text-2xl font-bold text-green-600">{{ colis_arrives_aujourdhui }}</p>
-                                    <p class="text-xs text-gray-600">Arrivés</p>
-                                </div>
-                                <div class="text-center p-3 bg-gray-50 rounded">
-                                    <p class="text-2xl font-bold text-indigo-600">{{ colis_livres_aujourdhui }}</p>
-                                    <p class="text-xs text-gray-600">Livrés</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Détail Livraisons -->
-                        {% if colis_livres_detail %}
-                        <div class="mb-6">
-                            <h3 class="text-lg font-semibold mb-3">Détail des Livraisons</h3>
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Heure</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Référence</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lot</th>
-                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    {% for colis in colis_livres_detail %}
-                                    <tr>
-                                        <td class="px-3 py-2 text-sm">{{ colis.created_at|date:"H:i" }}</td>
-                                        <td class="px-3 py-2 text-sm font-medium">{{ colis.reference }}</td>
-                                        <td class="px-3 py-2 text-sm">{{ colis.client.nom }} {{ colis.client.prenom }}</td>
-                                        <td class="px-3 py-2 text-sm">{{ colis.lot.numero }}</td>
-                                        <td class="px-3 py-2 text-sm text-right">{{ colis.prix_final|fcfa }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% endif %}
-
-                        <!-- Total Encaissements -->
-                        <div class="border-t-2 border-gray-300 pt-4 mt-6">
-                            <div class="flex justify-end">
-                                <div class="text-right">
-                                    <p class="text-sm text-gray-600">Total Encaissements du Jour</p>
-                                    <p class="text-2xl font-bold text-green-600">{{ encaissements_jour|fcfa }}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Signature -->
-                        <div class="mt-12 pt-8 border-t border-gray-300">
-                            <div class="flex justify-between">
-                                <div class="text-center">
-                                    <p class="text-sm text-gray-600">Signature Agent</p>
-                                    <div class="mt-12 border-b border-gray-400 w-48"></div>
-                                </div>
-                                <div class="text-center">
-                                    <p class="text-sm text-gray-600">Date et Heure</p>
-                                    <p class="mt-2 font-semibold">{{ "now"|date:"d/m/Y H:i" }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
 </div>
 
 <style>
 @media print {
-    .print\:hidden {
-        display: none !important;
-    }
-    .print\:shadow-none {
-        box-shadow: none !important;
-    }
-    body {
-        background: white;
-    }
+    body { background: white; }
+    .print\:hidden { display: none !important; }
+    .print\:shadow-none { box-shadow: none !important; }
+    .print\:border-none { border: none !important; }
 }
 </style>
 {% endblock %}
