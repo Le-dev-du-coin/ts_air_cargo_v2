@@ -1,8 +1,9 @@
 from django.views.generic import TemplateView, ListView, View, DetailView
 from django.shortcuts import get_object_or_404, redirect
+from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from django.db.models import Q, Count, Sum, Value
+from django.db.models import Q, Count, Sum, Value, F
 from django.db.models.functions import Concat
 from core.models import Country, Lot, Colis, Client
 from django.contrib import messages
@@ -314,6 +315,9 @@ class LotsLivresView(LotsEnTransitView):
                 ),
                 total_recettes_livre=Sum(
                     "colis__prix_final", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                )
+                - Sum(
+                    "colis__montant_jc", filter=Q(colis__status__in=["LIVRE", "PERDU"])
                 ),
             )
             .filter(nb_colis_livre__gt=0)
@@ -365,10 +369,13 @@ class LotDetailView(LoginRequiredMixin, AgentMaliRequiredMixin, DetailView):
             total_poids=Sum("poids"),
             total_cbm=Sum("cbm"),
             total_montant=Sum("prix_final"),
+            total_jc=Sum("montant_jc"),
         )
         context["total_poids"] = aggregates["total_poids"] or 0
         context["total_cbm"] = aggregates["total_cbm"] or 0
-        context["total_montant_colis"] = aggregates["total_montant"] or 0
+        context["total_montant_colis"] = (aggregates["total_montant"] or 0) - (
+            aggregates["total_jc"] or 0
+        )
 
         # Calcul Bénéfice Net (Recettes - Frais Expédition - Frais Douane)
         frais_exp = self.object.frais_transport or 0
@@ -418,9 +425,12 @@ class LotTransitDetailView(LotDetailView):
         aggregates = self.object.colis.filter(status="EXPEDIE").aggregate(
             total_poids=Sum("poids"),
             total_montant=Sum("prix_final"),
+            total_jc=Sum("montant_jc"),
         )
         context["total_poids"] = aggregates["total_poids"] or 0
-        context["total_montant_colis"] = aggregates["total_montant"] or 0
+        context["total_montant_colis"] = (aggregates["total_montant"] or 0) - (
+            aggregates["total_jc"] or 0
+        )
 
         # Filtrage des colis listés
         colis_qs = self.object.colis.filter(status="EXPEDIE")
@@ -490,11 +500,16 @@ class LotLivreDetailView(LotDetailView):
         # Recalcul des agrégats pour les colis LIVRE/PERDU uniquement
         aggregates = self.object.colis.filter(status__in=["LIVRE", "PERDU"]).aggregate(
             total_montant=Sum("prix_final"),
+            total_jc=Sum("montant_jc"),
         )
-        context["total_montant_colis"] = aggregates["total_montant"] or 0
+        context["total_montant_colis"] = (aggregates["total_montant"] or 0) - (
+            aggregates["total_jc"] or 0
+        )
 
         # Filtrage des colis listés
-        colis_qs = self.object.colis.filter(status__in=["LIVRE", "PERDU"])
+        colis_qs = self.object.colis.filter(status__in=["LIVRE", "PERDU"]).annotate(
+            net_price=F("prix_final") - F("montant_jc")
+        )
 
         from django.core.paginator import Paginator
 
@@ -638,3 +653,137 @@ class ColisPerduView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
 
         messages.warning(request, f"Colis {colis.reference} marqué comme PERDU.")
         return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
+
+
+class ColisAttentePaiementView(LoginRequiredMixin, AgentMaliRequiredMixin, ListView):
+    """Liste des colis LIVRÉS mais NON PAYÉS"""
+
+    template_name = "mali/colis_attente_paiement.html"
+    context_object_name = "colis_list"
+    paginate_by = 20
+
+    def get_queryset(self):
+        try:
+            mali = Country.objects.get(code="ML")
+        except Country.DoesNotExist:
+            return Colis.objects.none()
+
+        queryset = (
+            Colis.objects.filter(lot__destination=mali, status="LIVRE", est_paye=False)
+            .select_related("client", "lot")
+            .order_by("-updated_at")
+        )
+
+        query = self.request.GET.get("q")
+        if query:
+            queryset = (
+                queryset.annotate(
+                    nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
+                    prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
+                )
+                .filter(
+                    Q(reference__icontains=query)
+                    | Q(client__nom__icontains=query)
+                    | Q(client__prenom__icontains=query)
+                    | Q(client__telephone__icontains=query)
+                    | Q(nom_complet__icontains=query)
+                    | Q(prenom_complet__icontains=query)
+                )
+                .distinct()
+            )
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Calcul du total des impayés
+        total_impaye = (
+            self.get_queryset().aggregate(total=Sum("prix_final"))["total"] or 0
+        )
+        context["total_impaye"] = total_impaye
+        context["q"] = self.request.GET.get("q", "")
+        return context
+
+
+class RapportJourPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Génération du rapport journalier en PDF (xhtml2pdf)"""
+
+    def get(self, request):
+        today = timezone.now().date()
+
+        # Données du rapport
+        colis_livres = (
+            Colis.objects.filter(
+                lot__destination__code="ML",
+                status="LIVRE",
+                est_paye=True,
+                updated_at__date=today,
+            )
+            .select_related("client", "lot")
+            .annotate(net_price=F("prix_final") - F("montant_jc"))
+            .order_by("-updated_at")
+        )
+
+        encaissements = colis_livres.aggregate(total=Sum("net_price"))["total"] or 0
+
+        # Contexte pour le template
+        context = {
+            "date": today,
+            "colis_livres": colis_livres,
+            "total_encaissements": encaissements,
+            "user": request.user,
+        }
+
+        # Génération du HTML
+        from django.template.loader import render_to_string
+        from xhtml2pdf import pisa
+
+        html_string = render_to_string("mali/pdf/rapport_jour.html", context)
+
+        # Création du PDF
+        response = HttpResponse(content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'inline; filename="rapport_journalier_{today}.pdf"'
+        )
+
+        pisa_status = pisa.CreatePDF(html_string, dest=response)
+
+        if pisa_status.err:
+            return HttpResponse("Erreur lors de la génération du PDF", status=500)
+
+        return response
+
+
+class LotTransitPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Génération du manifeste de lot en PDF"""
+
+    def get(self, request, pk):
+        lot = get_object_or_404(Lot, pk=pk)
+
+        # Colis du lot triés par référence ou client
+        colis_list = lot.colis.all().select_related("client").order_by("reference")
+
+        context = {
+            "lot": lot,
+            "colis_list": colis_list,
+            "total_poids": lot.colis.aggregate(Sum("poids"))["poids__sum"] or 0,
+            "total_colis": lot.colis.count(),
+            "user": request.user,
+            "date_impression": timezone.now(),
+        }
+
+        from xhtml2pdf import pisa
+        from django.template.loader import render_to_string
+
+        html_string = render_to_string("mali/pdf/manifeste_lot.html", context)
+
+        response = HttpResponse(content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'inline; filename="manifeste_lot_{lot.numero}.pdf"'
+        )
+
+        pisa_status = pisa.CreatePDF(html_string, dest=response)
+
+        if pisa_status.err:
+            return HttpResponse("Erreur lors de la génération du PDF", status=500)
+
+        return response

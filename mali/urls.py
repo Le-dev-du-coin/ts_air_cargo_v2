@@ -12,6 +12,9 @@ from .views import (
     ColisArriveView,
     ColisLivreView,
     ColisPerduView,
+    ColisAttentePaiementView,
+    RapportJourPDFView,
+    LotTransitPDFView,
 )
 
 app_name = "mali"
@@ -41,4 +44,15 @@ urlpatterns = [
     path("colis/<int:pk>/arrive/", ColisArriveView.as_view(), name="colis_arrive"),
     path("colis/<int:pk>/livre/", ColisLivreView.as_view(), name="colis_livre"),
     path("colis/<int:pk>/perdu/", ColisPerduView.as_view(), name="colis_perdu"),
+    path(
+        "colis/attente-paiement/",
+        ColisAttentePaiementView.as_view(),
+        name="colis_attente_paiement",
+    ),
+    path("rapport/jour/pdf/", RapportJourPDFView.as_view(), name="rapport_jour_pdf"),
+    path(
+        "lot/<int:pk>/manifeste/pdf/",
+        LotTransitPDFView.as_view(),
+        name="lot_manifeste_pdf",
+    ),
 ]

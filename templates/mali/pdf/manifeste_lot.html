@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Manifeste Lot {{ lot.numero }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            color: #333;
+        }
+        .header {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+        }
+        
+        /* xhtml2pdf layout helpers */
+        .layout-table {
+            width: 100%;
+            border: none;
+            margin-bottom: 15px;
+        }
+        .layout-table td {
+            border: none;
+            padding: 5px;
+            vertical-align: top;
+        }
+
+        .info-lot {
+            background-color: #f9fafb;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .data-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #eee;
+            font-weight: bold;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <table class="layout-table">
+            <tr>
+                <td>
+                    <h1>TS Air Cargo - Manifeste de Transport</h1>
+                    <p>Lot N° <strong>{{ lot.numero }}</strong></p>
+                </td>
+                <td class="text-right">
+                    <p>Date : {{ date_impression|date:"d/m/Y H:i" }}</p>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="info-lot">
+        <table class="layout-table">
+            <tr>
+                <td><strong>Type :</strong> {{ lot.get_type_transport_display }}</td>
+                <td><strong>Destination :</strong> {{ lot.destination.name }}</td>
+                <td><strong>Date Expédition :</strong> {{ lot.date_expedition|date:"d/m/Y"|default:"-" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <table class="data-table">
+        <colgroup>
+            <col style="width: 5%">
+            <col style="width: 15%">
+            <col style="width: 25%">
+            <col style="width: 15%">
+            <col style="width: 10%">
+            <col style="width: 10%">
+            <col style="width: 20%">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Référence</th>
+                <th>Client</th>
+                <th>Contact</th>
+                <th class="text-right">Poids</th>
+                <th class="text-right">Volume</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for colis in colis_list %}
+            <tr>
+                <td class="text-center">{{ forloop.counter }}</td>
+                <td><strong>{{ colis.reference }}</strong></td>
+                <td>{{ colis.client.nom }} {{ colis.client.prenom }}</td>
+                <td>{{ colis.client.telephone }}</td>
+                <td class="text-right">{{ colis.poids }} kg</td>
+                <td class="text-right">{{ colis.cbm }} m3</td>
+                <td>{{ colis.type_colis }} - {{ colis.nombre_pieces }} pcs</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4" class="text-right"><strong>TOTAL</strong></td>
+                <td class="text-right"><strong>{{ total_poids }} kg</strong></td>
+                <td colspan="2"><strong>{{ total_colis }} Colis</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+</body>
+</html>

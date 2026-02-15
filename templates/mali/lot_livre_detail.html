@@ -71,7 +71,10 @@
                             <div class="text-[10px] text-gray-500">{{ colis.client.telephone }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
-                            <span class="text-sm font-bold text-gray-900">{{ colis.prix_final|fcfa }}</span>
+                            <span class="text-sm font-bold text-gray-900">{{ colis.net_price|fcfa }}</span>
+                            {% if colis.montant_jc > 0 %}
+                            <div class="text-[10px] text-gray-500 italic">JC: {{ colis.montant_jc|fcfa }}</div>
+                            {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             {% if colis.status == 'LIVRE' %}

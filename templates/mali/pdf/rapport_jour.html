@@ -1,0 +1,143 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rapport Journalier - {{ date|date:"d M Y" }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #166534;
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            color: #166534;
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0;
+            color: #666;
+        }
+        /* xhtml2pdf does not support Flexbox, use tables for layout */
+        .meta-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .meta-table td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+        
+        .data-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f0fdf4;
+            color: #166534;
+            font-weight: bold;
+        }
+        .total-row td {
+            font-weight: bold;
+            background-color: #f0fdf4;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>TS Air Cargo Mali</h1>
+        <p>Rapport Journalier des Livraisons</p>
+    </div>
+
+    <!-- Layout without flexbox -->
+    <table class="meta-table">
+        <tr>
+            <td>
+                <strong>Date :</strong> {{ date|date:"l d F Y" }}<br>
+                <strong>Généré par :</strong> {{ user.get_full_name|default:user.username }}
+            </td>
+            <td class="text-right">
+                <strong>Ref :</strong> RPT-{{ date|date:"Ymd" }}
+            </td>
+        </tr>
+    </table>
+
+    <table class="data-table">
+        <colgroup>
+            <col style="width: 10%">
+            <col style="width: 25%">
+            <col style="width: 29%">
+            <col style="width: 15%">
+            <col style="width: 20%">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>Heure</th>
+                <th>Référence</th>
+                <th>Client</th>
+                <th>Lot</th>
+                <th class="text-right">Montant</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for colis in colis_livres %}
+            <tr>
+                <td>{{ colis.updated_at|date:"H:i" }}</td>
+                <td>{{ colis.reference }}</td>
+                <td>{{ colis.client.nom }} {{ colis.client.prenom }}</td>
+                <td>{{ colis.lot.numero }}</td>
+                <td class="text-right">
+                    {{ colis.net_price|intcomma }} FCFA
+                    {% if colis.montant_jc > 0 %}
+                    <br><span style="font-size: 8px; color: #666;">(JC: {{ colis.montant_jc|intcomma }})</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">Aucune livraison enregistrée ce jour.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="4" class="text-right">TOTAL ENCAISSÉ</td>
+                <td class="text-right">{{ total_encaissements|intcomma }} FCFA</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="footer">
+        <p>Document généré automatiquement par le système TS Air Cargo.</p>
+    </div>
+</body>
+</html>
