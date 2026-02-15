@@ -1,5 +1,6 @@
 {% extends "mali/base.html" %}
 {% load humanize %}
+{% load currency_tags %}
 
 {% block title %}Historique des Lots Arrivés - Mali - TS Air Cargo{% endblock %}
 
@@ -80,16 +81,16 @@
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
-                            <span class="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-full">{{ lot.nb_colis|intcomma }}</span>
+                            <span class="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-full">{{ lot.nb_colis_arrive }}</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             <span class="text-xs font-medium text-gray-500">
-                                {% if lot.poids_total %}{{ lot.poids_total|floatformat:1 }} kg{% else %}-{% endif %}
+                                {% if lot.poids_total_arrive %}{{ lot.poids_total_arrive|floatformat:1 }} kg{% else %}-{% endif %}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <span class="text-sm font-extrabold text-green-700">
-                                {{ lot.total_recettes|default:"0"|floatformat:0|intcomma }} FCFA
+                                {{ lot.total_recettes_arrive|default:"0"|floatformat:0|intcomma }} FCFA
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">

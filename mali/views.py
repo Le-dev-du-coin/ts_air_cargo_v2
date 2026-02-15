@@ -2,7 +2,8 @@ from django.views.generic import TemplateView, ListView, View, DetailView
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from django.db.models import Q, Count, Sum
+from django.db.models import Q, Count, Sum, Value
+from django.db.models.functions import Concat
 from core.models import Country, Lot, Colis, Client
 from django.contrib import messages
 
@@ -57,15 +58,16 @@ class DashboardView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
 
         # 1. Colis Livrés (mois en cours)
         context["colis_livres_mois"] = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", created_at__gte=first_day_of_month
+            lot__destination=mali, status="LIVRE", updated_at__gte=first_day_of_month
         ).count()
 
         # 2. Dépenses (mois) - hardcodé à 0 pour l'instant
         context["depenses_mois"] = 0
 
         # 3. Colis Perdus (mois en cours)
-        # Assuming we'll add a PERDU status later, for now it's 0
-        context["colis_perdus_mois"] = 0
+        context["colis_perdus_mois"] = Colis.objects.filter(
+            lot__destination=mali, status="PERDU", updated_at__gte=first_day_of_month
+        ).count()
 
         # 4. Colis en attente de paiement (non payés)
         context["colis_attente_paiement"] = Colis.objects.filter(
@@ -90,13 +92,15 @@ class DashboardView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
 
         # 7b. Lots Livrés (Mois) - Lots avec tous les colis livrés ce mois
         # Pour l'instant, on compte les lots avec statut LIVRE ou tous colis livrés
+        # 7b. Lots Livrés (Mois) - Lots avec tous les colis livrés ce mois
+        # Pour l'instant, on compte les lots avec statut LIVRE ou tous colis livrés
         context["lots_livres_mois"] = Lot.objects.filter(
-            destination=mali, status="LIVRE", created_at__gte=first_day_of_month
+            destination=mali, status="LIVRE", updated_at__gte=first_day_of_month
         ).count()
 
         # 8. Encaissements du Jour (Montant total des livraisons du jour)
         encaissements = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", created_at__date=today
+            lot__destination=mali, status="LIVRE", updated_at__date=today
         ).aggregate(total=Sum("prix_final"))
         context["encaissements_jour"] = encaissements["total"] or 0
 
@@ -104,14 +108,15 @@ class DashboardView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
         context["total_clients_mali"] = Client.objects.filter(country=mali).count()
 
         # Activité récente (derniers colis pointés/livrés aujourd'hui)
+        # Activité récente (derniers colis pointés/livrés aujourd'hui)
         context["activites_recentes"] = (
             Colis.objects.filter(
                 lot__destination=mali,
-                status__in=["ARRIVE", "LIVRE"],
-                created_at__date=today,
+                status__in=["ARRIVE", "LIVRE", "PERDU"],
+                updated_at__date=today,
             )
             .select_related("client", "lot")
-            .order_by("-created_at")[:10]
+            .order_by("-updated_at")[:10]
         )
 
         return context
@@ -147,21 +152,21 @@ class AujourdhuiView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
 
         # 3. Colis Livrés Aujourd'hui
         context["colis_livres_aujourdhui"] = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", created_at__date=today
+            lot__destination=mali, status="LIVRE", updated_at__date=today
         ).count()
 
         # Données pour le rapport du jour
         context["colis_livres_detail"] = (
             Colis.objects.filter(
-                lot__destination=mali, status="LIVRE", created_at__date=today
+                lot__destination=mali, status="LIVRE", updated_at__date=today
             )
             .select_related("client", "lot")
-            .order_by("-created_at")
+            .order_by("-updated_at")
         )
 
         # Encaissements du jour pour la recette
         encaissements = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", created_at__date=today
+            lot__destination=mali, status="LIVRE", updated_at__date=today
         ).aggregate(total=Sum("prix_final"))
         context["encaissements_jour"] = encaissements["total"] or 0
 
@@ -181,23 +186,27 @@ class LotsEnTransitView(LoginRequiredMixin, AgentMaliRequiredMixin, ListView):
         except Country.DoesNotExist:
             return Lot.objects.none()
 
+        # Un lot apparaît en transit s'il a au moins un colis EXPEDIE
         queryset = (
-            Lot.objects.filter(destination=mali, status="EN_TRANSIT")
+            Lot.objects.filter(destination=mali, colis__status="EXPEDIE")
             .select_related("destination")
             .prefetch_related("colis")
             .annotate(
-                nb_colis=Count("colis"),
-                poids_total=Sum("colis__poids"),
-                total_recettes=Sum("colis__prix_final"),
+                # On ne compte que les colis en transit pour ce lot dans cette vue
+                nb_colis_transit=Count("colis", filter=Q(colis__status="EXPEDIE")),
+                poids_total_transit=Sum(
+                    "colis__poids", filter=Q(colis__status="EXPEDIE")
+                ),
+                total_recettes_transit=Sum(
+                    "colis__prix_final", filter=Q(colis__status="EXPEDIE")
+                ),
             )
+            .filter(nb_colis_transit__gt=0)
+            .distinct()
         )
 
         query = self.request.GET.get("q")
         if query:
-            from django.db.models import Q, Value
-            from django.db.models.functions import Concat
-
-            # Recherche par numéro lot ou client (nom, prénom, téléphone, ou nom complet)
             queryset = (
                 queryset.annotate(
                     nom_complet=Concat(
@@ -239,23 +248,27 @@ class LotsArrivesView(LotsEnTransitView):
         except Country.DoesNotExist:
             return Lot.objects.none()
 
-        # On prend les lots ARRIVE ou LIVRE
+        # Un lot apparaît en arrivés s'il a au moins un colis ARRIVE
         queryset = (
-            Lot.objects.filter(destination=mali, status__in=["ARRIVE", "LIVRE"])
+            Lot.objects.filter(destination=mali, colis__status="ARRIVE")
             .select_related("destination")
             .prefetch_related("colis")
             .annotate(
-                nb_colis=Count("colis"),
-                poids_total=Sum("colis__poids"),
-                total_recettes=Sum("colis__prix_final"),
+                # On ne compte que les colis arrivés pour ce lot dans cette vue
+                nb_colis_arrive=Count("colis", filter=Q(colis__status="ARRIVE")),
+                poids_total_arrive=Sum(
+                    "colis__poids", filter=Q(colis__status="ARRIVE")
+                ),
+                total_recettes_arrive=Sum(
+                    "colis__prix_final", filter=Q(colis__status="ARRIVE")
+                ),
             )
+            .filter(nb_colis_arrive__gt=0)
+            .distinct()
         )
 
         query = self.request.GET.get("q")
         if query:
-            from django.db.models import Q, Value
-            from django.db.models.functions import Concat
-
             queryset = (
                 queryset.annotate(
                     nom_complet=Concat(
@@ -277,6 +290,63 @@ class LotsArrivesView(LotsEnTransitView):
             )
 
         return queryset.order_by("-date_arrivee", "-created_at")
+
+
+class LotsLivresView(LotsEnTransitView):
+    """Historique des lots ayant des colis LIVRÉS ou PERDUS"""
+
+    template_name = "mali/lots_livres.html"
+
+    def get_queryset(self):
+        try:
+            mali = Country.objects.get(code="ML")
+        except Country.DoesNotExist:
+            return Lot.objects.none()
+
+        # Un lot apparaît en livrés s'il a au moins un colis LIVRE ou PERDU
+        queryset = (
+            Lot.objects.filter(destination=mali, colis__status__in=["LIVRE", "PERDU"])
+            .select_related("destination")
+            .prefetch_related("colis")
+            .annotate(
+                nb_colis_livre=Count(
+                    "colis", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                ),
+                total_recettes_livre=Sum(
+                    "colis__prix_final", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                ),
+            )
+            .filter(nb_colis_livre__gt=0)
+            .distinct()
+        )
+
+        # Filtrage par mois/année
+        month = self.request.GET.get("month")
+        year = self.request.GET.get("year")
+        if month and year:
+            queryset = queryset.filter(
+                colis__updated_at__month=month, colis__updated_at__year=year
+            )
+        elif year:
+            queryset = queryset.filter(colis__updated_at__year=year)
+
+        query = self.request.GET.get("q")
+        if query:
+            queryset = (
+                queryset.annotate(
+                    nom_complet=Concat(
+                        "colis__client__nom", Value(" "), "colis__client__prenom"
+                    ),
+                )
+                .filter(
+                    Q(numero__icontains=query)
+                    | Q(colis__client__nom__icontains=query)
+                    | Q(colis__client__telephone__icontains=query)
+                )
+                .distinct()
+            )
+
+        return queryset.order_by("-updated_at")
 
 
 class LotDetailView(LoginRequiredMixin, AgentMaliRequiredMixin, DetailView):
@@ -336,24 +406,101 @@ class LotDetailView(LoginRequiredMixin, AgentMaliRequiredMixin, DetailView):
 
 
 class LotTransitDetailView(LotDetailView):
-    """Vue détaillée pour un lot en TRANSIT"""
+    """Vue détaillée pour un lot en TRANSIT (Seulement colis EXPÉDIÉS)"""
 
     template_name = "mali/lot_transit_detail.html"
 
     def get_context_data(self, **kwargs):
+        # On override pour ne filtrer que les colis EXPEDIE
         context = super().get_context_data(**kwargs)
+
+        # Recalcul des agrégats pour les colis EXPEDIE uniquement
+        aggregates = self.object.colis.filter(status="EXPEDIE").aggregate(
+            total_poids=Sum("poids"),
+            total_montant=Sum("prix_final"),
+        )
+        context["total_poids"] = aggregates["total_poids"] or 0
+        context["total_montant_colis"] = aggregates["total_montant"] or 0
+
+        # Filtrage des colis listés
+        colis_qs = self.object.colis.filter(status="EXPEDIE")
+
+        qc = self.request.GET.get("qc")
+        if qc:
+            colis_qs = colis_qs.annotate(
+                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
+            ).filter(
+                Q(reference__icontains=qc)
+                | Q(client__nom__icontains=qc)
+                | Q(nom_complet__icontains=qc)
+            )
+
+        from django.core.paginator import Paginator
+
+        paginator = Paginator(colis_qs.order_by("-created_at"), 20)
+        context["colis_list"] = paginator.get_page(self.request.GET.get("page"))
         context["is_transit_mode"] = True
         return context
 
 
 class LotArriveDetailView(LotDetailView):
-    """Vue détaillée pour un lot ARRIVÉ"""
+    """Vue détaillée pour un lot ARRIVÉ (Seulement colis ARRIVÉS)"""
 
     template_name = "mali/lot_arrived_detail.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
+        # Recalcul des agrégats pour les colis ARRIVE uniquement
+        aggregates = self.object.colis.filter(status="ARRIVE").aggregate(
+            total_poids=Sum("poids"),
+            total_montant=Sum("prix_final"),
+        )
+        context["total_poids"] = aggregates["total_poids"] or 0
+        context["total_montant_colis"] = aggregates["total_montant"] or 0
+
+        # Filtrage des colis listés
+        colis_qs = self.object.colis.filter(status="ARRIVE")
+        qc = self.request.GET.get("qc")
+        if qc:
+            colis_qs = colis_qs.annotate(
+                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
+            ).filter(
+                Q(reference__icontains=qc)
+                | Q(client__nom__icontains=qc)
+                | Q(nom_complet__icontains=qc)
+            )
+
+        from django.core.paginator import Paginator
+
+        paginator = Paginator(colis_qs.order_by("-created_at"), 20)
+        context["colis_list"] = paginator.get_page(self.request.GET.get("page"))
         context["is_arrive_mode"] = True
+        return context
+
+
+class LotLivreDetailView(LotDetailView):
+    """Vue détaillée pour un lot LIVRÉ/PERDU"""
+
+    template_name = "mali/lot_livre_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Recalcul des agrégats pour les colis LIVRE/PERDU uniquement
+        aggregates = self.object.colis.filter(status__in=["LIVRE", "PERDU"]).aggregate(
+            total_montant=Sum("prix_final"),
+        )
+        context["total_montant_colis"] = aggregates["total_montant"] or 0
+
+        # Filtrage des colis listés
+        colis_qs = self.object.colis.filter(status__in=["LIVRE", "PERDU"])
+
+        from django.core.paginator import Paginator
+
+        paginator = Paginator(colis_qs.order_by("-updated_at"), 20)
+        context["colis_list"] = paginator.get_page(self.request.GET.get("page"))
+        context["is_livre_mode"] = True
         return context
 
 
@@ -435,6 +582,27 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             messages.error(request, "Seuls les colis déjà arrivés peuvent être livrés.")
             return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
 
+        # Mise à jour des informations de livraison
+        colis.mode_livraison = request.POST.get("mode_livraison", "AGENCE")
+        colis.infos_recepteur = request.POST.get("infos_recepteur", "")
+        colis.commentaire_livraison = request.POST.get("commentaire", "")
+
+        # Gestion Jeton Cédé
+        try:
+            jc = request.POST.get("montant_jc", "0")
+            colis.montant_jc = float(jc) if jc else 0
+        except ValueError:
+            colis.montant_jc = 0
+
+        # Gestion Paiement
+        status_paiement = request.POST.get("status_paiement")
+        if status_paiement == "PAYE":
+            colis.est_paye = True
+
+        # Gestion WhatsApp (Marquage uniquement pour l'instant)
+        if request.POST.get("whatsapp_notified") == "on":
+            colis.whatsapp_notified = True
+
         colis.status = "LIVRE"
         colis.save()
 
@@ -448,4 +616,25 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             )
 
         messages.success(request, f"Colis {colis.reference} marqué comme Livré.")
+        return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
+
+
+class ColisPerduView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Marquer un colis comme PERDU"""
+
+    def post(self, request, pk):
+        colis = get_object_or_404(Colis, pk=pk)
+        colis.status = "PERDU"
+        colis.save()
+
+        if request.headers.get("HX-Request"):
+            from django.shortcuts import render
+
+            return render(
+                request,
+                "mali/partials/colis_status_badge.html",
+                {"colis": colis, "lot": colis.lot},
+            )
+
+        messages.warning(request, f"Colis {colis.reference} marqué comme PERDU.")
         return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)

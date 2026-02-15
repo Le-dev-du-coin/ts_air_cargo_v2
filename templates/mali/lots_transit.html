@@ -1,5 +1,6 @@
 {% extends "mali/base.html" %}
 {% load humanize %}
+{% load currency_tags %}
 
 {% block title %}Lots en Transit - Mali - TS Air Cargo{% endblock %}
 
@@ -82,11 +83,13 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
-                            <span class="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-full">{{ lot.nb_colis }}</span>
+                            <span class="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-full">{{ lot.nb_colis_transit }}</span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-extrabold text-green-600">
-                            {% load currency_tags %}
-                            {{ lot.total_recettes|default:0|fcfa }}
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-xs font-bold text-gray-400 mr-2">Est.</span>
+                            <span class="text-sm font-extrabold text-green-600">
+                                {{ lot.total_recettes_transit|default:0|fcfa }}
+                            </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <a href="{% url 'mali:lot_transit_detail' lot.pk %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-green-600 hover:bg-green-700 transition-all shadow-sm">

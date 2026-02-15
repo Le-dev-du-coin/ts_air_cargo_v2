@@ -98,6 +98,8 @@ class Lot(TenantAwareModel):
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.OUVERT
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         if not self.numero:
@@ -215,7 +217,28 @@ class Colis(TenantAwareModel):
         help_text=_("Prix total à payer par client"),
         default=0,
     )
+    # Livraison & Paiement
     est_paye = models.BooleanField(default=False)
+    montant_jc = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text=_("Montant Jeton Cédé (Remise/Ecart caisse)"),
+    )
+    mode_livraison = models.CharField(
+        max_length=20,
+        choices=[("AGENCE", "Retrait Agence"), ("DOMICILE", "Livraison Domicile")],
+        default="AGENCE",
+    )
+    infos_recepteur = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text=_("Nom/Tel de la personne qui récupère (si différent du client)"),
+    )
+    commentaire_livraison = models.TextField(blank=True, null=True)
+    whatsapp_notified = models.BooleanField(
+        default=False, help_text=_("Notification WhatsApp envoyée/demandée")
+    )
 
     photo = models.ImageField(upload_to="colis/%Y/%m/", blank=True, null=True)
     status = models.CharField(
@@ -224,6 +247,7 @@ class Colis(TenantAwareModel):
 
     reference = models.CharField(max_length=50, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         if not self.reference:

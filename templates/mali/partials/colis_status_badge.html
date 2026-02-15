@@ -1,40 +1,59 @@
+{% load humanize %}
 {% if error_locked %}
     <div class="text-xs font-bold text-red-500 bg-red-50 p-2 rounded border border-red-200">
         ⚠️ SAISIR FRAIS DOUANE D'ABORD
     </div>
 {% elif colis.status == 'LIVRE' %}
-    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
         <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
         </svg>
         LIVRÉ
     </span>
+{% elif colis.status == 'PERDU' %}
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">
+        PERDU
+    </span>
 {% elif colis.status == 'ARRIVE' %}
     <div class="flex flex-col space-y-2">
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
-            <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-            </svg>
-            POINTÉ
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+            ARRIVÉ
         </span>
         
-        <form hx-post="{% url 'mali:colis_livre' colis.pk %}" 
-              hx-target="#colis-status-{{ colis.pk }}"
-              hx-swap="innerHTML"
-              hx-confirm="Confirmer la livraison du colis {{ colis.reference }} ?"
-              hx-indicator="#loading-liv-{{ colis.pk }}">
-            {% csrf_token %}
-            <button type="submit" 
-                    class="inline-flex items-center px-3 py-1.5 border border-indigo-300 shadow-sm text-[10px] font-black rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors w-full justify-center">
-                <span id="loading-liv-{{ colis.pk }}" class="htmx-indicator mr-1">
-                    <svg class="animate-spin h-3 w-3 text-indigo-600" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </span>
-                LIVRER COLIS
+        <div class="flex space-x-2">
+            <!-- Bouton Livrer -> Modal -->
+            <button type="button" 
+                    @click="openDeliveryModal('{{ colis.pk }}', '{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.prix_final|intcomma }}')"
+                    class="flex-1 inline-flex items-center px-2 py-1.5 border border-indigo-300 shadow-sm text-[10px] font-black rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors justify-center uppercase">
+                Livrer
             </button>
-        </form>
+
+            <!-- Bouton Perdu -> SweetAlert -->
+            <form id="perdu-form-{{ colis.pk }}"
+                  hx-post="{% url 'mali:colis_perdu' colis.pk %}" 
+                  hx-target="#colis-status-{{ colis.pk }}"
+                  hx-swap="innerHTML"
+                  class="flex-1">
+                {% csrf_token %}
+                <button type="button" 
+                        onclick="Swal.fire({
+                            title: 'Êtes-vous sûr ?',
+                            text: 'Ce colis sera marqué comme PERDU définitivement.',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#EF4444',
+                            confirmButtonText: 'Oui, déclarer perdu',
+                            cancelButtonText: 'Annuler'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                htmx.trigger('#perdu-form-{{ colis.pk }}', 'submit');
+                            }
+                        })"
+                        class="w-full inline-flex items-center px-2 py-1.5 border border-red-300 shadow-sm text-[10px] font-black rounded-md text-red-700 bg-red-50 hover:bg-red-100 transition-colors justify-center uppercase">
+                    Perdu
+                </button>
+            </form>
+        </div>
     </div>
 {% elif not lot.frais_douane %}
     <div class="text-center">
@@ -43,20 +62,10 @@
         </span>
     </div>
 {% else %}
-    <form hx-post="{% url 'mali:colis_arrive' colis.pk %}" 
-          hx-target="#colis-status-{{ colis.pk }}"
-          hx-swap="innerHTML"
-          hx-indicator="#loading-{{ colis.pk }}">
-        {% csrf_token %}
-        <button type="submit" 
-                class="inline-flex items-center px-4 py-2 border border-orange-300 shadow-sm text-sm font-bold rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
-            <span id="loading-{{ colis.pk }}" class="htmx-indicator mr-2">
-                <svg class="animate-spin h-4 w-4 text-orange-600" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </span>
-            Pointer l'arrivée
-        </button>
-    </form>
+    <button type="button" 
+            @click="openDeliveryModal('{{ colis.pk }}', '{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.prix_final|intcomma }}')"
+            class="inline-flex items-center px-4 py-2 border border-orange-300 shadow-sm text-sm font-bold rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
+        Pointer l'arrivée (Livrer)
+    </button>
+    <div id="loading-{{ colis.pk }}" class="htmx-indicator">Loading...</div>
 {% endif %}

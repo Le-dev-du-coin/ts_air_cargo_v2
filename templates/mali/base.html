@@ -44,7 +44,7 @@
                                     Aujourd'hui
                                 </a>
                                 <a href="{% url 'mali:lots_transit' %}"
-                                    class="{% if request.resolver_match.url_name == 'lots_transit' or request.resolver_match.url_name == 'lot_detail' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    class="{% if request.resolver_match.url_name == 'lots_transit' or request.resolver_match.url_name == 'lot_transit_detail' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                                     <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -52,15 +52,15 @@
                                     Lots en Transit
                                 </a>
                                 <a href="{% url 'mali:lots_arrives' %}"
-                                    class="{% if request.resolver_match.url_name == 'lots_arrives' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    class="{% if request.resolver_match.url_name == 'lots_arrives' or request.resolver_match.url_name == 'lot_arrived_detail' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                                     <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     Lots Arrivés
                                 </a>
-                                <a href="#"
-                                    class="text-green-100 hover:bg-green-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                <a href="{% url 'mali:lots_livres' %}"
+                                    class="{% if request.resolver_match.url_name == 'lots_livres' or request.resolver_match.url_name == 'lot_livre_detail' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                                     <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
