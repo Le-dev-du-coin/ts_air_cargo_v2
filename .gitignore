@@ -12,4 +12,5 @@ dist/
 db.sqlite3
 media/
 static/
+staticfiles/
 project-context.md
