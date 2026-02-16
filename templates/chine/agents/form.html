@@ -5,56 +5,108 @@
 {% endblock %}
 
 {% block chine_content %}
-<div class="max-w-2xl mx-auto">
+<div class="max-w-4xl mx-auto" x-data="{ has_account: {% if form.has_account.value %}true{% else %}false{% endif %} }">
     <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
         <form method="POST">
             {% csrf_token %}
-            <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                <div class="sm:col-span-3">
-                    <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700">Nom d'utilisateur</label>
-                    {{ form.username }}
-                    {{ form.username.errors }}
-                </div>
+            
+            {% if form.non_field_errors %}
+            <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-400 text-red-700">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
 
-                <div class="sm:col-span-3">
-                    <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700">Mot de passe</label>
-                    {{ form.password }}
-                    <p class="mt-1 text-xs text-gray-500">{{ form.password.help_text }}</p>
-                    {{ form.password.errors }}
-                </div>
+            <!-- Section Informations Générales -->
+            <div class="mb-8">
+                <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Informations Générales</h3>
+                <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Prénom <span class="text-red-500">*</span></label>
+                        {{ form.first_name }}
+                        {{ form.first_name.errors }}
+                    </div>
 
-                <div class="sm:col-span-3">
-                    <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Prénom</label>
-                    {{ form.first_name }}
-                </div>
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Nom <span class="text-red-500">*</span></label>
+                        {{ form.last_name }}
+                        {{ form.last_name.errors }}
+                    </div>
 
-                <div class="sm:col-span-3">
-                    <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Nom</label>
-                    {{ form.last_name }}
-                </div>
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">Email</label>
+                        {{ form.email }}
+                        {{ form.email.errors }}
+                    </div>
 
-                <div class="sm:col-span-6">
-                    <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">Email</label>
-                    {{ form.email }}
-                </div>
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.role.id_for_label }}" class="block text-sm font-medium text-gray-700">Rôle</label>
+                        {{ form.role }}
+                        {{ form.role.errors }}
+                    </div>
 
-                <div class="sm:col-span-3">
-                    <label for="{{ form.role.id_for_label }}" class="block text-sm font-medium text-gray-700">Rôle</label>
-                    {{ form.role }}
-                </div>
-
-                <div class="sm:col-span-3">
-                    <label for="{{ form.country.id_for_label }}" class="block text-sm font-medium text-gray-700">Pays (Appartenance)</label>
-                    {{ form.country }}
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.country.id_for_label }}" class="block text-sm font-medium text-gray-700">Pays (Appartenance)</label>
+                        {{ form.country }}
+                        {{ form.country.errors }}
+                    </div>
                 </div>
             </div>
 
-            <div class="mt-8 flex justify-end space-x-3">
+            <hr class="my-8">
+
+            <!-- Section Configuration de la Rémunération -->
+            <div class="mb-8 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                <h3 class="text-lg font-medium leading-6 text-indigo-900 mb-4">Configuration de la Rémunération</h3>
+                <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.remuneration_mode.id_for_label }}" class="block text-sm font-medium text-gray-700">Mode de Rémunération</label>
+                        {{ form.remuneration_mode }}
+                        {{ form.remuneration_mode.errors }}
+                        <p class="mt-1 text-xs text-gray-500">Choisir entre un salaire fixe ou une commission sur bénéfice.</p>
+                    </div>
+
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.remuneration_value.id_for_label }}" class="block text-sm font-medium text-gray-700">Valeur (Montant ou %)</label>
+                        {{ form.remuneration_value }}
+                        {{ form.remuneration_value.errors }}
+                        <p class="mt-1 text-xs text-gray-500">Montant en FCFA pour le salaire, ou pourcentage pour la commission.</p>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-8">
+
+            <!-- Section Accès Interface -->
+            <div class="mb-8">
+                <div class="flex items-center mb-4">
+                    {{ form.has_account }}
+                    <label for="{{ form.has_account.id_for_label }}" class="ml-2 block text-sm font-medium text-gray-900 font-bold">
+                        Cet agent a besoin d'accéder à l'interface (Identifiants)
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6 transition-all duration-300" x-show="has_account" x-transition>
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700">Nom d'utilisateur</label>
+                        {{ form.username }}
+                        {{ form.username.errors }}
+                    </div>
+
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700">Mot de passe</label>
+                        {{ form.password }}
+                        <p class="mt-1 text-xs text-gray-500">{{ form.password.help_text }}</p>
+                        {{ form.password.errors }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end space-x-3 pt-5 border-t border-gray-200">
                 <a href="{% url 'chine:agent_list' %}" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Annuler
                 </a>
                 <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Enregistrer
+                    Enregistrer l'Agent
                 </button>
             </div>
         </form>

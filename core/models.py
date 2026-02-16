@@ -28,11 +28,27 @@ class User(AbstractUser):
         AGENT_RCI = "AGENT_RCI", _("Agent RCI")
         CLIENT = "CLIENT", _("Client")
 
+    class RemunerationMode(models.TextChoices):
+        SALAIRE = "SALAIRE", _("Salaire Fixe")
+        COMMISSION = "COMMISSION", _("Commission (%)")
+
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CLIENT)
     country = models.ForeignKey(
         Country, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
     )
     phone = models.CharField(max_length=20, blank=True)
+    remuneration_mode = models.CharField(
+        max_length=20,
+        choices=RemunerationMode.choices,
+        default=RemunerationMode.SALAIRE,
+        help_text=_("Type de rémunération de l'agent"),
+    )
+    remuneration_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text=_("Montant du salaire ou Pourcentage de commission"),
+    )
 
     def __str__(self):
         return f"{self.username} ({self.role})"

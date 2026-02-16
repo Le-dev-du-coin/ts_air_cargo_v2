@@ -81,14 +81,19 @@ def get_country_stats(country_code, year=None, month=None):
 
     if year and month:
         # Filtrer par date de création pour lots/colis/dépenses
-        # Note: Pour le dashboard financier, on se base généralement sur la date de création ou d'expédition ?
-        # "Mois en cours" -> Created At seems safest for general activity.
         lots = lots.filter(created_at__year=year, created_at__month=month)
         colis = colis.filter(created_at__year=year, created_at__month=month)
         depenses = depenses.filter(date__year=year, date__month=month)
 
+    # Calcul des montants avec déduction des jetons cédés (JC)
+    from django.db.models import F
+
+    montant_brut = colis.aggregate(total=Sum("prix_final"))["total"] or 0
+    total_jc = colis.aggregate(total=Sum("montant_jc"))["total"] or 0
+    montant_net_colis = montant_brut - total_jc
+
     stats = {}
-    stats["montant_colis"] = colis.aggregate(total=Sum("prix_final"))["total"] or 0
+    stats["montant_colis"] = montant_net_colis
     stats["poids_total"] = colis.aggregate(total=Sum("poids"))["total"] or 0
     stats["cout_transport"] = lots.aggregate(total=Sum("frais_transport"))["total"] or 0
     stats["cout_douane"] = lots.aggregate(total=Sum("frais_douane"))["total"] or 0
@@ -101,6 +106,34 @@ def get_country_stats(country_code, year=None, month=None):
     )
     stats["nb_lots"] = lots.count()
     stats["nb_colis"] = colis.count()
+
+    # Calcul de la rémunération des agents
+    agents = User.objects.filter(country__code=country_code).exclude(role="CLIENT")
+    agents_remuneration = []
+    total_commissions = 0
+
+    for agent in agents:
+        montant = 0
+        if agent.remuneration_mode == User.RemunerationMode.SALAIRE:
+            montant = agent.remuneration_value
+        elif agent.remuneration_mode == User.RemunerationMode.COMMISSION:
+            # Commission sur le bénéfice positif uniquement
+            base_calcul = max(0, stats["benefice"])
+            montant = (base_calcul * agent.remuneration_value) / 100
+            total_commissions += montant
+
+        agents_remuneration.append(
+            {
+                "agent": agent,
+                "montant": montant,
+                "mode": agent.get_remuneration_mode_display(),
+                "valeur": agent.remuneration_value,
+            }
+        )
+
+    stats["agents_remuneration"] = agents_remuneration
+    stats["total_commissions"] = total_commissions
+
     return stats
 
 

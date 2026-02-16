@@ -406,7 +406,19 @@ User = get_user_model()
 
 
 class AgentForm(forms.ModelForm):
+    has_account = forms.BooleanField(
+        label=_("Créer des identifiants (Accès interface)"),
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(
+            attrs={
+                "class": "focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded",
+                "x-model": "has_account",
+            }
+        ),
+    )
     password = forms.CharField(
+        label=_("Mot de passe"),
         widget=forms.PasswordInput(
             attrs={
                 "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
@@ -425,6 +437,8 @@ class AgentForm(forms.ModelForm):
             "email",
             "role",
             "country",
+            "remuneration_mode",
+            "remuneration_value",
             "password",
         ]
         widgets = {
@@ -445,7 +459,8 @@ class AgentForm(forms.ModelForm):
             ),
             "email": forms.EmailInput(
                 attrs={
-                    "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
+                    "placeholder": "Optionnel (auto si vide)",
                 }
             ),
             "role": forms.Select(
@@ -458,10 +473,33 @@ class AgentForm(forms.ModelForm):
                     "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                 }
             ),
+            "remuneration_mode": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                }
+            ),
+            "remuneration_value": forms.NumberInput(
+                attrs={
+                    "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
+                    "placeholder": "Montant ou %",
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Rendre les noms obligatoires pour la génération d'email/identifiants
+        self.fields["username"].required = (
+            False  # Géré manuellement dans clean pour éviter erreurs browser si masqué
+        )
+        self.fields["first_name"].required = True
+        self.fields["last_name"].required = True
+        self.fields["email"].required = False
+
+        # Si édition, vérifier si l'user a un password utilisable
+        if self.instance.pk:
+            self.fields["has_account"].initial = self.instance.has_usable_password()
 
         # Filtrer les rôles CLIENT et GLOBAL_ADMIN pour les agents
         if "role" in self.fields:
@@ -477,13 +515,59 @@ class AgentForm(forms.ModelForm):
                 "Laissez vide pour ne pas changer le mot de passe."
             )
         else:
-            self.fields["password"].required = True
+            # Check requirements dynamically in clean
+            pass
+
+    def clean(self):
+        cleaned_data = super().clean()
+        has_account = cleaned_data.get("has_account")
+        username = cleaned_data.get("username")
+        password = cleaned_data.get("password")
+
+        if has_account:
+            if not username:
+                self.add_error("username", _("Le nom d'utilisateur est requis."))
+            if not self.instance.pk and not password:
+                self.add_error("password", _("Le mot de passe est requis."))
+        else:
+            # Si pas de compte, on peut générer un username technique si vide
+            if not username:
+                first_name = cleaned_data.get("first_name", "")
+                last_name = cleaned_data.get("last_name", "")
+                import random
+
+                cleaned_data["username"] = (
+                    f"{first_name.lower()}.{last_name.lower()}.{random.randint(100, 999)}"
+                )
+
+        # Génération de l'email si absent
+        if not cleaned_data.get("email"):
+            import random
+
+            username = cleaned_data.get("username")
+            if username:
+                prefix = username.split("@")[0]
+            else:
+                first_name = cleaned_data.get("first_name", "").lower()
+                last_name = cleaned_data.get("last_name", "").lower()
+                prefix = f"{first_name}.{last_name}"
+
+            cleaned_data["email"] = (
+                f"{prefix}@{random.randint(100, 999)}.tsair-cargo.com"
+            )
+
+        return cleaned_data
 
     def save(self, commit=True):
         user = super().save(commit=False)
+        has_account = self.cleaned_data.get("has_account")
         password = self.cleaned_data.get("password")
-        if password:
+
+        if has_account and password:
             user.set_password(password)
+        elif not has_account and not user.pk:
+            user.set_unusable_password()
+
         if commit:
             user.save()
         return user
