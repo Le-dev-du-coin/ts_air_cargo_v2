@@ -131,7 +131,7 @@
             </div>
 
             <!-- LIGNE 3: FINANCES + CLIENTS -->
-            <!-- 7. Encaissements du Jour -->
+            <!-- 7. Recettes (Mois) -->
             <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
                 <dt>
                     <div class="absolute bg-emerald-500 rounded-md p-3">
@@ -140,10 +140,10 @@
                                 d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Encaissements Jour</p>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Recettes (Mois)</p>
                 </dt>
                 <dd class="ml-16 flex items-baseline">
-                    <p class="text-2xl font-semibold text-emerald-600">{{ encaissements_jour|fcfa }}</p>
+                    <p class="text-2xl font-semibold text-emerald-600">{{ recettes_mois|fcfa }}</p>
                 </dd>
             </div>
 
@@ -153,13 +153,30 @@
                     <div class="absolute bg-red-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                         </svg>
                     </div>
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Dépenses (Mois)</p>
                 </dt>
                 <dd class="ml-16 flex items-baseline">
                     <p class="text-2xl font-semibold text-red-600">{{ depenses_mois|fcfa }}</p>
+                </dd>
+            </div>
+
+            <!-- 9. Solde (Mois) -->
+            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+                <dt>
+                    <div class="absolute bg-blue-600 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                        </svg>
+                    </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Solde (Mois)</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold {% if solde_mois >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
+                        {{ solde_mois|fcfa }}
+                    </p>
                 </dd>
             </div>
 
@@ -172,6 +189,12 @@
                                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                     </div>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Total Clients Mali</p>
+                </dt>
+                <dd class="ml-16 flex items-baseline">
+                    <p class="text-2xl font-semibold text-purple-600">{{ total_clients_mali|intcomma }}</p>
+                </dd>
+            </div>
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Total Clients Mali</p>
                 </dt>
                 <dd class="ml-16 flex items-baseline">

@@ -16,6 +16,15 @@ from .views import (
     RapportJourPDFView,
     LotTransitPDFView,
 )
+from report.views import (
+    DepenseListView,
+    DepenseCreateView,
+    DepenseDeleteView,
+    RapportFinancierView,
+    TransfertListView,
+    TransfertCreateView,
+    RapportExportView,
+)
 
 app_name = "mali"
 
@@ -54,5 +63,37 @@ urlpatterns = [
         "lot/<int:pk>/manifeste/pdf/",
         LotTransitPDFView.as_view(),
         name="lot_manifeste_pdf",
+    ),
+    # Finance
+    path(
+        "finance/depenses/",
+        DepenseListView.as_view(template_name="mali/finance/depenses.html"),
+        name="depenses_list",
+    ),
+    path("finance/depenses/add/", DepenseCreateView.as_view(), name="depense_add"),
+    path(
+        "finance/depenses/<int:pk>/delete/",
+        DepenseDeleteView.as_view(),
+        name="depense_delete",
+    ),
+    path(
+        "finance/rapport/",
+        RapportFinancierView.as_view(),
+        name="rapport_financier",
+    ),
+    path(
+        "finance/transferts/",
+        TransfertListView.as_view(template_name="mali/finance/transferts.html"),
+        name="transferts_list",
+    ),
+    path(
+        "finance/transferts/add/",
+        TransfertCreateView.as_view(),
+        name="transfert_add",
+    ),
+    path(
+        "finance/rapport/export/",
+        RapportExportView.as_view(),
+        name="rapport_export",
     ),
 ]

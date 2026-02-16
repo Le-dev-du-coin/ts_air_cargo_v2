@@ -4,8 +4,42 @@ from django.utils.translation import gettext_lazy as _
 
 
 class ClientForm(forms.ModelForm):
+    username = forms.CharField(
+        label=_("Nom d'utilisateur"),
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
+                "placeholder": "Identifiant de connexion",
+            }
+        ),
+    )
+    password = forms.CharField(
+        label=_("Mot de passe"),
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
+                "placeholder": "Mot de passe",
+            }
+        ),
+    )
+
     class Meta:
         model = Client
+        fields = [
+            "nom",
+            "prenom",
+            "telephone",
+            "country",
+            "adresse",
+            "username",
+            "password",
+        ]  # Added username/password to fields list (if they are not model fields, they are ignored by ModelForm save, but included in form validation)
+        # Actually for ModelForm, non-model fields should not be in Meta.fields if specific to form.
+        # But wait, fields list controls order.
+        # I'll keep them out of Meta.fields and put them in class definition, they will appear.
         fields = ["nom", "prenom", "telephone", "country", "adresse"]
         widgets = {
             "nom": forms.TextInput(
@@ -46,6 +80,70 @@ class ClientForm(forms.ModelForm):
         mali = Country.objects.filter(code="ML").first()
         if mali:
             self.fields["country"].initial = mali
+
+        if not self.instance.pk:
+            self.fields["username"].required = True
+            self.fields["password"].required = True
+        else:
+            # Edit mode: hide username/password or make optional?
+            # User might want to see them? But password is hashed.
+            # For now, let's keep them hidden or optional in edit.
+            # Requirement was "creation", not update.
+            # I will hide them in update for simplicity unless requested.
+            if self.instance.user:
+                self.fields["username"].initial = self.instance.user.username
+                self.fields["username"].disabled = True  # Cannot change username easily
+                self.fields["password"].widget = (
+                    forms.HiddenInput()
+                )  # Don't allow password change here for now
+            else:
+                pass
+
+    def clean_username(self):
+        username = self.cleaned_data.get("username")
+        if username:
+            # Check if username exists (exclude current user if editing)
+            # But Client is not User model.
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            if User.objects.filter(username=username).exists():
+                # If we are editing and this is our user, it's fine.
+                if (
+                    self.instance.pk
+                    and self.instance.user
+                    and self.instance.user.username == username
+                ):
+                    return username
+                raise forms.ValidationError(_("Ce nom d'utilisateur est déjà pris."))
+        return username
+
+    def save(self, commit=True):
+        client = super().save(commit=False)
+
+        username = self.cleaned_data.get("username")
+        password = self.cleaned_data.get("password")
+
+        if not client.pk and username and password:
+            # Create user
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            user = User.objects.create_user(
+                username=username,
+                password=password,
+                first_name=client.prenom,
+                last_name=client.nom,
+                email="",  # Optional
+                role="CLIENT",
+                country=client.country,
+            )
+            client.user = user
+
+        if commit:
+            client.save()
+
+        return client
 
 
 class ClientImportForm(forms.Form):

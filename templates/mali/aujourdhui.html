@@ -166,9 +166,17 @@
                     <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Total JC</p>
                     <p class="text-xl font-bold text-gray-600">{{ total_jc_jour|fcfa }}</p>
                 </div>
+                <div class="text-right bg-red-50 px-6 py-4 rounded-xl border border-red-100 shadow-sm">
+                    <p class="text-xs font-bold text-red-700 uppercase tracking-widest mb-1">Total Dépenses</p>
+                    <p class="text-xl font-bold text-red-600">- {{ total_depenses_jour|fcfa }}</p>
+                </div>
                 <div class="text-right bg-green-50 px-6 py-4 rounded-xl border border-green-100 shadow-sm">
-                    <p class="text-xs font-bold text-green-700 uppercase tracking-widest mb-1">Total Encaissements (Net)</p>
-                    <p class="text-3xl font-black text-green-600">{{ encaissements_jour|fcfa }}</p>
+                    <p class="text-xs font-bold text-green-700 uppercase tracking-widest mb-1">Total Encaissements</p>
+                    <p class="text-xl font-bold text-green-600">+ {{ encaissements_jour|fcfa }}</p>
+                </div>
+                <div class="text-right bg-blue-50 px-6 py-4 rounded-xl border border-blue-100 shadow-sm">
+                    <p class="text-xs font-bold text-blue-700 uppercase tracking-widest mb-1">CASH NET (En Caisse)</p>
+                    <p class="text-3xl font-black text-blue-600">{{ cash_net_jour|fcfa }}</p>
                 </div>
             </div>
         </div>

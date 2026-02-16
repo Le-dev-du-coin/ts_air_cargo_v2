@@ -1,0 +1,120 @@
+{% extends "chine/base.html" %}
+{% load humanize %}
+
+{% block header %}Archives Mensuelles{% endblock %}
+
+{% block chine_content %}
+<div class="space-y-6">
+    
+    <!-- Filtres -->
+    <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
+        <div class="md:grid md:grid-cols-3 md:gap-6">
+            <div class="md:col-span-1">
+                <h3 class="text-lg font-medium leading-6 text-gray-900">Période</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    Sélectionnez le mois et l'année pour voir les statistiques passées.
+                </p>
+            </div>
+            <div class="mt-5 md:mt-0 md:col-span-2">
+                <form method="get" class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                    <div class="sm:col-span-3">
+                        <label for="month" class="block text-sm font-medium text-gray-700">Mois</label>
+                        <select id="month" name="month" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            {% for m_num, m_name in months %}
+                                <option value="{{ m_num }}" {% if m_num == selected_month %}selected{% endif %}>{{ m_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-3">
+                        <label for="year" class="block text-sm font-medium text-gray-700">Année</label>
+                        <select id="year" name="year" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            {% for y in years %}
+                                <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-6 flex justify-end">
+                        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Afficher
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="hidden sm:block">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Résultats pour {{ selected_month }}/{{ selected_year }}</h3>
+    </div>
+
+    <!-- Colonne MALI -->
+    <div class="bg-white overflow-hidden shadow rounded-xl border-t-4 border-green-500">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                    <span class="text-2xl mr-2">🇲🇱</span> Mali
+                </h3>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {{ stats_ml.nb_lots }} lots
+                </span>
+            </div>
+            
+            <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Chiffre d'Affaires</dt>
+                    <dd class="mt-1 text-xl font-semibold text-gray-900">{{ stats_ml.montant_colis|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                </div>
+                <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Poids Total</dt>
+                    <dd class="mt-1 text-xl font-semibold text-gray-900">{{ stats_ml.poids_total|default:"0"|floatformat:1|intcomma }} kg</dd>
+                </div>
+                <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Total Dépenses</dt>
+                    <dd class="mt-1 text-xl font-semibold text-red-600">- {{ stats_ml.cout_transport|add:stats_ml.cout_douane|add:stats_ml.autres_depenses|floatformat:0|intcomma }} FCFA</dd>
+                </div>
+                <div class="px-4 py-5 bg-green-50 shadow rounded-lg overflow-hidden sm:p-6">
+                    <dt class="text-sm font-medium text-green-800 truncate">Bénéfice Net</dt>
+                    <dd class="mt-1 text-xl font-bold text-green-900">{{ stats_ml.benefice|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Colonne CÔTE D'IVOIRE -->
+    <div class="bg-white overflow-hidden shadow rounded-xl border-t-4 border-orange-500">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                    <span class="text-2xl mr-2">🇨🇮</span> Côte d'Ivoire
+                </h3>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                    {{ stats_ci.nb_lots }} lots
+                </span>
+            </div>
+            
+            <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Chiffre d'Affaires</dt>
+                    <dd class="mt-1 text-xl font-semibold text-gray-900">{{ stats_ci.montant_colis|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                </div>
+                <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Poids Total</dt>
+                    <dd class="mt-1 text-xl font-semibold text-gray-900">{{ stats_ci.poids_total|default:"0"|floatformat:1|intcomma }} kg</dd>
+                </div>
+                <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Total Dépenses</dt>
+                    <dd class="mt-1 text-xl font-semibold text-red-600">- {{ stats_ci.cout_transport|add:stats_ci.cout_douane|add:stats_ci.autres_depenses|floatformat:0|intcomma }} FCFA</dd>
+                </div>
+                <div class="px-4 py-5 bg-green-50 shadow rounded-lg overflow-hidden sm:p-6">
+                    <dt class="text-sm font-medium text-green-800 truncate">Bénéfice Net</dt>
+                    <dd class="mt-1 text-xl font-bold text-green-900">{{ stats_ci.benefice|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -60,6 +60,7 @@
 
 <body class="bg-gray-50 text-gray-900 font-sans antialiased" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
+    {% block messages %}
     {% if messages %}
     <div class="fixed top-4 right-4 z-50 space-y-2">
         {% for message in messages %}
@@ -77,6 +78,7 @@
         {% endfor %}
     </div>
     {% endif %}
+    {% endblock %}
 
     <main class="min-h-screen">
         {% block content %}{% endblock %}

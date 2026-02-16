@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     DashboardView,
+    MonthlyArchivesView,
     ClientListView,
     ClientCreateView,
     LotListView,
@@ -31,12 +32,16 @@ from .views import (
     AgentCreateView,
     AgentUpdateView,
     AgentDeleteView,
+    ChinaDepenseListView,
+    ChinaDepenseCreateView,
+    TransfertReceptionView,
 )
 
 app_name = "chine"
 
 urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path("archives/", MonthlyArchivesView.as_view(), name="monthly_archives"),
     # Background Tasks
     path("tasks/", TaskListView.as_view(), name="task_list"),
     path("tasks/<int:pk>/", TaskDetailView.as_view(), name="task_detail"),
@@ -77,4 +82,12 @@ urlpatterns = [
     path("agents/add/", AgentCreateView.as_view(), name="agent_add"),
     path("agents/<int:pk>/update/", AgentUpdateView.as_view(), name="agent_update"),
     path("agents/<int:pk>/delete/", AgentDeleteView.as_view(), name="agent_delete"),
+    # Finance
+    path("finance/depenses/", ChinaDepenseListView.as_view(), name="depenses_list"),
+    path("finance/depenses/add/", ChinaDepenseCreateView.as_view(), name="depense_add"),
+    path(
+        "finance/transferts/reception/",
+        TransfertReceptionView.as_view(),
+        name="reception_transferts",
+    ),
 ]

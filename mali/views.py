@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.db.models import Q, Count, Sum, Value, F
 from django.db.models.functions import Concat
 from core.models import Country, Lot, Colis, Client
+from report.models import Depense
 from django.contrib import messages
 
 
@@ -57,13 +58,32 @@ class DashboardView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
         # Note: Le modèle Colis utilise les status: RECU, EXPEDIE, ARRIVE, LIVRE
         # Pas TRANSIT ou STOCK. Nous devons ajuster selon les vrais statuts.
 
-        # 1. Colis Livrés (mois en cours)
-        context["colis_livres_mois"] = Colis.objects.filter(
+        # 1. Colis Livrés (mois en cours) et Recettes
+        colis_livres_mois_qs = Colis.objects.filter(
             lot__destination=mali, status="LIVRE", updated_at__gte=first_day_of_month
-        ).count()
+        )
+        context["colis_livres_mois"] = colis_livres_mois_qs.count()
 
-        # 2. Dépenses (mois) - hardcodé à 0 pour l'instant
-        context["depenses_mois"] = 0
+        # Recettes nettes du mois (déjà payés + livrés)
+        recettes_mois = (
+            colis_livres_mois_qs.filter(est_paye=True).aggregate(
+                total=Sum(F("prix_final") - F("montant_jc"))
+            )["total"]
+            or 0
+        )
+        context["recettes_mois"] = recettes_mois
+
+        # 2. Dépenses (mois)
+        depenses_mois = (
+            Depense.objects.filter(
+                pays=mali, date__year=today.year, date__month=today.month
+            ).aggregate(total=Sum("montant"))["total"]
+            or 0
+        )
+        context["depenses_mois"] = depenses_mois
+
+        # Solde du mois (Recettes - Dépenses)
+        context["solde_mois"] = recettes_mois - depenses_mois
 
         # 3. Colis Perdus (mois en cours)
         context["colis_perdus_mois"] = Colis.objects.filter(
@@ -91,13 +111,16 @@ class DashboardView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
         ).distinct()
         context["lots_arrives_incomplets"] = lots_avec_stock.count()
 
-        # 7b. Lots Livrés (Mois) - Lots avec tous les colis livrés ce mois
-        # Pour l'instant, on compte les lots avec statut LIVRE ou tous colis livrés
-        # 7b. Lots Livrés (Mois) - Lots avec tous les colis livrés ce mois
-        # Pour l'instant, on compte les lots avec statut LIVRE ou tous colis livrés
-        context["lots_livres_mois"] = Lot.objects.filter(
-            destination=mali, status="LIVRE", updated_at__gte=first_day_of_month
-        ).count()
+        # 7b. Lots Livrés (Mois) - Lots ayant des colis livrés ce mois ci
+        context["lots_livres_mois"] = (
+            Lot.objects.filter(
+                destination=mali,
+                colis__status="LIVRE",
+                colis__updated_at__gte=first_day_of_month,
+            )
+            .distinct()
+            .count()
+        )
 
         # 8. Encaissements du Jour (Montant total des livraisons du jour)
         encaissements = Colis.objects.filter(
@@ -175,6 +198,20 @@ class AujourdhuiView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
         )
         context["encaissements_jour"] = aggregates["total_net"] or 0
         context["total_jc_jour"] = aggregates["total_jc"] or 0
+
+        # Dépenses du jour
+        depenses_jour_qs = Depense.objects.filter(pays=mali, date=today).order_by(
+            "-created_at"
+        )
+        context["depenses_jour_list"] = depenses_jour_qs
+        context["total_depenses_jour"] = (
+            depenses_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
+        )
+
+        # Cash Net du Jour (Recettes - Dépenses)
+        context["cash_net_jour"] = (
+            context["encaissements_jour"] - context["total_depenses_jour"]
+        )
 
         return context
 

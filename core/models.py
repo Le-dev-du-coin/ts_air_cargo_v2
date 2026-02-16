@@ -57,6 +57,13 @@ class Client(TenantAwareModel):
         max_length=20, help_text=_("Format: +223... ou +225...")
     )
     adresse = models.TextField(blank=True)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="client_profile",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

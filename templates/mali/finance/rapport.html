@@ -1,0 +1,187 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block header %}Rapport Financier{% endblock %}
+
+{% block actions %}
+<div class="flex space-x-3">
+    <a href="{% url 'mali:rapport_export' %}?year={{ current_year }}&month={{ current_month }}&format=pdf" target="_blank"
+       class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none">
+       <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+       </svg>
+       PDF
+    </a>
+    <a href="{% url 'mali:rapport_export' %}?year={{ current_year }}&month={{ current_month }}&format=csv" target="_blank"
+       class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none">
+       <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+       </svg>
+       Excel
+    </a>
+    <a href="{% url 'mali:depenses_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        Gérer les Dépenses
+    </a>
+</div>
+{% endblock %}
+
+{% block mali_content %}
+<!-- Filtres Mois/Année -->
+<div class="bg-white shadow rounded-lg mb-6 p-4">
+    <form method="get" class="flex gap-4 items-end">
+        <div>
+            <label for="month" class="block text-sm font-medium text-gray-700">Mois</label>
+            <select name="month" id="month" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                {% for m in "123456789101112"|make_list %}
+                    <option value="{{ forloop.counter }}" {% if current_month == forloop.counter %}selected{% endif %}>
+                        {{ forloop.counter }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="year" class="block text-sm font-medium text-gray-700">Année</label>
+            <select name="year" id="year" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                <option value="2024" {% if current_year == 2024 %}selected{% endif %}>2024</option>
+                <option value="2025" {% if current_year == 2025 %}selected{% endif %}>2025</option>
+                <option value="2026" {% if current_year == 2026 %}selected{% endif %}>2026</option>
+            </select>
+        </div>
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+            Afficher
+        </button>
+    </form>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
+    <!-- Recettes -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Recettes Totales (Net)</dt>
+                        <dd>
+                            <div class="text-lg font-medium text-gray-900">
+                                {{ total_recettes|intcomma }} FCFA
+                            </div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-5 py-3">
+            <div class="text-sm">
+                <span class="text-gray-500">Basé sur les colis livrés et payés</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dépenses -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Total Dépenses</dt>
+                        <dd>
+                            <div class="text-lg font-medium text-gray-900">
+                                {{ total_depenses|intcomma }} FCFA
+                            </div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-5 py-3">
+            <div class="text-sm">
+                <a href="{% url 'mali:depenses_list' %}" class="font-medium text-indigo-600 hover:text-indigo-500">
+                    Voir le détail
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Solde -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 {% if solde >= 0 %}text-blue-400{% else %}text-red-500{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Solde de la Période</dt>
+                        <dd>
+                            <div class="text-lg font-medium {% if solde >= 0 %}text-gray-900{% else %}text-red-600{% endif %}">
+                                {{ solde|intcomma }} FCFA
+                            </div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-5 py-3">
+            <div class="text-sm">
+                <span class="{% if solde >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-medium">
+                    {% if solde >= 0 %}Positif{% else %}Déficit{% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Détail par Catégorie -->
+<div class="flex flex-col">
+    <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Répartition des Dépenses</h3>
+            <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant Total</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% du Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in depenses_by_category %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ item.categorie }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                {{ item.total|intcomma }} FCFA
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                {% widthratio item.total total_depenses 100 %}%
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">
+                                Aucune dépense enregistrée.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

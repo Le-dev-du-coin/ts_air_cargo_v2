@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 from django.views.generic import edit as delete
 
 from core.models import Client, Lot, Colis, BackgroundTask, Country
+from report.models import Depense, TransfertArgent
 from .forms import ClientForm, LotForm, ColisForm, CountryForm, AgentForm, LotNoteForm
 from .tasks import process_colis_creation
 
@@ -64,8 +65,43 @@ class StrictAgentChineRequiredMixin(RoleRequiredMixin):
     allowed_roles = ["AGENT_CHINE"]
 
 
+class StrictAgentChineRequiredMixin(RoleRequiredMixin):
+    allowed_roles = ["AGENT_CHINE"]
+
+
 class AdminChineRequiredMixin(RoleRequiredMixin):
     allowed_roles = ["ADMIN_CHINE"]
+
+
+def get_country_stats(country_code, year=None, month=None):
+    """Fonction utilitaire pour calculer les stats par pays, avec filtre optionnel par date"""
+    lots = Lot.objects.filter(destination__code=country_code)
+    colis = Colis.objects.filter(lot__destination__code=country_code)
+    depenses = Depense.objects.filter(pays__code=country_code)
+
+    if year and month:
+        # Filtrer par date de création pour lots/colis/dépenses
+        # Note: Pour le dashboard financier, on se base généralement sur la date de création ou d'expédition ?
+        # "Mois en cours" -> Created At seems safest for general activity.
+        lots = lots.filter(created_at__year=year, created_at__month=month)
+        colis = colis.filter(created_at__year=year, created_at__month=month)
+        depenses = depenses.filter(date__year=year, date__month=month)
+
+    stats = {}
+    stats["montant_colis"] = colis.aggregate(total=Sum("prix_final"))["total"] or 0
+    stats["poids_total"] = colis.aggregate(total=Sum("poids"))["total"] or 0
+    stats["cout_transport"] = lots.aggregate(total=Sum("frais_transport"))["total"] or 0
+    stats["cout_douane"] = lots.aggregate(total=Sum("frais_douane"))["total"] or 0
+    stats["autres_depenses"] = depenses.aggregate(total=Sum("montant"))["total"] or 0
+    stats["benefice"] = (
+        stats["montant_colis"]
+        - stats["cout_transport"]
+        - stats["cout_douane"]
+        - stats["autres_depenses"]
+    )
+    stats["nb_lots"] = lots.count()
+    stats["nb_colis"] = colis.count()
+    return stats
 
 
 class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
@@ -73,7 +109,8 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Stats communes
+        # Stats communes (Non filtrées par défaut ?) - User said "ne touche pas aux total globaux"
+        # The existing code did:
         context["lots_ouverts_count"] = Lot.objects.filter(
             status=Lot.Status.OUVERT
         ).count()
@@ -83,7 +120,7 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         context["colis_total_count"] = Colis.objects.count()
         context["total_clients_count"] = Client.objects.count()
 
-        # Stats spécifiques Agent Chine
+        # Stats spécifiques Agent Chine (Reste inchangé ?)
         if self.request.user.role == "AGENT_CHINE":
             context["lots_transit_count"] = Lot.objects.filter(
                 status="EN_TRANSIT"
@@ -92,7 +129,7 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
                 status__in=[Lot.Status.ARRIVE, Lot.Status.DOUANE, Lot.Status.DISPONIBLE]
             ).count()
 
-            # Stats financières Agent Chine
+            # Stats financières Agent Chine - User didn't specify, assume all time or unchanged.
             context["montant_total_colis_agent"] = (
                 Colis.objects.aggregate(total=Sum("prix_final"))["total"] or 0
             )
@@ -103,69 +140,43 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
 
         # Stats avancées pour l'Admin Chine
         if self.request.user.role == "ADMIN_CHINE":
-            # Métriques financières globales
-            all_colis = Colis.objects.all()
+            # Récupération des stats séparées (MOIS EN COURS)
+            now = timezone.now()
+            context["stats_ml"] = get_country_stats("ML", now.year, now.month)
+            context["stats_ci"] = get_country_stats("CI", now.year, now.month)
+
+            # Récupération des stats GLOBALES (ALL TIME) pour les totaux
+            stats_ml_global = get_country_stats("ML")
+            stats_ci_global = get_country_stats("CI")
+
+            # Totaux globaux (somme des deux globaux)
             context["montant_total_colis"] = (
-                all_colis.aggregate(total=Sum("prix_final"))["total"] or 0
+                stats_ml_global["montant_colis"] + stats_ci_global["montant_colis"]
             )
-
             context["total_poids_kg"] = (
-                all_colis.aggregate(total=Sum("poids"))["total"] or 0
+                stats_ml_global["poids_total"] + stats_ci_global["poids_total"]
             )
-
-            all_lots = Lot.objects.all()
             context["montant_total_transport"] = (
-                all_lots.aggregate(total=Sum("frais_transport"))["total"] or 0
+                stats_ml_global["cout_transport"] + stats_ci_global["cout_transport"]
             )
-
             context["montant_total_douane"] = (
-                all_lots.aggregate(total=Sum("frais_douane"))["total"] or 0
+                stats_ml_global["cout_douane"] + stats_ci_global["cout_douane"]
             )
-
-            # Bénéfice global = revenus colis - (transport + douane)
             context["benefice_global"] = (
-                context["montant_total_colis"]
-                - context["montant_total_transport"]
-                - context["montant_total_douane"]
+                stats_ml_global["benefice"] + stats_ci_global["benefice"]
             )
 
-            # Totaux supplémentaires pour compléter le dashboard (8 cartes)
             context["total_lots"] = Lot.objects.count()
             context["total_colis"] = Colis.objects.count()
-
-            # Totaux globaux
             context["total_agents_count"] = (
                 User.objects.exclude(role="CLIENT").exclude(is_superuser=True).count()
             )
 
-            # Bénéfices mensuels (Mali & CI) - conservé pour graphiques
+            # Données Graphique (Derniers 6 mois)
             now = timezone.now()
             start_of_month = now.replace(
                 day=1, hour=0, minute=0, second=0, microsecond=0
             )
-
-            def get_monthly_profit(country_code):
-                lots = Lot.objects.filter(
-                    destination__code=country_code, created_at__gte=start_of_month
-                )
-                total_recettes = (
-                    Colis.objects.filter(lot__in=lots).aggregate(
-                        total=Sum("prix_final")
-                    )["total"]
-                    or 0
-                )
-                total_depenses = lots.aggregate(
-                    transport=Sum("frais_transport"), douane=Sum("frais_douane")
-                )
-                depenses = (total_depenses["transport"] or 0) + (
-                    total_depenses["douane"] or 0
-                )
-                return float(total_recettes) - float(depenses)
-
-            context["profit_mali_mensuel"] = get_monthly_profit("ML")
-            context["profit_ci_mensuel"] = get_monthly_profit("CI")
-
-            # Données Graphique (Derniers 6 mois)
             chart_data = []
             for i in range(5, -1, -1):
                 month_start = (start_of_month - timedelta(days=i * 30)).replace(day=1)
@@ -187,6 +198,54 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         paginator = Paginator(lots_list, 10)  # 10 lots par page
         page_number = self.request.GET.get("page", 1)
         context["recent_lots"] = paginator.get_page(page_number)
+
+        return context
+
+
+class MonthlyArchivesView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateView):
+    template_name = "chine/archives.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Récupération des paramètres ou par défaut mois en cours
+        now = timezone.now()
+        try:
+            selected_year = int(self.request.GET.get("year", now.year))
+            selected_month = int(self.request.GET.get("month", now.month))
+        except ValueError:
+            selected_year = now.year
+            selected_month = now.month
+
+        # Validation basique
+        if not (2000 <= selected_year <= 2100):
+            selected_year = now.year
+        if not (1 <= selected_month <= 12):
+            selected_month = now.month
+
+        context["selected_year"] = selected_year
+        context["selected_month"] = selected_month
+
+        # Stats pour la période sélectionnée
+        context["stats_ml"] = get_country_stats("ML", selected_year, selected_month)
+        context["stats_ci"] = get_country_stats("CI", selected_year, selected_month)
+
+        # Listes pour les sélecteurs
+        context["years"] = range(2023, now.year + 2)
+        context["months"] = [
+            (1, "Janvier"),
+            (2, "Février"),
+            (3, "Mars"),
+            (4, "Avril"),
+            (5, "Mai"),
+            (6, "Juin"),
+            (7, "Juillet"),
+            (8, "Août"),
+            (9, "Septembre"),
+            (10, "Octobre"),
+            (11, "Novembre"),
+            (12, "Décembre"),
+        ]
 
         return context
 
@@ -929,3 +988,109 @@ class AgentDeleteView(LoginRequiredMixin, AdminChineRequiredMixin, DeleteView):
         user = self.get_object()
         messages.success(request, f"Agent {user.username} supprimé.")
         return super().delete(request, *args, **kwargs)
+
+
+# --- MODULE FINANCE CHINE ---
+
+
+class ChinaDepenseListView(LoginRequiredMixin, StrictAgentChineRequiredMixin, ListView):
+    model = Depense
+    template_name = "chine/finance/depenses.html"
+    context_object_name = "depenses"
+    paginate_by = 50
+
+    def get_queryset(self):
+        # On filtre les dépenses liées à la Chine (ou à l'utilisateur courant)
+        queryset = Depense.objects.filter(enregistre_par=self.request.user).order_by(
+            "-date"
+        )
+
+        # Filtre par mois/année
+        today = timezone.now()
+        year = self.request.GET.get("year", today.year)
+        month = self.request.GET.get("month", today.month)
+
+        try:
+            year = int(year)
+            month = int(month)
+            queryset = queryset.filter(date__year=year, date__month=month)
+        except ValueError:
+            pass
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = timezone.now()
+        try:
+            context["current_year"] = int(self.request.GET.get("year", today.year))
+            context["current_month"] = int(self.request.GET.get("month", today.month))
+        except ValueError:
+            context["current_year"] = today.year
+            context["current_month"] = today.month
+
+        context["total_depenses"] = (
+            self.object_list.aggregate(Sum("montant"))["montant__sum"] or 0
+        )
+        return context
+
+
+class ChinaDepenseCreateView(
+    LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateView
+):
+    model = Depense
+    fields = ["date", "categorie", "description", "montant", "piece_jointe"]
+    template_name = (
+        "chine/finance/depenses.html"  # Réutilise le template liste (modal) ou séparé
+    )
+
+    def form_valid(self, form):
+        form.instance.enregistre_par = self.request.user
+        # Associer au pays de l'user (Chine normalement)
+        if self.request.user.country:
+            form.instance.pays = self.request.user.country
+        else:
+            # Fallback chercher Chine
+            try:
+                chine = Country.objects.get(code="CN")
+                form.instance.pays = chine
+            except Country.DoesNotExist:
+                pass  # Gérer l'erreur si besoin
+
+        messages.success(self.request, "Dépense ajoutée avec succès.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy("chine:depenses_list")
+
+
+class TransfertReceptionView(LoginRequiredMixin, AdminChineRequiredMixin, ListView):
+    """Vue pour voir les transferts entrants et les valider (Marquer RECU)"""
+
+    model = TransfertArgent
+    template_name = "chine/finance/reception_transferts.html"
+    context_object_name = "transferts"
+    paginate_by = 20
+
+    def get_queryset(self):
+        # On affiche tous les transferts (venant de tous les pays)
+        # Idéalement on filtre ceux qui ne sont pas "ANNULE"
+        return TransfertArgent.objects.exclude(statut="ANNULE").order_by("-date")
+
+    def post(self, request, *args, **kwargs):
+        # Action pour marquer comme RECU
+        transfert_id = request.POST.get("transfert_id")
+        action = request.POST.get("action")
+
+        if transfert_id and action == "confirmer_reception":
+            transfert = get_object_or_404(TransfertArgent, pk=transfert_id)
+            if transfert.statut == "EN_ATTENTE":
+                transfert.statut = "RECU"
+                transfert.save()
+                messages.success(
+                    request, f"Transfert de {transfert.montant} FCFA marqué comme REÇU."
+                )
+            else:
+                messages.warning(request, "Ce transfert a déjà été traité.")
+
+        return redirect("chine:reception_transferts")

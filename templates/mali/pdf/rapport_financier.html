@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rapport Financier</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2F855A; /* Green-700 */
+            padding-bottom: 10px;
+        }
+        h1 {
+            color: #2F855A;
+            font-size: 24px;
+            margin: 0;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+        .infos {
+            margin-bottom: 20px;
+        }
+        .summary-box {
+            background-color: #F0FFF4; /* Green-50 */
+            border: 1px solid #C6F6D5; /* Green-200 */
+            padding: 15px;
+            margin-bottom: 30px;
+        }
+        .summary-row {
+            display: flex; /* Not supported by xhtml2pdf effectively, using tables instead */
+        }
+        table.summary-table {
+            width: 100%;
+            margin-bottom: 0;
+        }
+        table.summary-table td {
+            padding: 5px;
+            font-size: 14px;
+        }
+        .amount {
+            font-weight: bold;
+            text-align: right;
+        }
+        .positive { color: #2F855A; }
+        .negative { color: #C53030; }
+        
+        table.details {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table.details th {
+            background-color: #2F855A;
+            color: white;
+            padding: 8px;
+            text-align: left;
+        }
+        table.details td {
+            border-bottom: 1px solid #eee;
+            padding: 8px;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Rapport Financier Mensuel</h1>
+        <div class="subtitle">TS AIR CARGO - MALI</div>
+    </div>
+
+    <div class="infos">
+        <strong>Période :</strong> {{ month }}/{{ year }}<br/>
+        <strong>Généré le :</strong> {{ date_generation|date:"d/m/Y H:i" }}<br/>
+        <strong>Par :</strong> {{ user.get_full_name|default:user.username }}
+    </div>
+
+    <div class="summary-box">
+        <table class="summary-table">
+            <tr>
+                <td>Total Recettes (Encaissements Nets)</td>
+                <td class="amount positive">+ {{ total_recettes }} FCFA</td>
+            </tr>
+            <tr>
+                <td>Total Dépenses</td>
+                <td class="amount negative">- {{ total_depenses }} FCFA</td>
+            </tr>
+            <tr>
+                <td style="border-top: 1px solid #ccc; font-weight: bold;">SOLDE PÉRIODE</td>
+                <td class="amount {% if solde >= 0 %}positive{% else %}negative{% endif %}" style="border-top: 1px solid #ccc; font-size: 16px;">
+                    {{ solde }} FCFA
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h3>Détail des Dépenses</h3>
+    <table class="details">
+        <thead>
+            <tr>
+                <th width="15%">Date</th>
+                <th width="20%">Catégorie</th>
+                <th width="45%">Description</th>
+                <th width="20%" align="right">Montant</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for depense in depenses %}
+            <tr>
+                <td>{{ depense.date|date:"d/m/Y" }}</td>
+                <td>{{ depense.get_categorie_display }}</td>
+                <td>{{ depense.description }}</td>
+                <td align="right">{{ depense.montant }} FCFA</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" align="center">Aucune dépense enregistrée pour cette période.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Document généré automatiquement par le système TS Air Cargo.<br/>
+        Internal Use Only.
+    </div>
+</body>
+</html>
