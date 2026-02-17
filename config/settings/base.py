@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "ivoire",
     "notification",
     "report",
+    "customers",
     "theme",  # Added after tailwind init
 ]
 

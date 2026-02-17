@@ -62,10 +62,18 @@
         </span>
     </div>
 {% else %}
-    <button type="button" 
-            @click="openDeliveryModal('{{ colis.pk }}', '{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.prix_final|intcomma }}')"
-            class="inline-flex items-center px-4 py-2 border border-orange-300 shadow-sm text-sm font-bold rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
-        Pointer l'arrivée (Livrer)
-    </button>
-    <div id="loading-{{ colis.pk }}" class="htmx-indicator">Loading...</div>
+    <form id="arrive-form-{{ colis.pk }}"
+          hx-post="{% url 'mali:colis_arrive' colis.pk %}"
+          hx-target="#colis-status-{{ colis.pk }}"
+          hx-swap="innerHTML">
+        {% csrf_token %}
+        <button type="button"
+                onclick="this.closest('form').dispatchEvent(new Event('submit', {bubbles: true}))"
+                class="inline-flex items-center px-4 py-2 border border-orange-300 shadow-sm text-sm font-bold rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
+            <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Pointer (Reçu)
+        </button>
+    </form>
 {% endif %}

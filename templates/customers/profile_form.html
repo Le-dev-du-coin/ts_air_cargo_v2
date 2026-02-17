@@ -1,0 +1,63 @@
+{% extends "customers/base_client.html" %}
+
+{% block header %}Mon Profil{% endblock %}
+
+{% block chine_content %}
+<div class="max-w-xl mx-auto">
+    <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
+        <div class="md:grid md:grid-cols-3 md:gap-6 mb-6">
+            <div class="md:col-span-3">
+                <h3 class="text-lg font-medium leading-6 text-gray-900">Informations Personnelles</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    Mettez à jour vos coordonnées pour faciliter la livraison.
+                </p>
+            </div>
+        </div>
+        
+        <form method="POST">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-400 text-red-700">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-6 gap-6">
+                <div class="col-span-6 sm:col-span-3">
+                    <label for="{{ form.nom.id_for_label }}" class="block text-sm font-medium text-gray-700">Nom</label>
+                    <input type="text" name="nom" id="id_nom" value="{{ form.nom.value|default:'' }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    {{ form.nom.errors }}
+                </div>
+
+                <div class="col-span-6 sm:col-span-3">
+                    <label for="{{ form.prenom.id_for_label }}" class="block text-sm font-medium text-gray-700">Prénom</label>
+                    <input type="text" name="prenom" id="id_prenom" value="{{ form.prenom.value|default:'' }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    {{ form.prenom.errors }}
+                </div>
+
+                <div class="col-span-6 sm:col-span-4">
+                    <label for="{{ form.telephone.id_for_label }}" class="block text-sm font-medium text-gray-700">Téléphone</label>
+                    <input type="text" name="telephone" id="id_telephone" value="{{ form.telephone.value|default:'' }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    {{ form.telephone.errors }}
+                </div>
+
+                <div class="col-span-6">
+                    <label for="{{ form.adresse.id_for_label }}" class="block text-sm font-medium text-gray-700">Adresse de livraison</label>
+                    <textarea name="adresse" id="id_adresse" rows="3" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">{{ form.adresse.value|default:'' }}</textarea>
+                    {{ form.adresse.errors }}
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end space-x-3 pt-5 border-t border-gray-200">
+                <a href="{% url 'customers:dashboard' %}" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Annuler
+                </a>
+                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Enregistrer les modifications
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

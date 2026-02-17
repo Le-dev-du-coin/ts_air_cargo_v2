@@ -5,14 +5,16 @@ from django.urls import reverse_lazy
 from django.views.generic import TemplateView
 from .forms import LoginForm
 
+
 class IndexView(TemplateView):
     template_name = "index.html"
+
 
 class CustomLoginView(LoginView):
     form_class = LoginForm
     template_name = "registration/login.html"
     redirect_authenticated_user = True
-    
+
     def get_success_url(self):
         user = self.request.user
         if user.role == "GLOBAL_ADMIN":
@@ -23,8 +25,11 @@ class CustomLoginView(LoginView):
             return reverse_lazy("mali:dashboard")
         elif user.role in ["ADMIN_RCI", "AGENT_RCI"]:
             return reverse_lazy("ivoire:dashboard")
+        elif user.role == "CLIENT":
+            return reverse_lazy("customers:dashboard")
         # Add other role redirections here
         return reverse_lazy("index")
+
 
 def logout_view(request):
     logout(request)

@@ -11,6 +11,7 @@ urlpatterns = [
     path("chine/", include("chine.urls")),
     path("mali/", include("mali.urls")),
     path("ivoire/", include("ivoire.urls")),
+    path("clients/", include("customers.urls")),
     path("", IndexView.as_view(), name="index"),
 ]
 

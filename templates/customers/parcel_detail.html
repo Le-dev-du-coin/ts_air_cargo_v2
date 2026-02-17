@@ -1,0 +1,67 @@
+{% extends "customers/base_client.html" %}
+
+{% block header %}Détail Colis : {{ colis.reference }}{% endblock %}
+
+{% block chine_content %}
+<div class="max-w-3xl mx-auto">
+    <!-- Status Banner -->
+    <div class="rounded-md p-4 mb-6 
+        {% if colis.status == 'LIVRE' %}bg-green-50 border-l-4 border-green-400
+        {% elif colis.status == 'ARRIVE' %}bg-blue-50 border-l-4 border-blue-400
+        {% else %}bg-yellow-50 border-l-4 border-yellow-400{% endif %}">
+        <div class="flex">
+            <div class="ml-3">
+                <h3 class="text-sm font-medium 
+                    {% if colis.status == 'LIVRE' %}text-green-800
+                    {% elif colis.status == 'ARRIVE' %}text-blue-800
+                    {% else %}text-yellow-800{% endif %}">
+                    Statut actuel : {{ colis.get_status_display }}
+                </h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Informations Colis</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">{{ colis.description }}</p>
+        </div>
+        <div class="border-t border-gray-200">
+            <dl>
+                <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">Référence</dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ colis.reference }}</dd>
+                </div>
+                <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">Poids / Volume</dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ colis.poids }} kg / {{ colis.cbm }} m³</dd>
+                </div>
+                <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">Dimensions</dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ colis.longueur }} x {{ colis.largeur }} x {{ colis.hauteur }} cm</dd>
+                </div>
+                <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">Montant à Payer</dt>
+                    <dd class="mt-1 text-sm font-bold text-gray-900 sm:mt-0 sm:col-span-2">{{ colis.prix_final|floatformat:0 }} FCFA</dd>
+                </div>
+                <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">Date réception</dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ colis.created_at|date:"d F Y à H:i" }}</dd>
+                </div>
+                {% if colis.lot %}
+                <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">Transport</dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ colis.lot.get_type_transport_display }} ({{ colis.lot.numero }})</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+    </div>
+    
+    <div class="mt-8 flex justify-end">
+        <a href="{% url 'customers:parcel_list' %}" class="text-indigo-600 hover:text-indigo-900 font-medium">
+            &larr; Retour à mes colis
+        </a>
+    </div>
+</div>
+{% endblock %}
