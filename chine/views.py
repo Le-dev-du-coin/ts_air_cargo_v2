@@ -512,7 +512,32 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
                 form.instance.country = self.request.tenant_country
             elif self.request.user.country:
                 form.instance.country = self.request.user.country
-        return super().form_valid(form)
+
+        response = super().form_valid(form)
+
+        # Notification Nouveau Client V2
+        try:
+            from notification.tasks import send_notification_async
+
+            client = self.object
+            if client.telephone and client.user:
+                message = (
+                    f"👋 Bienvenue chez *TS AIR CARGO*\n\n"
+                    f"Votre compte client a été créé.\n"
+                    f"Identifiant: *{client.user.username}*\n"
+                    f"Lien: https://tsaircargo.com/tracking/\n\n"
+                    f"Merci de votre confiance !"
+                )
+                send_notification_async.delay(
+                    user_id=client.user.id,
+                    message=message,
+                    categorie="compte_cree",
+                    titre="Bienvenue - Vos identifiants",
+                )
+        except Exception as e:
+            logger.error(f"Erreur trigger notification client {self.object.id}: {e}")
+
+        return response
 
 
 class ClientUpdateView(LoginRequiredMixin, UpdateView):
@@ -658,6 +683,15 @@ class LotCloseView(LoginRequiredMixin, StrictAgentChineRequiredMixin, View):
             lot.status = "FERME"
             lot.save()
             messages.success(request, f"Lot {lot.numero} fermé. Prêt pour expédition.")
+
+            # Notification Système (Optionnel Admin)
+            try:
+                from notification.tasks import send_notification_async
+
+                # On notifie le créateur ou les admins? Ici on se contente de logger le souhait
+                pass
+            except:
+                pass
         return redirect("chine:lot_detail", pk=pk)
 
 
@@ -693,6 +727,28 @@ class LotStatusUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Vie
             messages.success(
                 request, f"Lot {lot.numero} EXPÉDIÉ ! (Mode Lecture Seule activé)"
             )
+
+            # Notification Clients par Lot (Expédition)
+            try:
+                from notification.tasks import send_notification_async
+
+                for colis in lot.colis.all():
+                    if colis.client and colis.client.user:
+                        message = (
+                            f"✈️ *Lot Expédié*\n\n"
+                            f"Votre colis *{colis.reference}* du lot *{lot.numero}* est en cours de transport vers {lot.destination}.\n"
+                            f"Prochaine étape: Arrivée et Douane."
+                        )
+                        send_notification_async.delay(
+                            user_id=colis.client.user.id,
+                            message=message,
+                            categorie="lot_expedie",
+                            titre=f"Expédition Colis {colis.reference}",
+                        )
+            except Exception as e:
+                logger.error(
+                    f"Erreur trigger notification expédition lot {lot.id}: {e}"
+                )
         return redirect("chine:lot_detail", pk=pk)
 
 

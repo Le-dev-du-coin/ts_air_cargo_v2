@@ -732,6 +732,122 @@ class LotArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return redirect("mali:lot_transit_detail", pk=lot.pk)
 
 
+class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
+
+    def post(self, request, pk):
+        lot = get_object_or_404(Lot, pk=pk)
+
+        # Trouver les colis ARRIVE dans ce lot qui n'ont pas encore été notifiés par WhatsApp
+        colis_to_notify = lot.colis.filter(
+            status="ARRIVE", whatsapp_notified=False
+        ).select_related("client", "client__user")
+
+        if not colis_to_notify.exists():
+            messages.warning(request, "Aucun nouveau colis pointé à notifier.")
+            return redirect("mali:lot_transit_detail", pk=pk)
+
+        # Grouper par client
+        by_client = {}
+        for c in colis_to_notify:
+            if not c.client or not c.client.user:
+                continue
+            if c.client.id not in by_client:
+                by_client[c.client.id] = {"user": c.client.user, "colis": []}
+            by_client[c.client.id]["colis"].append(c)
+
+        count_clients = 0
+        from notification.tasks import send_notification_async
+
+        for cid, data in by_client.items():
+            user = data["user"]
+            colis_list = data["colis"]
+            nb = len(colis_list)
+            refs = ", ".join([c.reference for c in colis_list])
+
+            message = (
+                f"📦 *Colis Arrivé(s) au Mali*\n\n"
+                f"Bonjour {user.get_full_name() or user.username},\n"
+                f"Vos colis suivants sont disponibles à l'agence :\n"
+                f"Ref(s): *{refs}*\n\n"
+                f"Merci de passer pour le retrait."
+            )
+
+            send_notification_async.delay(
+                user_id=user.id,
+                message=message,
+                categorie="colis_arrive",
+                titre=f"Arrivée de {nb} colis",
+            )
+
+            # Marquer comme notifié
+            lot.colis.filter(id__in=[c.id for c in colis_list]).update(
+                whatsapp_notified=True
+            )
+            count_clients += 1
+
+        messages.success(request, f"Notifications envoyées à {count_clients} clients.")
+        return redirect("mali:lot_transit_detail", pk=pk)
+
+
+class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
+
+    def post(self, request, pk):
+        lot = get_object_or_404(Lot, pk=pk)
+
+        # Trouver les colis ARRIVE dans ce lot qui n'ont pas encore été notifiés par WhatsApp
+        colis_to_notify = lot.colis.filter(
+            status="ARRIVE", whatsapp_notified=False
+        ).select_related("client", "client__user")
+
+        if not colis_to_notify.exists():
+            messages.warning(request, "Aucun nouveau colis pointé à notifier.")
+            return redirect("mali:lot_transit_detail", pk=pk)
+
+        # Grouper par client
+        by_client = {}
+        for c in colis_to_notify:
+            if not c.client or not c.client.user:
+                continue
+            if c.client.id not in by_client:
+                by_client[c.client.id] = {"user": c.client.user, "colis": []}
+            by_client[c.client.id]["colis"].append(c)
+
+        count_clients = 0
+        from notification.tasks import send_notification_async
+
+        for cid, data in by_client.items():
+            user = data["user"]
+            colis_list = data["colis"]
+            nb = len(colis_list)
+            refs = ", ".join([c.reference for c in colis_list])
+
+            message = (
+                f"📦 *Colis Arrivé(s) au Mali*\n\n"
+                f"Bonjour {user.get_full_name() or user.username},\n"
+                f"Vos colis suivants sont disponibles à l'agence :\n"
+                f"Ref(s): *{refs}*\n\n"
+                f"Merci de passer pour le retrait."
+            )
+
+            send_notification_async.delay(
+                user_id=user.id,
+                message=message,
+                categorie="colis_arrive",
+                titre=f"Arrivée de {nb} colis",
+            )
+
+            # Marquer comme notifié
+            lot.colis.filter(id__in=[c.id for c in colis_list]).update(
+                whatsapp_notified=True
+            )
+            count_clients += 1
+
+        messages.success(request, f"Notifications envoyées à {count_clients} clients.")
+        return redirect("mali:lot_transit_detail", pk=pk)
+
+
 class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
     """Marquer un colis individuel comme LIVRÉ"""
 
@@ -760,12 +876,29 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         if status_paiement == "PAYE":
             colis.est_paye = True
 
-        # Gestion WhatsApp (Marquage uniquement pour l'instant)
-        if request.POST.get("whatsapp_notified") == "on":
-            colis.whatsapp_notified = True
-
         colis.status = "LIVRE"
         colis.save()
+
+        # Notification Livraison (Async)
+        try:
+            from notification.tasks import send_notification_async
+
+            if colis.client and colis.client.user:
+                message = (
+                    f"✅ *Confirmation de Retrait*\n\n"
+                    f"Votre colis *{colis.reference}* a été marqué comme livré.\n"
+                    f"Merci de votre confiance et à bientôt !"
+                )
+                send_notification_async.delay(
+                    user_id=colis.client.user.id,
+                    message=message,
+                    categorie="colis_livre",
+                    titre=f"Livraison effectuée - {colis.reference}"
+                )
+        except Exception as e:
+            from chine.views import logger
+
+            logger.error(f"Erreur trigger notification livraison {colis.id}: {e}")
 
         if request.headers.get("HX-Request"):
             from django.shortcuts import render
@@ -783,21 +916,8 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
                 {"colis": colis, "lot": colis.lot},
             )
 
-        messages.success(
-            request,
-            f"Frais enregistrés pour le lot {lot.numero}. Vous pouvez maintenant pointer les colis.",
-        )
-        return redirect("mali:lot_transit_detail", pk=lot.pk)
-
-
-class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
-    """Marquer un colis individuel comme LIVRÉ"""
-
-    def post(self, request, pk):
-        colis = get_object_or_404(Colis, pk=pk)
-
-        # On ne peut livrer qu'un colis ARRIVÉ
-        if colis.status != "ARRIVE":
+        messages.success(request, f"Colis {colis.reference} livré avec succès.")
+        return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
             messages.error(request, "Seuls les colis déjà arrivés peuvent être livrés.")
             return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
 
