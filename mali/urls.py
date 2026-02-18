@@ -17,6 +17,7 @@ from .views import (
     ColisEncaissementView,
     RapportJourPDFView,
     LotTransitPDFView,
+    NotificationConfigView,
 )
 from report.views import (
     DepenseListView,
@@ -32,6 +33,11 @@ app_name = "mali"
 
 urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path(
+        "notifications/config/",
+        NotificationConfigView.as_view(),
+        name="notifications_config",
+    ),
     path("aujourdhui/", AujourdhuiView.as_view(), name="aujourdhui"),
     path("lots/transit/", LotsEnTransitView.as_view(), name="lots_transit"),
     path("lots/arrives/", LotsArrivesView.as_view(), name="lots_arrives"),

@@ -9,6 +9,17 @@ from core.models import Country, Lot, Colis, Client
 from report.models import Depense
 from django.contrib import messages
 
+from notification.models import ConfigurationNotification
+from .forms import NotificationConfigForm
+from django.views.generic.edit import UpdateView
+from django.urls import reverse_lazy
+
+
+from notification.models import ConfigurationNotification
+from .forms import NotificationConfigForm
+from django.views.generic.edit import UpdateView
+from django.urls import reverse_lazy
+
 
 class AgentMaliRequiredMixin:
     """Mixin pour restreindre l'accès aux agents Mali"""
@@ -1090,3 +1101,24 @@ class LotTransitPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             return HttpResponse("Erreur lors de la génération du PDF", status=500)
 
         return response
+
+
+class NotificationConfigView(LoginRequiredMixin, AgentMaliRequiredMixin, UpdateView):
+    model = ConfigurationNotification
+    form_class = NotificationConfigForm
+    template_name = "mali/config_notifications.html"
+    success_url = reverse_lazy("mali:dashboard")
+
+    def get_object(self, queryset=None):
+        return ConfigurationNotification.get_solo()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # S'assurer que l'objet existe avant le binding du formulaire
+        if not self.object:
+            self.object = ConfigurationNotification.get_solo()
+        return context
+
+    def form_valid(self, form):
+        messages.success(self.request, "Configuration des notifications mise à jour.")
+        return super().form_valid(form)

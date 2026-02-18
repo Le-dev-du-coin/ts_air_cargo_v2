@@ -803,6 +803,32 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
 
         colis.save()
 
+        # Notification Client V2 (Async)
+        try:
+            from notification.tasks import send_notification_async
+
+            client_phone = colis.client.telephone if colis.client else None
+            if client_phone:
+
+                # Construire le message
+                message = (
+                    f"📦 *Colis Reçu en Chine*\n"
+                    f"Ref: *{colis.reference}*\n"
+                    f"Poids: {colis.poids} kg\n"
+                    f"Statut: Reçu à l'entrepôt\n"
+                    f"Merci de votre confiance."
+                )
+
+                # Envoi asynchrone via Celery
+                send_notification_async.delay(
+                    message=message,
+                    phone_number=client_phone,
+                    title="Nouveau Colis Reçu",
+                    message_type="notification",
+                )
+        except Exception as e:
+            logger.error(f"Erreur trigger notification colis {colis.reference}: {e}")
+
         success_msg = "Colis ajouté avec succès !"
 
         if self.request.headers.get("HX-Request"):
