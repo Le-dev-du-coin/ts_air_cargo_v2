@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style>
+    .notification-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+    .category-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 1rem;
+    }
+    .category-colis_arrive { background-color: #dcfce7; color: #166534; }
+    .category-colis_en_transit { background-color: #fef3c7; color: #92400e; }
+    .category-colis_livre { background-color: #e0e7ff; color: #3730a3; }
+    .category-reception_lot { background-color: #f3e8ff; color: #6b21a8; }
+    .category-transfert_recu { background-color: #fce7f3; color: #be185d; }
+    .info-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+    }
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.875rem;
+    }
+    .status-envoye { background-color: #dbeafe; color: #1e40af; }
+    .status-lu { background-color: #d1fae5; color: #059669; }
+    .related-item {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- En-tête de navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'notifications:list' %}">
+                            <i class="fas fa-bell me-1"></i>Notifications
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ notification.titre }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- En-tête de la notification -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="notification-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="category-badge category-{{ notification.categorie }}">
+                            {{ notification.get_categorie_display }}
+                        </span>
+                        <h1 class="h3 mb-2">{{ notification.titre }}</h1>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-clock me-2"></i>
+                            <span>{{ notification.date_creation|date:"d/m/Y à H:i" }}</span>
+                            {% if notification.date_lecture %}
+                            <span class="ms-4">
+                                <i class="fas fa-eye me-2"></i>
+                                Lu le {{ notification.date_lecture|date:"d/m/Y à H:i" }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="status-badge status-{{ notification.statut }}">
+                            {% if notification.statut == 'envoye' %}
+                                <i class="fas fa-exclamation-circle me-1"></i>Non lu
+                            {% elif notification.statut == 'lu' %}
+                                <i class="fas fa-check-circle me-1"></i>Lu
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Contenu principal -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-envelope-open me-2"></i>
+                        Message
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="message-content">
+                        {{ notification.message|linebreaks }}
+                    </div>
+                    
+                    {% if notification.lien_action %}
+                    <hr>
+                    <div class="text-center">
+                        <a href="{{ notification.lien_action }}" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-2"></i>
+                            Voir l'action associée
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations complémentaires -->
+        <div class="col-lg-4">
+            <!-- Informations générales -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Informations
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="info-card">
+                        <div class="mb-3">
+                            <strong>Priorité:</strong>
+                            <span class="ms-2">
+                                {% if notification.priorite == 1 %}
+                                    <span class="badge bg-danger">Élevée</span>
+                                {% elif notification.priorite == 2 %}
+                                    <span class="badge bg-warning">Normale</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Basse</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Type:</strong>
+                            <span class="ms-2">{{ notification.get_type_notification_display }}</span>
+                        </div>
+                        
+                        {% if notification.expediteur %}
+                        <div class="mb-3">
+                            <strong>Expéditeur:</strong>
+                            <span class="ms-2">{{ notification.expediteur.get_full_name }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mb-0">
+                            <strong>Date de création:</strong>
+                            <span class="ms-2">{{ notification.date_creation|date:"d/m/Y à H:i:s" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Éléments liés -->
+            {% if notification.colis_reference or notification.lot_reference or notification.transfert_reference %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-link me-2"></i>
+                        Éléments liés
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if notification.colis_reference %}
+                    <div class="related-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">
+                                    <i class="fas fa-box me-2 text-primary"></i>
+                                    Colis
+                                </h6>
+                                <p class="mb-1">{{ notification.colis_reference.numero_suivi }}</p>
+                                <small class="text-muted">
+                                    Statut: {{ notification.colis_reference.get_statut_display }}
+                                </small>
+                            </div>
+                            <div>
+                                <a href="#" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if notification.lot_reference %}
+                    <div class="related-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">
+                                    <i class="fas fa-boxes me-2 text-success"></i>
+                                    Lot
+                                </h6>
+                                <p class="mb-1">{{ notification.lot_reference.numero_lot }}</p>
+                                <small class="text-muted">
+                                    Statut: {{ notification.lot_reference.get_statut_display }}
+                                </small>
+                            </div>
+                            <div>
+                                <a href="#" class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if notification.transfert_reference %}
+                    <div class="related-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">
+                                    <i class="fas fa-money-bill-wave me-2 text-warning"></i>
+                                    Transfert
+                                </h6>
+                                <p class="mb-1">{{ notification.transfert_reference.montant }} CFA</p>
+                                <small class="text-muted">
+                                    Statut: {{ notification.transfert_reference.get_statut_display }}
+                                </small>
+                            </div>
+                            <div>
+                                <a href="#" class="btn btn-outline-warning btn-sm">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tools me-2"></i>
+                        Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if notification.statut == 'envoye' %}
+                        <button class="btn btn-success" onclick="markAsRead({{ notification.id }})">
+                            <i class="fas fa-check me-2"></i>
+                            Marquer comme lu
+                        </button>
+                        {% endif %}
+                        
+                        <a href="{% url 'notifications:list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Retour aux notifications
+                        </a>
+                        
+                        {% if notification.lien_action %}
+                        <a href="{{ notification.lien_action }}" class="btn btn-outline-info">
+                            <i class="fas fa-external-link-alt me-2"></i>
+                            Action associée
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function markAsRead(notificationId) {
+    fetch(`/notifications/api/${notificationId}/mark-read/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Recharger la page pour mettre à jour l'interface
+            window.location.reload();
+        } else {
+            alert('Erreur lors du marquage comme lu: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur de connexion');
+    });
+}
+</script>
+{% endblock %}

@@ -5,6 +5,7 @@
 {% block chine_content %}
 <div class="space-y-10">
     <!-- Lot Info Card -->
+    <div id="lot-info-card" hx-get="{% url 'chine:lot_detail' lot.pk %}" hx-trigger="colisAdded from:body" hx-select="#lot-info-card" hx-swap="outerHTML">
     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
         <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
             <div>
@@ -118,7 +119,8 @@
             {% endif %}
         </div>
     </div>
-
+    </div>
+    
     <!-- Colis Management -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-16">
         <!-- Add Colis Form -->
@@ -263,7 +265,7 @@
                                 </div>
 
                                 <!-- Hidden compressed field -->
-                                <input type="hidden" name="compressed_photo" x-model="compressedBlobBase64">
+                                <input type="hidden" id="compressed_photo" name="compressed_photo" x-model="compressedBlobBase64">
                             </div>
                             <div class="pt-4 flex items-center gap-3">
                                 <button type="submit"

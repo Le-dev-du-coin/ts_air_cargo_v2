@@ -40,6 +40,27 @@
                     <p class="text-xs font-bold text-gray-500 uppercase">Destination</p>
                     <p class="text-sm font-black text-gray-900 uppercase">{{ lot.destination.name }}</p>
                 </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Dates</p>
+                    <p class="text-[10px] text-gray-600">Exp: {{ lot.date_expedition|date:"d/m/Y" }}</p>
+                    <p class="text-[10px] text-gray-600">Arr: {{ lot.date_arrivee|date:"d/m/Y" }}</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Poids / Vol.</p>
+                    <p class="text-sm font-bold text-gray-900">{{ total_poids|floatformat:1 }} kg</p>
+                    <p class="text-xs text-gray-500">{{ total_cbm }} m³</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Dépenses</p>
+                    <p class="text-[10px] text-red-600">Trans: -{{ lot.frais_transport|fcfa }}</p>
+                    <p class="text-[10px] text-red-600">Douane: -{{ lot.frais_douane|fcfa }}</p>
+                </div>
+                <div class="space-y-1 bg-gray-50 p-1 rounded">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Bénéfice Net</p>
+                    <p class="text-sm font-black {% if benefice >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                        {{ benefice|fcfa }}
+                    </p>
+                </div>
             </div>
         </div>
     </div>

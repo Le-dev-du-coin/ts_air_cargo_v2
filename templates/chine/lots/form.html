@@ -1,4 +1,4 @@
-{% extends "chine/base.html" %}
+ {% extends "chine/base.html" %}
 
 {% block header %}Nouveau Lot{% endblock %}
 
@@ -48,19 +48,18 @@
                         </div>
                     </div>
 
-                    {% if not form.instance.frais_transport %}
                     <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
                         <label for="{{ form.frais_transport.id_for_label }}"
                             class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                            Frais d'Expédition Global (FCFA)
+                            Frais d'Expédition (FCFA)
                         </label>
                         <div class="mt-1 sm:mt-0 sm:col-span-2">
                             {{ form.frais_transport }}
-                            <p class="mt-2 text-sm text-gray-500">Coût d'envoi Chine -> Pays (Optionnel à la création).
+                            <p class="mt-2 text-sm text-gray-500">Coût d'envoi Chine -> Pays.
                             </p>
                         </div>
                     </div>
-                    {% endif %}
+
 
                 </div>
             </div>

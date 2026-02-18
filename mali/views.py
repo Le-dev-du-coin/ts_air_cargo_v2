@@ -74,15 +74,33 @@ class DashboardView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
         context["recettes_mois"] = recettes_mois
 
         # 2. Dépenses (mois)
-        depenses_mois = (
-            Depense.objects.filter(
-                pays=mali, date__year=today.year, date__month=today.month
-            ).aggregate(total=Sum("montant"))["total"]
-            or 0
+        depenses_classiques_mois_qs = Depense.objects.filter(
+            pays=mali, date__year=today.year, date__month=today.month
         )
-        context["depenses_mois"] = depenses_mois
+        depenses_classiques_mois = (
+            depenses_classiques_mois_qs.aggregate(total=Sum("montant"))["total"] or 0
+        )
 
-        # Solde du mois (Recettes - Dépenses)
+        # 2b. Transferts (mois) - Considérés comme dépenses
+        from report.models import TransfertArgent
+
+        transferts_mois_qs = TransfertArgent.objects.filter(
+            pays_expediteur=mali, date__year=today.year, date__month=today.month
+        )
+        transferts_mois = (
+            transferts_mois_qs.aggregate(total=Sum("montant"))["total"] or 0
+        )
+
+        # Total Dépenses (Classiques + Transferts)
+        depenses_mois = depenses_classiques_mois + transferts_mois
+
+        context["depenses_mois"] = depenses_mois
+        context["depenses_classiques_mois"] = (
+            depenses_classiques_mois  # Pour info si besoin
+        )
+        context["transferts_mois"] = transferts_mois  # Pour info si besoin
+
+        # Solde du mois (Recettes - Dépenses Totales)
         context["solde_mois"] = recettes_mois - depenses_mois
 
         # 3. Colis Perdus (mois en cours)
@@ -162,55 +180,124 @@ class AujourdhuiView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
             return context
 
         today = timezone.now().date()
+        from report.models import TransfertArgent
 
-        # Statistiques quotidiennes
-        # 1. Colis en attente de livraison (renommé de "Colis Attendus")
-        context["colis_attente_livraison"] = Colis.objects.filter(
-            lot__destination=mali, status="EXPEDIE"
-        ).count()
+        # --- 1. SOLDE VEILLE (Report) ---
+        # Calcul : Total Recettes (depuis début) - Total Dépenses (depuis début) jusqu'à hier
+        from django.db.models import Sum, F
 
-        # 2. Colis Arrivés Aujourd'hui
-        context["colis_arrives_aujourdhui"] = Colis.objects.filter(
-            lot__destination=mali, status="ARRIVE", created_at__date=today
-        ).count()
-
-        # 3. Colis Livrés Aujourd'hui
-        context["colis_livres_aujourdhui"] = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", updated_at__date=today
-        ).count()
-
-        # Données pour le rapport du jour
-        context["colis_livres_detail"] = (
+        recettes_globales = (
             Colis.objects.filter(
                 lot__destination=mali,
                 status="LIVRE",
                 est_paye=True,
-                updated_at__date=today,
-            )
-            .select_related("client", "lot")
-            .annotate(net_price=F("prix_final") - F("montant_jc"))
-            .order_by("-updated_at")
+                updated_at__date__lt=today,  # Avant aujourd'hui
+            ).aggregate(total=Sum(F("prix_final") - F("montant_jc")))["total"]
+            or 0
         )
 
-        # Encaissements du jour pour la recette
-        aggregates = context["colis_livres_detail"].aggregate(
-            total_net=Sum("net_price"), total_jc=Sum("montant_jc")
+        depenses_globales = (
+            Depense.objects.filter(pays=mali, date__lt=today).aggregate(
+                total=Sum("montant")
+            )["total"]
+            or 0
         )
-        context["encaissements_jour"] = aggregates["total_net"] or 0
-        context["total_jc_jour"] = aggregates["total_jc"] or 0
 
-        # Dépenses du jour
+        # Les transferts sont considérés comme des dépenses (sorties de caisse)
+        transferts_globaux = (
+            TransfertArgent.objects.filter(
+                pays_expediteur=mali, date__lt=today
+            ).aggregate(total=Sum("montant"))["total"]
+            or 0
+        )
+
+        context["solde_veille"] = recettes_globales - (
+            depenses_globales + transferts_globaux
+        )
+
+        # --- 2. ACTIVITÉ DU JOUR (Cargo, Express, Bateau) ---
+        colis_livres_jour = Colis.objects.filter(
+            lot__destination=mali, status="LIVRE", est_paye=True, updated_at__date=today
+        ).select_related("client", "lot")
+
+        # Séparation par type de transport (via le Lot)
+        # Note: Lot.type_transport choices: CARGO, EXPRESS, BATEAU
+
+        # A. Cargo (Air)
+        colis_cargo = colis_livres_jour.filter(lot__type_transport="CARGO")
+        recette_cargo = (
+            colis_cargo.aggregate(total=Sum(F("prix_final") - F("montant_jc")))["total"]
+            or 0
+        )
+        context["colis_cargo_list"] = colis_cargo.annotate(
+            net_price=F("prix_final") - F("montant_jc")
+        ).order_by("-updated_at")
+        context["recette_cargo_jour"] = recette_cargo
+
+        # B. Express (Air)
+        colis_express = colis_livres_jour.filter(lot__type_transport="EXPRESS")
+        recette_express = (
+            colis_express.aggregate(total=Sum(F("prix_final") - F("montant_jc")))[
+                "total"
+            ]
+            or 0
+        )
+        context["colis_express_list"] = colis_express.annotate(
+            net_price=F("prix_final") - F("montant_jc")
+        ).order_by("-updated_at")
+        context["recette_express_jour"] = recette_express
+
+        # C. Bateau (Maritime)
+        colis_bateau = colis_livres_jour.filter(lot__type_transport="BATEAU")
+        recette_bateau = (
+            colis_bateau.aggregate(total=Sum(F("prix_final") - F("montant_jc")))[
+                "total"
+            ]
+            or 0
+        )
+        context["colis_bateau_list"] = colis_bateau.annotate(
+            net_price=F("prix_final") - F("montant_jc")
+        ).order_by("-updated_at")
+        context["recette_bateau_jour"] = recette_bateau
+
+        # Total Recettes Jour
+        context["total_recettes_jour"] = (
+            recette_cargo + recette_express + recette_bateau
+        )
+
+        # Total JC Jour (Pour info)
+        context["total_jc_jour"] = (
+            colis_livres_jour.aggregate(total=Sum("montant_jc"))["total"] or 0
+        )
+
+        # --- 3. DÉPENSES & TRANSFERTS DU JOUR ---
+        # Dépenses
         depenses_jour_qs = Depense.objects.filter(pays=mali, date=today).order_by(
             "-created_at"
         )
-        context["depenses_jour_list"] = depenses_jour_qs
-        context["total_depenses_jour"] = (
-            depenses_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
+        total_depenses = depenses_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
+
+        # Transferts (considérés comme dépenses jour)
+
+        transferts_jour_qs = TransfertArgent.objects.filter(
+            pays_expediteur=mali, date=today
+        ).order_by("-created_at")
+        total_transferts = (
+            transferts_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
         )
 
-        # Cash Net du Jour (Recettes - Dépenses)
-        context["cash_net_jour"] = (
-            context["encaissements_jour"] - context["total_depenses_jour"]
+        context["depenses_jour_list"] = depenses_jour_qs
+        context["transferts_jour_list"] = transferts_jour_qs
+        context["total_sorties_jour"] = total_depenses + total_transferts
+        context["total_depenses_only"] = total_depenses
+        context["total_transferts_only"] = total_transferts
+
+        # --- 4. SOLDE CAISSE ACTUEL ---
+        # Solde Veille + Recettes Jour - Sorties Jour
+        context["solde_caisse_actuel"] = (
+            context["solde_veille"]
+            + context["total_recettes_jour"]
+            - context["total_sorties_jour"]
         )
 
         return context
@@ -615,17 +702,81 @@ class LotArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             lot.frais_transport = frais_transport
 
         # Si le lot était en transit, il passe en ARRIVE (global)
-        if lot.status == "EN_TRANSIT":
-            lot.status = "ARRIVE"
-            lot.date_arrivee = timezone.now()
+        # MODIF : On ne change PAS le statut automatiquement ici pour permettre le pointage dans la vue Transit.
+        # Le statut passera à ARRIVE quand ? Manuellement ou quand tout est pointé ?
+        # Pour l'instant on laisse en TRANSIT pour que l'agent puisse voir la liste et pointer.
+        # if lot.status == "EN_TRANSIT":
+        #    lot.status = "ARRIVE"
+        #    lot.date_arrivee = timezone.now()
 
         lot.save()
 
         # On peut aussi forcer l'arrivée de tous les colis non pointés si on veut
         # lot.colis.filter(status="EXPEDIE").update(status="ARRIVE")
 
-        messages.success(request, f"Le lot {lot.numero} a été mis à jour avec succès.")
-        return redirect("mali:lot_arrived_detail", pk=lot.pk)
+        messages.success(
+            request,
+            f"Frais enregistrés pour le lot {lot.numero}. Vous pouvez maintenant pointer les colis.",
+        )
+        return redirect("mali:lot_transit_detail", pk=lot.pk)
+
+
+class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Marquer un colis individuel comme LIVRÉ"""
+
+    def post(self, request, pk):
+        colis = get_object_or_404(Colis, pk=pk)
+
+        # On ne peut livrer qu'un colis ARRIVÉ
+        if colis.status != "ARRIVE":
+            messages.error(request, "Seuls les colis déjà arrivés peuvent être livrés.")
+            return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
+
+        # Mise à jour des informations de livraison
+        colis.mode_livraison = request.POST.get("mode_livraison", "AGENCE")
+        colis.infos_recepteur = request.POST.get("infos_recepteur", "")
+        colis.commentaire_livraison = request.POST.get("commentaire", "")
+
+        # Gestion Jeton Cédé
+        try:
+            jc = request.POST.get("montant_jc", "0")
+            colis.montant_jc = float(jc) if jc else 0
+        except ValueError:
+            colis.montant_jc = 0
+
+        # Gestion Paiement
+        status_paiement = request.POST.get("status_paiement")
+        if status_paiement == "PAYE":
+            colis.est_paye = True
+
+        # Gestion WhatsApp (Marquage uniquement pour l'instant)
+        if request.POST.get("whatsapp_notified") == "on":
+            colis.whatsapp_notified = True
+
+        colis.status = "LIVRE"
+        colis.save()
+
+        if request.headers.get("HX-Request"):
+            from django.shortcuts import render
+            from django.http import HttpResponse
+
+            # Check if we are in transit mode context (sent by hidden input)
+            if request.POST.get("context") == "transit":
+                return HttpResponse(
+                    f'<li id="colis-item-{colis.pk}" hx-swap-oob="delete"></li>'
+                )
+
+            return render(
+                request,
+                "mali/partials/colis_status_badge.html",
+                {"colis": colis, "lot": colis.lot},
+            )
+
+        messages.success(
+            request,
+            f"Frais enregistrés pour le lot {lot.numero}. Vous pouvez maintenant pointer les colis.",
+        )
+        return redirect("mali:lot_transit_detail", pk=lot.pk)
 
 
 class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
@@ -685,12 +836,10 @@ class ColisPerduView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         colis.save()
 
         if request.headers.get("HX-Request"):
-            from django.shortcuts import render
+            from django.http import HttpResponse
 
-            return render(
-                request,
-                "mali/partials/colis_status_badge.html",
-                {"colis": colis, "lot": colis.lot},
+            return HttpResponse(
+                f'<li id="colis-item-{colis.pk}" hx-swap-oob="delete"></li>'
             )
 
         messages.warning(request, f"Colis {colis.reference} marqué comme PERDU.")
@@ -746,14 +895,44 @@ class ColisAttentePaiementView(LoginRequiredMixin, AgentMaliRequiredMixin, ListV
         return context
 
 
+class ColisEncaissementView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Encaisser un colis (marquer comme payé) avec mise à jour de la date"""
+
+    def post(self, request, pk):
+        colis = get_object_or_404(Colis, pk=pk)
+
+        # Marquer comme payé
+        colis.est_paye = True
+        # Force update of updated_at to ensure it counts for TODAY's report
+        colis.updated_at = timezone.now()
+        colis.save()
+
+        messages.success(request, f"Paiement encaissé pour le colis {colis.reference}.")
+
+        # Redirection vers la liste des paiements en attente (ou la page précédente)
+        return redirect("mali:colis_attente_paiement")
+
+
 class RapportJourPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
     """Génération du rapport journalier en PDF (xhtml2pdf)"""
 
     def get(self, request):
         today = timezone.now().date()
+        report_type = request.GET.get(
+            "type", "global"
+        )  # global, cargo, express, bateau
 
-        # Données du rapport
-        colis_livres = (
+        # Titre du rapport selon le type
+        titre_rapport = "Rapport Journalier Global"
+        if report_type == "cargo":
+            titre_rapport = "Rapport Journalier - CARGO"
+        elif report_type == "express":
+            titre_rapport = "Rapport Journalier - EXPRESS"
+        elif report_type == "bateau":
+            titre_rapport = "Rapport Journalier - BATEAU"
+
+        # Base QuerySet : Colis livrés et payés aujourd'hui au Mali
+        colis_qs = (
             Colis.objects.filter(
                 lot__destination__code="ML",
                 status="LIVRE",
@@ -765,15 +944,90 @@ class RapportJourPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             .order_by("-updated_at")
         )
 
-        encaissements = colis_livres.aggregate(total=Sum("net_price"))["total"] or 0
-        total_jc = colis_livres.aggregate(total=Sum("montant_jc"))["total"] or 0
+        # Filtrage par type
+        if report_type in ["cargo", "express", "bateau"]:
+            colis_qs = colis_qs.filter(lot__type_transport=report_type.upper())
+
+        # Calcul des totaux pour ces colis filtrés
+        encaissements = colis_qs.aggregate(total=Sum("net_price"))["total"] or 0
+        total_jc = colis_qs.aggregate(total=Sum("montant_jc"))["total"] or 0
+
+        # Récupération des dépenses et transferts (Uniquement pour le rapport Global ?)
+        # Décision : On affiche les dépenses/transferts uniquement sur le rapport Global
+        # Car il est difficile de les attribuer à une activité spécifique (sauf si on catégorise les transferts)
+        total_depenses = 0
+        total_transferts = 0
+        solde_veille = 0
+
+        if report_type == "global":
+            # Solde Veille
+            recettes_globales_veille = (
+                Colis.objects.filter(
+                    lot__destination__code="ML",
+                    status="LIVRE",
+                    est_paye=True,
+                    updated_at__date__lt=today,
+                ).aggregate(total=Sum(F("prix_final") - F("montant_jc")))["total"]
+                or 0
+            )
+            depenses_globales_veille = (
+                Depense.objects.filter(pays__code="ML", date__lt=today).aggregate(
+                    total=Sum("montant")
+                )["total"]
+                or 0
+            )
+            from report.models import TransfertArgent
+
+            transferts_globaux_veille = (
+                TransfertArgent.objects.filter(
+                    pays_expediteur__code="ML", date__lt=today
+                ).aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
+            solde_veille = recettes_globales_veille - (
+                depenses_globales_veille + transferts_globaux_veille
+            )
+
+            # Dépenses Jour
+            total_depenses = (
+                Depense.objects.filter(pays__code="ML", date=today).aggregate(
+                    total=Sum("montant")
+                )["total"]
+                or 0
+            )
+            # Transferts Jour
+            total_transferts = (
+                TransfertArgent.objects.filter(
+                    pays_expediteur__code="ML", date=today
+                ).aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
+
+        # Calcul du solde final (pour ce rapport)
+        # Si Global : Solde Veille + Recettes - (Dépenses + Transferts)
+        # Si Spécifique : Juste Recettes (car pas de dépenses spécifiques trackées ici)
+        solde_final = 0
+        if report_type == "global":
+            solde_final = (
+                solde_veille + encaissements - (total_depenses + total_transferts)
+            )
+        else:
+            solde_final = (
+                encaissements  # Pour un rapport spécifique, le solde est le CA généré
+            )
 
         # Contexte pour le template
         context = {
             "date": today,
-            "total_jc": total_jc,
-            "colis_livres": colis_livres,
+            "report_type": report_type,
+            "titre_rapport": titre_rapport,
+            "colis_list": colis_qs,  # Renommé pour cohérence avec template (vérifier template)
             "total_encaissements": encaissements,
+            "total_jc": total_jc,
+            "total_depenses": total_depenses,
+            "total_transferts": total_transferts,
+            "solde_veille": solde_veille,
+            "solde_final": solde_final,
             "user": request.user,
         }
 
@@ -781,13 +1035,17 @@ class RapportJourPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         from django.template.loader import render_to_string
         from xhtml2pdf import pisa
 
+        # Vérifier si le template attend 'colis_livres' ou 'colis_list'
+        # Je vais utiliser 'colis_livres' comme avant pour minimiser les changements template si possible,
+        # mais 'colis_list' est plus standard. Je vais passer les deux pour être sûr ou vérifier le template.
+        context["colis_livres"] = colis_qs
+
         html_string = render_to_string("mali/pdf/rapport_jour.html", context)
 
         # Création du PDF
         response = HttpResponse(content_type="application/pdf")
-        response["Content-Disposition"] = (
-            f'inline; filename="rapport_journalier_{today}.pdf"'
-        )
+        filename = f"rapport_jour_{report_type}_{today}.pdf"
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
 
         pisa_status = pisa.CreatePDF(html_string, dest=response)
 

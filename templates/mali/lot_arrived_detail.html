@@ -42,18 +42,9 @@
             if (response.ok) {
                 const html = await response.text();
                 
-                // Update Badge
-                const badge = document.getElementById(`colis-status-${this.colisId}`);
-                if (badge) {
-                    badge.innerHTML = html;
-                    if (typeof htmx !== 'undefined') {
-                        htmx.process(badge);
-                    }
-                }
-                
                 // Close Modal
                 this.showDeliveryModal = false;
-                
+
                 // Success Message
                 Swal.fire({
                     title: 'Livraison Confirmée!',
@@ -62,6 +53,18 @@
                     timer: 2000,
                     showConfirmButton: false
                 });
+
+                // Remove item from list with animation
+                const item = document.getElementById(`colis-item-${this.colisId}`);
+                if (item) {
+                    item.style.transition = 'all 0.5s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateX(100px)';
+                    setTimeout(() => {
+                        item.remove();
+                        // Update count if possible? (Optional but nice)
+                    }, 500);
+                }
             } else {
                 Swal.fire('Erreur', 'Une erreur est survenue.', 'error');
             }
@@ -135,7 +138,7 @@
         
         <ul class="divide-y divide-gray-200">
             {% for colis in colis_list %}
-            <li class="px-6 py-5 hover:bg-green-50/30 transition-colors">
+            <li id="colis-item-{{ colis.pk }}" class="px-6 py-5 hover:bg-green-50/30 transition-colors">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center min-w-0 flex-1">
                         <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">

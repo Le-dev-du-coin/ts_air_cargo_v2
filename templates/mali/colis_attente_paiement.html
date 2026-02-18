@@ -1,6 +1,7 @@
 {% extends "mali/base.html" %}
 {% load humanize %}
 {% load currency_tags %}
+{% load l10n %}
 
 {% block title %}Paiements en Attente - Mali - TS Air Cargo{% endblock %}
 
@@ -73,15 +74,10 @@
                             {{ colis.prix_final|fcfa }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <form method="POST" action="{% url 'mali:colis_livre' pk=colis.pk %}" class="inline-block" onsubmit="return confirm('Confirmer le paiement de ce colis ?');">
+                            <form method="POST" action="{% url 'mali:colis_encaisser' pk=colis.pk %}" class="inline-block form-encaisser-{{ colis.pk }}">
                                 {% csrf_token %}
-                                <input type="hidden" name="status_paiement" value="PAYE">
-                                <!-- On garde les anciennes valeurs pour ne pas les écraser -->
-                                <input type="hidden" name="mode_livraison" value="{{ colis.mode_livraison }}">
-                                <input type="hidden" name="infos_recepteur" value="{{ colis.infos_recepteur }}">
-                                <input type="hidden" name="montant_jc" value="{{ colis.montant_jc }}">
-                                
-                                <button type="submit" class="text-green-600 hover:text-green-900 font-bold bg-green-50 px-3 py-1 rounded-md border border-green-200 hover:bg-green-100 transition-colors">
+                                <button type="button" onclick="confirmerEncaissement('{{ colis.pk }}', '{{ colis.reference }}', {{ colis.prix_final|default:0|unlocalize }})" 
+                                        class="text-green-600 hover:text-green-900 font-bold bg-green-50 px-3 py-1 rounded-md border border-green-200 hover:bg-green-100 transition-colors">
                                     Encaisser
                                 </button>
                             </form>
@@ -151,4 +147,26 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    function confirmerEncaissement(pk, reference, montant) {
+        Swal.fire({
+            title: 'Confirmer l\'encaissement ?',
+            text: `Colis ${reference}. Montant à encaisser : ${new Intl.NumberFormat('fr-FR').format(montant)} FCFA`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#16a34a', // Green-600
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Oui, encaisser',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.querySelector(`.form-encaisser-${pk}`).submit();
+            }
+        })
+    }
+</script>
 {% endblock %}

@@ -179,7 +179,12 @@ class CountryForm(forms.ModelForm):
 class LotForm(forms.ModelForm):
     class Meta:
         model = Lot
-        fields = ["destination", "type_transport", "frais_transport", "photo"]
+        fields = [
+            "destination",
+            "type_transport",
+            "frais_transport",
+            "photo",
+        ]
         widgets = {
             "destination": forms.Select(
                 attrs={
@@ -194,7 +199,7 @@ class LotForm(forms.ModelForm):
             "frais_transport": forms.NumberInput(
                 attrs={
                     "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
-                    "placeholder": "Automatique",
+                    "placeholder": "Transport Chine -> Pays",
                 }
             ),
             "photo": forms.FileInput(

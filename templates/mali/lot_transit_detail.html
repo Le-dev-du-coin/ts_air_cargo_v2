@@ -113,7 +113,7 @@
         
         <ul class="divide-y divide-gray-200">
             {% for colis in colis_list %}
-            <li class="px-6 py-5 hover:bg-green-50/30 transition-colors">
+            <li id="colis-item-{{ colis.pk }}" class="px-6 py-5 hover:bg-green-50/30 transition-colors">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center min-w-0 flex-1">
                         <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
@@ -136,7 +136,7 @@
                         </div>
                     </div>
                     <div id="colis-status-{{ colis.pk }}" class="flex-shrink-0">
-                        {% include "mali/partials/colis_status_badge.html" with colis=colis lot=lot %}
+                        {% include "mali/partials/colis_status_badge.html" with colis=colis lot=lot is_transit_mode=True %}
                     </div>
                 </div>
             </li>
@@ -145,4 +145,20 @@
         <!-- Pagination [...] -->
     </div>
 </div>
+
+<script>
+    document.body.addEventListener("colisArrived", function(evt){
+        const pk = evt.detail.pk;
+        const item = document.getElementById("colis-item-" + pk);
+        if(item){
+            item.style.transition = "all 0.5s ease";
+            item.style.opacity = "0";
+            item.style.transform = "translateX(50px)";
+            setTimeout(() => item.remove(), 500);
+            
+            // Optional: Update count
+            // htmx.ajax('GET', window.location.href, {select: '#count-element'});
+        }
+    });
+</script>
 {% endblock %}

@@ -78,12 +78,14 @@ def get_country_stats(country_code, year=None, month=None):
     lots = Lot.objects.filter(destination__code=country_code)
     colis = Colis.objects.filter(lot__destination__code=country_code)
     depenses = Depense.objects.filter(pays__code=country_code)
+    transferts = TransfertArgent.objects.filter(pays_expediteur__code=country_code)
 
     if year and month:
         # Filtrer par date de création pour lots/colis/dépenses
         lots = lots.filter(created_at__year=year, created_at__month=month)
         colis = colis.filter(created_at__year=year, created_at__month=month)
         depenses = depenses.filter(date__year=year, date__month=month)
+        transferts = transferts.filter(date__year=year, date__month=month)
 
     # Calcul des montants avec déduction des jetons cédés (JC)
     from django.db.models import F
@@ -98,11 +100,23 @@ def get_country_stats(country_code, year=None, month=None):
     stats["cout_transport"] = lots.aggregate(total=Sum("frais_transport"))["total"] or 0
     stats["cout_douane"] = lots.aggregate(total=Sum("frais_douane"))["total"] or 0
     stats["autres_depenses"] = depenses.aggregate(total=Sum("montant"))["total"] or 0
+    stats["total_transferts"] = transferts.aggregate(total=Sum("montant"))["total"] or 0
+
+    # Pour le dashboard, on combine Transferts et Autres Dépenses dans "Dépenses"
+    # ou on les soustrait simplement du bénéfice.
+    # L'utilisateur a dit "ajouter transfert dans les dépénse".
+    # Je vais mettre à jour "autres_depenses" pour inclure les transferts pour l'affichage simple
+    # Ou garder séparé et sommer pour le bénéfice.
+
+    stats["total_depenses_global"] = (
+        stats["autres_depenses"] + stats["total_transferts"]
+    )
+
     stats["benefice"] = (
         stats["montant_colis"]
         - stats["cout_transport"]
         - stats["cout_douane"]
-        - stats["autres_depenses"]
+        - stats["total_depenses_global"]
     )
     stats["nb_lots"] = lots.count()
     stats["nb_colis"] = colis.count()
@@ -759,61 +773,41 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
     def form_valid(self, form):
         lot = get_object_or_404(Lot, pk=self.kwargs["lot_id"])
 
-        # Preparing parameters for the task
-        params = {
-            "lot_id": lot.pk,
-            "client_id": form.cleaned_data["client"].pk,
-            "type_colis": form.cleaned_data["type_colis"],
-            "nombre_pieces": form.cleaned_data["nombre_pieces"],
-            "description": form.cleaned_data["description"],
-            "poids": float(form.cleaned_data["poids"]),
-            "longueur": float(form.cleaned_data["longueur"]),
-            "largeur": float(form.cleaned_data["largeur"]),
-            "hauteur": float(form.cleaned_data["hauteur"]),
-            "cbm": float(form.cleaned_data["cbm"]),
-            "prix_final": float(form.cleaned_data["prix_final"]),
-            "est_paye": form.cleaned_data["est_paye"],
-        }
+        colis = form.save(commit=False)
+        colis.lot = lot
+        colis.country = lot.country
 
-        # Ultra-fast: Don't save photo now, just pass Base64 or file info to Celery
+        # Handle Base64 photo (Webcam/Compressed)
         compressed_photo_data = self.request.POST.get("compressed_photo")
-
         if compressed_photo_data and compressed_photo_data.startswith("data:image"):
-            # Pass Base64 directly to Celery - no disk I/O here
-            params["photo_base64"] = compressed_photo_data
-        else:
-            # For file upload, read to memory (fast) and pass as base64
-            photo = form.cleaned_data.get("photo")
-            if photo:
-                try:
-                    photo_data = photo.read()
-                    params["photo_base64"] = (
-                        f"data:image/jpeg;base64,{base64.b64encode(photo_data).decode('utf-8')}"
-                    )
-                except Exception as e:
-                    logger.error(f"Error reading photo: {e}")
+            try:
+                import base64
+                from django.core.files.base import ContentFile
 
-        # Create BackgroundTask record (fast DB insert)
-        task_record = BackgroundTask.objects.create(
-            name=f"Création Colis - Lot {lot.numero}",
-            parameters=params,
-            created_by=self.request.user,
-            country=lot.country,
-        )
+                format, imgstr = compressed_photo_data.split(";base64,")
+                ext = format.split("/")[-1]
+                photo_content = ContentFile(
+                    base64.b64decode(imgstr),
+                    name=f"colis_{lot.pk}_{colis.client.pk if colis.client else 'anon'}.{ext}",
+                )
+                colis.photo.save(photo_content.name, photo_content, save=False)
+            except Exception as e:
+                import logging
 
-        # Trigger Celery task asynchronously
-        success_msg = "Colis ajouté ! Traitement en cours..."
-        try:
-            process_colis_creation.apply_async(
-                args=[task_record.pk],
-                priority=5,
-                countdown=0.1,  # Tiny delay to avoid overwhelming
-            )
-        except Exception as e:
-            logger.error(f"Error triggering Celery task: {e}")
-            success_msg = "Colis enregistré (traitement différé)."
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error saving base64 photo: {e}")
+                messages.warning(
+                    self.request,
+                    "Erreur lors de l'enregistrement de la photo (Webcam).",
+                )
 
-        if self.request.htmx:
+        colis.save()
+
+        success_msg = "Colis ajouté avec succès !"
+
+        if self.request.headers.get("HX-Request"):
+            from django.shortcuts import render
+
             response = render(
                 self.request,
                 "chine/partials/messages.html",

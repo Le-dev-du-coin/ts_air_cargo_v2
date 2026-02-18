@@ -65,7 +65,7 @@
     <form id="arrive-form-{{ colis.pk }}"
           hx-post="{% url 'mali:colis_arrive' colis.pk %}"
           hx-target="#colis-status-{{ colis.pk }}"
-          hx-swap="innerHTML">
+          hx-swap="innerHTML"
         {% csrf_token %}
         <button type="button"
                 onclick="this.closest('form').dispatchEvent(new Event('submit', {bubbles: true}))"

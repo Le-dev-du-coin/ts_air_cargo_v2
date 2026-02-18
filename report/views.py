@@ -36,6 +36,21 @@ class DepenseListView(LoginRequiredMixin, ListView):
         context["total_depenses"] = (
             self.object_list.aggregate(Sum("montant"))["montant__sum"] or 0
         )
+
+        # Ajout du total des transferts pour le mois en cours (pour info sur page dépenses)
+        transferts_mois = TransfertArgent.objects.filter(
+            date__year=self.year, date__month=self.month
+        )
+        # Filtrer par pays si nécessaire (même logique que dépenses)
+        if hasattr(self.request.user, "country") and self.request.user.country:
+            transferts_mois = transferts_mois.filter(
+                pays_expediteur=self.request.user.country
+            )
+
+        context["total_transferts_mois"] = (
+            transferts_mois.aggregate(Sum("montant"))["montant__sum"] or 0
+        )
+
         return context
 
 
@@ -115,13 +130,25 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
 
         total_depenses = depenses_qs.aggregate(Sum("montant"))["montant__sum"] or 0
 
-        # 3. Solde
-        solde = total_recettes - total_depenses
+        # 3. Transferts (considérés comme dépenses)
+        transferts_qs = TransfertArgent.objects.filter(
+            date__year=year, date__month=month
+        )
+        if country:
+            transferts_qs = transferts_qs.filter(pays_expediteur=country)
+
+        total_transferts = transferts_qs.aggregate(Sum("montant"))["montant__sum"] or 0
+
+        # 4. Solde
+        # Solde = Recettes - (Dépenses + Transferts)
+        solde = total_recettes - (total_depenses + total_transferts)
 
         context.update(
             {
                 "total_recettes": total_recettes,
                 "total_depenses": total_depenses,
+                "total_transferts": total_transferts,
+                "total_sorties": total_depenses + total_transferts,
                 "solde": solde,
                 "depenses_by_category": depenses_qs.values("categorie")
                 .annotate(total=Sum("montant"))
@@ -159,6 +186,9 @@ class TransfertCreateView(LoginRequiredMixin, CreateView):
         form.instance.enregistre_par = self.request.user
         if hasattr(self.request.user, "country") and self.request.user.country:
             form.instance.pays_expediteur = self.request.user.country
+
+        # Auto-validation : statut RECU par défaut car considéré comme sortie de caisse immédiate
+        form.instance.statut = "RECU"
 
         messages.success(self.request, "Transfert enregistré avec succès.")
         return super().form_valid(form)
@@ -202,14 +232,24 @@ class RapportExportView(LoginRequiredMixin, View):
 
         total_depenses = depenses_qs.aggregate(Sum("montant"))["montant__sum"] or 0
 
-        # 3. Solde
-        solde = total_recettes - total_depenses
+        # 3. Transferts (considérés comme dépenses)
+        transferts_qs = TransfertArgent.objects.filter(
+            date__year=year, date__month=month
+        )
+        if country:
+            transferts_qs = transferts_qs.filter(pays_expediteur=country)
+
+        total_transferts = transferts_qs.aggregate(Sum("montant"))["montant__sum"] or 0
+
+        # 4. Solde
+        solde = total_recettes - (total_depenses + total_transferts)
 
         context = {
             "year": year,
             "month": month,
             "total_recettes": total_recettes,
             "total_depenses": total_depenses,
+            "total_transferts": total_transferts,
             "solde": solde,
             "depenses": depenses_qs.order_by("date"),
             "user": request.user,
@@ -231,7 +271,8 @@ class RapportExportView(LoginRequiredMixin, View):
             writer.writerow([])
             writer.writerow(["Total Recettes", total_recettes])
             writer.writerow(["Total Dépenses", total_depenses])
-            writer.writerow(["Solde", solde])
+            writer.writerow(["Total Transferts", total_transferts])
+            writer.writerow(["Solde Période", solde])
             writer.writerow([])
             writer.writerow(["Détail des Dépenses"])
             writer.writerow(["Date", "Catégorie", "Description", "Montant"])

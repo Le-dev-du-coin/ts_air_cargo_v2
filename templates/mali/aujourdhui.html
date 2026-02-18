@@ -4,211 +4,175 @@
 
 {% block title %}Aujourd'hui - Mali - TS Air Cargo{% endblock %}
 
-{% block header %}Activité du Jour - Mali{% endblock %}
+{% block header %}Rapport Journalier & Caisse{% endblock %}
 
 {% block actions %}
-<div class="flex items-center space-x-4">
-    <div class="text-sm text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100">
-        <span class="font-bold text-green-700">{% now "l d F Y" %}</span>
-    </div>
-    <a href="{% url 'mali:rapport_jour_pdf' %}" target="_blank" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none transition-all">
-        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-        </svg>
-        Télécharger PDF
+<div class="flex flex-wrap gap-2">
+    <a href="{% url 'mali:rapport_jour_pdf' %}?type=global" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+        📄 Global
+    </a>
+    <a href="{% url 'mali:rapport_jour_pdf' %}?type=cargo" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+        ✈️ Cargo
+    </a>
+    <a href="{% url 'mali:rapport_jour_pdf' %}?type=express" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+        🚀 Express
+    </a>
+    <a href="{% url 'mali:rapport_jour_pdf' %}?type=bateau" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+        🚢 Bateau
     </a>
 </div>
 {% endblock %}
 
 {% block mali_content %}
-<div class="space-y-8">
-    <!-- Statistiques Quotidiennes - 3 cartes -->
-    <div>
-        <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <!-- 1. Colis en Attente de Livraison -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
-                <dt>
-                    <div class="absolute bg-blue-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Attente Livraison</p>
-                </dt>
-                <dd class="ml-16 flex items-baseline">
-                    <p class="text-2xl font-bold text-gray-900">{{ colis_attente_livraison|intcomma }}</p>
-                </dd>
-            </div>
-
-            <!-- 2. Colis Arrivés Aujourd'hui -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
-                <dt>
-                    <div class="absolute bg-green-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Arrivés Aujourd'hui</p>
-                </dt>
-                <dd class="ml-16 flex items-baseline">
-                    <p class="text-2xl font-bold text-green-600">{{ colis_arrives_aujourdhui|intcomma }}</p>
-                </dd>
-            </div>
-
-            <!-- 3. Colis Livrés Aujourd'hui -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
-                <dt>
-                    <div class="absolute bg-indigo-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Livrés Aujourd'hui</p>
-                </dt>
-                <dd class="ml-16 flex items-baseline">
-                    <p class="text-2xl font-bold text-indigo-600">{{ colis_livres_aujourdhui|intcomma }}</p>
-                </dd>
-            </div>
-        </dl>
+<!-- Synthèse Financière (Cartes) -->
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+    <!-- Report Veille -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-gray-400">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-xs font-medium text-gray-500 truncate uppercase">Report Veille</dt>
+            <dd class="mt-1 text-xl font-bold text-gray-700 truncate" title="{{ solde_veille|fcfa }}">{{ solde_veille|fcfa }}</dd>
+        </div>
     </div>
 
-    <!-- Rapport imprimable -->
-    <div class="bg-white shadow rounded-lg p-8 border border-gray-100 print:shadow-none print:border-none">
-        <!-- En-tête Rapport (visible en impression) -->
-        <div class="hidden print:block border-b-2 border-gray-300 pb-4 mb-6">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-900">TS AIR CARGO</h2>
-                    <p class="text-sm text-gray-600">Mali - Rapport Quotidien</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-lg font-semibold">{% now "d/m/Y" %}</p>
-                    <p class="text-sm text-gray-600">Agent: {{ user.get_full_name|default:user.username }}</p>
-                </div>
-            </div>
+    <!-- Recettes Jour -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-green-500">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-xs font-medium text-gray-500 truncate uppercase">Recettes Jour</dt>
+            <dd class="mt-1 text-xl font-bold text-green-600 truncate" title="{{ total_recettes_jour|fcfa }}">{{ total_recettes_jour|fcfa }}</dd>
+            <p class="mt-1 text-[10px] text-green-500 font-medium">Dont JC: -{{ total_jc_jour|fcfa }}</p>
         </div>
+    </div>
 
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-lg font-bold text-gray-900 flex items-center">
-                <svg class="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Résumé de l'Activité
-            </h3>
+    <!-- Sorties Jour (Dépenses + Transferts) -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-red-500">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-xs font-medium text-gray-500 truncate uppercase">Sorties Jour</dt>
+            <dd class="mt-1 text-xl font-bold text-red-600 truncate" title="-{{ total_sorties_jour|fcfa }}">-{{ total_sorties_jour|fcfa }}</dd>
+            <p class="mt-1 text-[10px] text-red-500 font-medium">Dép: {{ total_depenses_only|fcfa }} | Trans: {{ total_transferts_only|fcfa }}</p>
         </div>
+    </div>
 
-        <div class="grid grid-cols-3 gap-4 mb-10">
-            <div class="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 shadow-sm">
-                <p class="text-2xl font-extrabold text-blue-600">{{ colis_attente_livraison }}</p>
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">En Attente</p>
-            </div>
-            <div class="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 shadow-sm">
-                <p class="text-2xl font-extrabold text-green-600">{{ colis_arrives_aujourdhui }}</p>
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Arrivés</p>
-            </div>
-            <div class="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 shadow-sm">
-                <p class="text-2xl font-extrabold text-indigo-600">{{ colis_livres_aujourdhui }}</p>
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Livrés</p>
-            </div>
-        </div>
-
-        <!-- Détail Livraisons -->
-        {% if colis_livres_detail %}
-        <div class="mb-8">
-            <h3 class="text-md font-bold text-gray-800 mb-4 border-l-4 border-indigo-500 pl-3">Détail des Livraisons</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Heure</th>
-                            <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Référence</th>
-                            <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Client</th>
-                            <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Lot</th>
-                            <th class="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">JC</th>
-                            <th class="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Net à Payer</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for colis in colis_livres_detail %}
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">{{ colis.created_at|date:"H:i" }}</td>
-                            <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{{ colis.reference }}</td>
-                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">{{ colis.client.nom }} {{ colis.client.prenom }}</td>
-                            <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-green-700">{{ colis.lot.numero }}</td>
-                            <td class="px-3 py-4 whitespace-nowrap text-sm text-right text-gray-500">
-                                {% if colis.montant_jc > 0 %}
-                                    {{ colis.montant_jc|fcfa }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td class="px-3 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">{{ colis.net_price|fcfa }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% else %}
-        <div class="py-12 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 mb-8">
-            <p class="text-sm text-gray-500">Aucune livraison enregistrée pour le moment.</p>
-        </div>
-        {% endif %}
-
-        <!-- Total Encaissements -->
-        <div class="border-t-2 border-gray-100 pt-6">
-            <div class="flex justify-end space-x-4">
-                <div class="text-right bg-gray-50 px-6 py-4 rounded-xl border border-gray-100 shadow-sm">
-                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Total JC</p>
-                    <p class="text-xl font-bold text-gray-600">{{ total_jc_jour|fcfa }}</p>
-                </div>
-                <div class="text-right bg-red-50 px-6 py-4 rounded-xl border border-red-100 shadow-sm">
-                    <p class="text-xs font-bold text-red-700 uppercase tracking-widest mb-1">Total Dépenses</p>
-                    <p class="text-xl font-bold text-red-600">- {{ total_depenses_jour|fcfa }}</p>
-                </div>
-                <div class="text-right bg-green-50 px-6 py-4 rounded-xl border border-green-100 shadow-sm">
-                    <p class="text-xs font-bold text-green-700 uppercase tracking-widest mb-1">Total Encaissements</p>
-                    <p class="text-xl font-bold text-green-600">+ {{ encaissements_jour|fcfa }}</p>
-                </div>
-                <div class="text-right bg-blue-50 px-6 py-4 rounded-xl border border-blue-100 shadow-sm">
-                    <p class="text-xs font-bold text-blue-700 uppercase tracking-widest mb-1">CASH NET (En Caisse)</p>
-                    <p class="text-3xl font-black text-blue-600">{{ cash_net_jour|fcfa }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Signature (uniquement impression) -->
-        <div class="hidden print:block mt-16 pt-8 border-t border-gray-300">
-            <div class="flex justify-between">
-                <div class="text-center">
-                    <p class="text-sm font-bold text-gray-800">Signature Agent</p>
-                    <div class="mt-16 border-b border-gray-400 w-64"></div>
-                    <p class="mt-2 text-xs text-gray-500">{{ user.get_full_name|default:user.username }}</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-sm font-bold text-gray-800">Horodatage</p>
-                    <p class="mt-4 font-mono text-xs">{% now "d/m/Y H:i:s" %}</p>
-                    <div class="mt-8">
-                        <svg class="h-16 w-16 text-gray-200 mx-auto opacity-50" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
+    <!-- Solde Caisse Actuel -->
+    <div class="bg-indigo-900 overflow-hidden shadow rounded-lg border border-indigo-700">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-xs font-medium text-indigo-200 truncate uppercase">Solde Caisse Actuel</dt>
+            <dd class="mt-1 text-2xl font-black text-white truncate" title="{{ solde_caisse_actuel|fcfa }}">{{ solde_caisse_actuel|fcfa }}</dd>
+            <p class="mt-1 text-[10px] text-indigo-300">Disponible Immédiatement</p>
         </div>
     </div>
 </div>
 
-<style>
-@media print {
-    body { background: white; }
-    .print\:hidden { display: none !important; }
-    .print\:shadow-none { box-shadow: none !important; }
-    .print\:border-none { border: none !important; }
-}
-</style>
+<!-- Sections / Onglets (Alpine.js) -->
+<div x-data="{ activeTab: 'cargo' }" class="bg-white shadow rounded-lg border border-gray-200 min-h-[500px]">
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex" aria-label="Tabs">
+            <button @click="activeTab = 'cargo'"
+                :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'cargo', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'cargo' }"
+                class="w-1/4 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center">
+                <span class="mr-0 sm:mr-2">✈️</span> 
+                <span>Cargo <span class="hidden sm:inline">({{ recette_cargo_jour|fcfa }})</span></span>
+            </button>
+            <button @click="activeTab = 'express'"
+                :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'express', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'express' }"
+                class="w-1/4 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center">
+                <span class="mr-0 sm:mr-2">🚀</span> 
+                <span>Express <span class="hidden sm:inline">({{ recette_express_jour|fcfa }})</span></span>
+            </button>
+            <button @click="activeTab = 'bateau'"
+                :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'bateau', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'bateau' }"
+                class="w-1/4 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center">
+                <span class="mr-0 sm:mr-2">🚢</span> 
+                <span>Bateau <span class="hidden sm:inline">({{ recette_bateau_jour|fcfa }})</span></span>
+            </button>
+            <button @click="activeTab = 'sorties'"
+                :class="{ 'border-red-500 text-red-600': activeTab === 'sorties', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'sorties' }"
+                class="w-1/4 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center">
+                <span class="mr-0 sm:mr-2">📉</span> 
+                <span>Sorties <span class="hidden sm:inline">(-{{ total_sorties_jour|fcfa }})</span></span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Contenu des Onglets -->
+    
+    <!-- 1. Cargo -->
+    <div x-show="activeTab === 'cargo'" class="p-4" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Livraisons Cargo (Aujourd'hui)</h3>
+             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Total: {{ recette_cargo_jour|fcfa }}
+            </span>
+        </div>
+        {% include "mali/partials/today_colis_table.html" with colis_list=colis_cargo_list type="Cargo" total_recette=recette_cargo_jour %}
+    </div>
+
+    <!-- 2. Express -->
+    <div x-show="activeTab === 'express'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+         <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Livraisons Express (Aujourd'hui)</h3>
+             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Total: {{ recette_express_jour|fcfa }}
+            </span>
+        </div>
+        {% include "mali/partials/today_colis_table.html" with colis_list=colis_express_list type="Express" total_recette=recette_express_jour %}
+    </div>
+
+    <!-- 3. Bateau -->
+    <div x-show="activeTab === 'bateau'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+         <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Livraisons Bateau (Aujourd'hui)</h3>
+             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Total: {{ recette_bateau_jour|fcfa }}
+            </span>
+        </div>
+        {% include "mali/partials/today_colis_table.html" with colis_list=colis_bateau_list type="Bateau" total_recette=recette_bateau_jour %}
+    </div>
+
+    <!-- 4. Sorties (Dépenses + Transferts) -->
+    <div x-show="activeTab === 'sorties'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Dépenses -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold text-gray-700">Dépenses Courantes</h4>
+                    <span class="text-sm font-medium bg-gray-200 px-2 py-1 rounded">{{ total_depenses_only|fcfa }}</span>
+                </div>
+                <ul class="divide-y divide-gray-200 bg-white rounded shadow-sm">
+                    {% for depense in depenses_jour_list %}
+                    <li class="px-4 py-3 text-sm flex justify-between">
+                        <div>
+                            <span class="font-medium text-gray-900">{{ depense.description }}</span>
+                            <span class="text-gray-500 block text-xs">{{ depense.get_categorie_display }}</span>
+                        </div>
+                        <span class="font-bold text-gray-900">-{{ depense.montant|fcfa }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="px-4 py-3 text-sm text-gray-500 italic text-center">Aucune dépense aujourd'hui.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <!-- Transferts -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold text-gray-700">Transferts d'Argent</h4>
+                    <span class="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ total_transferts_only|fcfa }}</span>
+                </div>
+                <ul class="divide-y divide-gray-200 bg-white rounded shadow-sm">
+                    {% for transfert in transferts_jour_list %}
+                    <li class="px-4 py-3 text-sm flex justify-between">
+                        <div>
+                            <span class="font-medium text-gray-900">Transfert vers Chine</span>
+                            <span class="text-gray-500 block text-xs">{{ transfert.description|default:"Sans note" }}</span>
+                        </div>
+                        <span class="font-bold text-blue-600">-{{ transfert.montant|fcfa }}</span>
+                    </li>
+                     {% empty %}
+                    <li class="px-4 py-3 text-sm text-gray-500 italic text-center">Aucun transfert aujourd'hui.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

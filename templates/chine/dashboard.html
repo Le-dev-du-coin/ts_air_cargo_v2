@@ -75,7 +75,7 @@
                         </div>
                         <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
                             <dt class="text-sm font-medium text-gray-500 truncate">Total Dépenses</dt>
-                            <dd class="mt-1 text-xl font-semibold text-red-600">- {{ stats_ml.cout_transport|add:stats_ml.cout_douane|add:stats_ml.autres_depenses|floatformat:0|intcomma }} FCFA</dd>
+                            <dd class="mt-1 text-xl font-semibold text-red-600">- {{ stats_ml.cout_transport|add:stats_ml.cout_douane|add:stats_ml.total_depenses_global|floatformat:0|intcomma }} FCFA</dd>
                         </div>
                         <div class="px-4 py-5 bg-green-50 shadow rounded-lg overflow-hidden sm:p-6">
                             <dt class="text-sm font-medium text-green-800 truncate">Bénéfice Net</dt>
@@ -145,7 +145,7 @@
                         </div>
                         <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
                             <dt class="text-sm font-medium text-gray-500 truncate">Total Dépenses</dt>
-                            <dd class="mt-1 text-xl font-semibold text-red-600">- {{ stats_ci.cout_transport|add:stats_ci.cout_douane|add:stats_ci.autres_depenses|floatformat:0|intcomma }} FCFA</dd>
+                            <dd class="mt-1 text-xl font-semibold text-red-600">- {{ stats_ci.cout_transport|add:stats_ci.cout_douane|add:stats_ci.total_depenses_global|floatformat:0|intcomma }} FCFA</dd>
                         </div>
                         <div class="px-4 py-5 bg-green-50 shadow rounded-lg overflow-hidden sm:p-6">
                             <dt class="text-sm font-medium text-green-800 truncate">Bénéfice Net</dt>
