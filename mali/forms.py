@@ -9,9 +9,12 @@ class NotificationConfigForm(forms.ModelForm):
             "rappels_actifs",
             "delai_rappel_jours",
             "template_rappel",
-            "template_rappel_groupe",
             "wachap_mali_access_token",
             "wachap_mali_instance_id",
+            "wachap_chine_access_token",
+            "wachap_chine_instance_id",
+            "wachap_system_access_token",
+            "wachap_system_instance_id",
             "developer_phone",
             "security_code",
         ]
@@ -29,6 +32,18 @@ class NotificationConfigForm(forms.ModelForm):
                 attrs={"class": "w-full border-gray-300 rounded-md"}, render_value=True
             ),
             "wachap_mali_instance_id": forms.PasswordInput(
+                attrs={"class": "w-full border-gray-300 rounded-md"}, render_value=True
+            ),
+            "wachap_chine_access_token": forms.PasswordInput(
+                attrs={"class": "w-full border-gray-300 rounded-md"}, render_value=True
+            ),
+            "wachap_chine_instance_id": forms.PasswordInput(
+                attrs={"class": "w-full border-gray-300 rounded-md"}, render_value=True
+            ),
+            "wachap_system_access_token": forms.PasswordInput(
+                attrs={"class": "w-full border-gray-300 rounded-md"}, render_value=True
+            ),
+            "wachap_system_instance_id": forms.PasswordInput(
                 attrs={"class": "w-full border-gray-300 rounded-md"}, render_value=True
             ),
             "security_code": forms.PasswordInput(

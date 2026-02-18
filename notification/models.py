@@ -44,18 +44,14 @@ class ConfigurationNotification(models.Model):
         help_text="Nombre de jours après l'arrivée du colis avant d'envoyer un rappel",
     )
     template_rappel = models.TextField(
-        "Message de rappel (Individuel)",
-        default="Bonjour, votre colis {numero_suivi} est disponible à notre agence depuis {jours} jours. Reste à payer : {montant}. Merci de passer le récupérer.",
-    )
-    template_rappel_groupe = models.TextField(
-        "Message de rappel (Groupé)",
+        "Message de rappel (Adaptatif)",
         default=(
             "Bonjour {client_nom}, vous avez {nombre_colis} colis disponibles à l'agence depuis plus de {jours} jours.\n"
             "Références : {liste_ref}\n"
             "Total à payer : {total_montant}\n"
             "Merci de passer les récupérer."
         ),
-        help_text="Variables : {client_nom}, {nombre_colis}, {jours}, {liste_ref}, {total_montant}",
+        help_text="Variables : {client_nom}, {nombre_colis}, {jours}, {liste_ref}, {total_montant}, {numero_suivi}, {montant}",
     )
 
     # Sécurité
