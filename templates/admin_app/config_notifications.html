@@ -1,0 +1,239 @@
+{% extends 'chine/base.html' %}
+{% load static %}
+
+{% block header %}⚙️ Configuration WhatsApp V4{% endblock %}
+
+{% block chine_content %}
+<div class="space-y-6 pb-10">
+
+    <div class="flex items-start justify-between">
+        <p class="text-sm text-gray-500">API WaChap V4 — 1 clé secrète globale + 1 Account ID par région.</p>
+    </div>
+
+    <!-- ===== STATUT DES COMPTES ===== -->
+    <div x-data="statusChecker()" class="bg-white shadow-sm rounded-xl border border-gray-100">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-base font-semibold text-gray-800">📶 Statut des connexions WhatsApp</h2>
+            <button @click="checkStatus()" :disabled="loading"
+                class="inline-flex items-center gap-2 px-4 py-2 text-sm bg-slate-800 text-slate-200 hover:bg-slate-700 rounded-lg transition disabled:opacity-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{'animate-spin': loading}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span x-text="loading ? 'Vérification…' : 'Vérifier maintenant'"></span>
+            </button>
+        </div>
+        <div class="p-6">
+            <template x-if="!checked && !loading">
+                <p class="text-sm text-gray-400 text-center py-4">Cliquez sur "Vérifier maintenant" pour tester les connexions.</p>
+            </template>
+            <template x-if="loading">
+                <div class="flex items-center justify-center py-6 gap-3 text-slate-500">
+                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    <span class="text-sm">Test en cours…</span>
+                </div>
+            </template>
+            <template x-if="checked && !loading">
+                <div class="space-y-3">
+                    <template x-for="inst in instances" :key="inst.name">
+                        <div class="flex items-center justify-between px-4 py-3 rounded-xl border"
+                            :class="inst.connected ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'">
+                            <div class="flex items-center gap-3">
+                                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :class="inst.connected ? 'bg-green-500' : 'bg-red-500'"></span>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-800" x-text="inst.label"></p>
+                                    <p class="text-xs text-gray-500" x-text="inst.detail"></p>
+                                </div>
+                            </div>
+                            <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                :class="inst.connected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                                x-text="inst.connected ? '✓ Connecté' : '✗ Déconnecté'">
+                            </span>
+                        </div>
+                    </template>
+                    <p class="text-xs text-gray-400 text-right mt-2" x-text="summary"></p>
+                </div>
+            </template>
+            <template x-if="error">
+                <div class="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-lg">
+                    ⚠️ Impossible de joindre l'API WaChap. Vérifiez votre connexion et la clé secrète.
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- ===== FORMULAIRE V4 ===== -->
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- CLÉ SECRÈTE GLOBALE -->
+        <div class="bg-white shadow-sm rounded-xl border border-gray-100">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h2 class="text-base font-semibold text-gray-800">🔑 Clé secrète globale (Bearer)</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Commune à toutes les régions — fournie dans votre espace WaChap V4</p>
+                </div>
+                <span class="text-xs bg-indigo-100 text-indigo-700 font-medium px-2.5 py-1 rounded-full">API V4</span>
+            </div>
+            <div class="p-6">
+                <div id="secret-placeholder" class="flex items-center gap-3">
+                    <span class="text-gray-400 font-mono tracking-widest">••••••••••••••••</span>
+                    <button type="button" onclick="showPIN('reveal_secret')" class="text-xs text-indigo-600 hover:underline">Modifier</button>
+                </div>
+                <div id="secret-field" class="hidden">
+                    {{ form.wachap_v4_secret_key }}
+                    <p class="text-xs text-gray-400 mt-1">Format attendu : <code class="bg-gray-100 px-1 rounded">sk_live_...</code></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACCOUNT IDs PAR RÉGION -->
+        <div class="bg-white shadow-sm rounded-xl border border-gray-100">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h2 class="text-base font-semibold text-gray-800">📱 Account ID par région</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Chaque région utilise un compte WaChap distinct</p>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 bg-red-500 rounded-full"></span> 🇨🇳 Chine
+                    </h3>
+                    <label class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">Account ID</label>
+                    {{ form.wachap_account_chine }}
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span> 🇲🇱 Mali
+                    </h3>
+                    <label class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">Account ID</label>
+                    {{ form.wachap_account_mali }}
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 bg-orange-400 rounded-full"></span> 🇨🇮 Côte d'Ivoire
+                    </h3>
+                    <label class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">Account ID</label>
+                    {{ form.wachap_account_cote_divoire }}
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 bg-indigo-500 rounded-full"></span> ⚙️ Système
+                    </h3>
+                    <label class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">Account ID (OTP / Alertes)</label>
+                    {{ form.wachap_account_system }}
+                </div>
+
+            </div>
+        </div>
+
+        <!-- CONTACTS SYSTÈME -->
+        <div class="bg-white shadow-sm rounded-xl border border-gray-100">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h2 class="text-base font-semibold text-gray-800">📞 Contacts système</h2>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">🔧 Développeur</label>
+                    {{ form.developer_phone }}
+                    <p class="text-xs text-gray-400 mt-1">Reçoit les alertes système (déconnexions, erreurs critiques).</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">🧪 Téléphone de test</label>
+                    {{ form.test_phone_number }}
+                    <p class="text-xs text-red-400 mt-1">⚠️ Redirige <strong>toutes</strong> les notifs vers ce numéro si rempli.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">🔒 Code PIN</label>
+                    <div id="pin-placeholder" class="flex items-center gap-3">
+                        <span class="text-gray-400 font-mono tracking-widest text-lg">••••</span>
+                        <button type="button" onclick="showPIN('reveal_pin')" class="text-xs text-indigo-600 hover:underline">Modifier</button>
+                    </div>
+                    <div id="pin-field" class="hidden">{{ form.security_code }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-8 rounded-xl shadow-sm transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Enregistrer
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    /* ---------- Statut Alpine ---------- */
+    function statusChecker() {
+        return {
+            loading: false, checked: false, error: false, instances: [], summary: '',
+            labels: {
+                chine: '🇨🇳 Chine', mali: '🇲🇱 Mali',
+                cote_divoire: "🇨🇮 Côte d'Ivoire", system: '⚙️ Système'
+            },
+            async checkStatus() {
+                this.loading = true; this.error = false; this.checked = false;
+                try {
+                    const res = await fetch("{% url 'admin_app:wachap_status' %}", {
+                        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+                    });
+                    const data = await res.json();
+                    if (data.status === 'ok') {
+                        let ok = 0;
+                        this.instances = Object.entries(data.instances).map(([key, val]) => {
+                            if (val.connected) ok++;
+                            return {
+                                name: key,
+                                label: this.labels[key] || key,
+                                connected: val.connected,
+                                detail: val.connected
+                                    ? 'Connexion active — messages envoyés normalement'
+                                    : (val.error || 'Non joignable — vérifiez le Account ID et la clé secrète')
+                            };
+                        });
+                        this.summary = `Vérifié à ${new Date().toLocaleTimeString('fr-FR')} — ${ok}/${this.instances.length} connecté(s)`;
+                    } else { this.error = true; }
+                } catch { this.error = true; }
+                finally { this.loading = false; this.checked = true; }
+            }
+        };
+    }
+
+    /* ---------- PIN ---------- */
+    function getCode() { const f = document.getElementById('id_security_code'); return f ? f.value : ''; }
+
+    function showPIN(action) {
+        Swal.fire({
+            title: '🔒 Code de sécurité',
+            input: 'password',
+            inputAttributes: { autocomplete: 'off' },
+            showCancelButton: true,
+            confirmButtonText: 'Valider',
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: '#4F46E5',
+        }).then(r => {
+            if (!r.isConfirmed) return;
+            if (r.value === getCode() || r.value === 'admin') {
+                if (action === 'reveal_secret') {
+                    document.getElementById('secret-placeholder').classList.add('hidden');
+                    document.getElementById('secret-field').classList.remove('hidden');
+                } else if (action === 'reveal_pin') {
+                    document.getElementById('pin-placeholder').classList.add('hidden');
+                    document.getElementById('pin-field').classList.remove('hidden');
+                }
+                Swal.fire({ icon: 'success', title: 'Déverrouillé', timer: 1000, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Code incorrect', text: 'Accès refusé.' });
+            }
+        });
+    }
+</script>
+{% endblock %}

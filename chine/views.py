@@ -525,7 +525,7 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
                     f"👋 Bienvenue chez *TS AIR CARGO*\n\n"
                     f"Votre compte client a été créé.\n"
                     f"Identifiant: *{client.user.username}*\n"
-                    f"Lien: https://tsaircargo.com/tracking/\n\n"
+                    f"Lien: https://tsaircargo.com/login/\n\n"
                     f"Merci de votre confiance !"
                 )
                 send_notification_async.delay(
@@ -533,6 +533,7 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
                     message=message,
                     categorie="compte_cree",
                     titre="Bienvenue - Vos identifiants",
+                    region="chine",
                 )
         except Exception as e:
             logger.error(f"Erreur trigger notification client {self.object.id}: {e}")
@@ -688,10 +689,24 @@ class LotCloseView(LoginRequiredMixin, StrictAgentChineRequiredMixin, View):
             try:
                 from notification.tasks import send_notification_async
 
-                # On notifie le créateur ou les admins? Ici on se contente de logger le souhait
-                pass
-            except:
-                pass
+                config = ConfigurationNotification.get_solo()
+                if config.developer_phone:
+                    message = (
+                        f"🔒 *Lot Fermé*\n\n"
+                        f"Le lot *{lot.numero}* a été FERMÉ par {request.user.username}.\n"
+                        f"Prêt pour expédition vers {lot.destination}."
+                    )
+                    send_notification_async.delay(
+                        user_id=request.user.id,  # Notifier via system, destinataire dev_phone if forced in service?
+                        # Actually send_notification needs a user object as destinataire logic-wise in service
+                        # But WaChapService override uses developer_phone if it's a system role or force region
+                        message=message,
+                        categorie="alerte_admin",
+                        titre=f"Fermeture Lot {lot.numero}",
+                        region="system",
+                    )
+            except Exception as e:
+                logger.error(f"Erreur trigger notification fermeture lot {lot.id}: {e}")
         return redirect("chine:lot_detail", pk=pk)
 
 
@@ -744,6 +759,7 @@ class LotStatusUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Vie
                             message=message,
                             categorie="lot_expedie",
                             titre=f"Expédition Colis {colis.reference}",
+                            region="chine",
                         )
             except Exception as e:
                 logger.error(
@@ -848,9 +864,6 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
                 )
                 colis.photo.save(photo_content.name, photo_content, save=False)
             except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.error(f"Error saving base64 photo: {e}")
                 messages.warning(
                     self.request,
@@ -863,9 +876,7 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
         try:
             from notification.tasks import send_notification_async
 
-            client_phone = colis.client.telephone if colis.client else None
-            if client_phone:
-
+            if colis.client and colis.client.user:
                 # Construire le message
                 message = (
                     f"📦 *Colis Reçu en Chine*\n"
@@ -877,10 +888,11 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
 
                 # Envoi asynchrone via Celery
                 send_notification_async.delay(
+                    user_id=colis.client.user.id,
                     message=message,
-                    phone_number=client_phone,
-                    title="Nouveau Colis Reçu",
-                    message_type="notification",
+                    categorie="colis_recu",
+                    titre="Nouveau Colis Reçu",
+                    region="chine",
                 )
         except Exception as e:
             logger.error(f"Erreur trigger notification colis {colis.reference}: {e}")

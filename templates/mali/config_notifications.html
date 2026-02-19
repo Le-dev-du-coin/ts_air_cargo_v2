@@ -2,10 +2,10 @@
 {% load static %}
 
 {% block mali_content %}
-<div class="container mx-auto px-4 py-8">
+<div class="container mx-auto px-4 py-8 max-w-2xl">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">
-            <i class="fas fa-bell mr-2"></i>Configuration des Notifications
+            <i class="fas fa-bell mr-2 text-green-500"></i>Paramètres de Notification
         </h1>
         <a href="{% url 'mali:dashboard' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
             <i class="fas fa-arrow-left mr-2"></i>Retour
@@ -14,249 +14,70 @@
 
     <form method="post" class="space-y-6">
         {% csrf_token %}
-        
-        <!-- Section Rappels Automatiques -->
+
+        <!-- Rappels automatiques -->
         <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">
-                <i class="fas fa-clock mr-2"></i>Rappels Automatiques (Colis Arrivés)
+            <h2 class="text-lg font-semibold text-gray-700 mb-5 border-b pb-2 flex items-center gap-2">
+                <i class="fas fa-clock text-green-500"></i>
+                Rappels automatiques
             </h2>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="flex items-center space-x-3 mb-4">
+                <div class="space-y-4">
+                    <label class="flex items-center gap-3 cursor-pointer">
                         {{ form.rappels_actifs }}
-                        <span class="text-gray-700 font-medium">Activer les rappels automatiques</span>
+                        <span class="text-sm font-medium text-gray-700">Activer les rappels automatiques</span>
                     </label>
-                    
-                    <div class="mb-4">
-                        <label class="block text-gray-700 font-medium mb-2">Délai avant rappel</label>
-                        <div class="relative rounded-md shadow-sm">
+                    <div>
+                        <label class="block text-sm text-gray-600 font-medium mb-1">Délai avant rappel</label>
+                        <div class="flex items-center gap-2">
                             {{ form.delai_rappel_jours }}
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <span class="text-gray-500 sm:text-sm">jours</span>
-                            </div>
+                            <span class="text-sm text-gray-500">jours</span>
                         </div>
-                        <p class="text-sm text-gray-500 mt-1">Nombre de jours après l'arrivée sans récupération.</p>
+                        <p class="text-xs text-gray-400 mt-1">Jours après l'arrivée du colis sans récupération</p>
                     </div>
                 </div>
-                
+
                 <div>
-                    <label class="block text-gray-700 font-medium mb-2">Message de Rappel (Unique & Adaptatif)</label>
+                    <label class="block text-sm text-gray-600 font-medium mb-1">Message de rappel</label>
                     {{ form.template_rappel }}
-                    <p class="text-sm text-gray-500 mt-1">Variables : {client_nom}, {nombre_colis}, {jours}, {liste_ref}, {total_montant}</p>
+                    <p class="text-xs text-gray-400 mt-1">Variables disponibles : {client_nom}, {nombre_colis}, {jours}, {liste_ref}, {total_montant}</p>
                 </div>
             </div>
         </div>
 
-        <!-- Section Configuration WaChap (Multi-Instances) -->
-        <div class="bg-white shadow rounded-lg p-6 relative">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2 flex justify-between items-center">
-                <span><i class="fab fa-whatsapp mr-2 text-green-500"></i>Identifiants WaChap</span>
-                <div class="space-x-2">
-                     <button type="button" onclick="showSecurityCodePrompt('show')" class="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 focus:outline-none">
-                        <i class="fas fa-eye mr-1"></i>Déverrouiller Tous
-                    </button>
-                    <button type="button" onclick="showSecurityCodePrompt('reset')" class="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 focus:outline-none">
-                        <i class="fas fa-trash-alt mr-1"></i>Réinitialiser Tout
-                    </button>
-                </div>
-            </h2>
-            
-            <div id="credentials-mask" class="absolute inset-0 bg-gray-50 bg-opacity-95 z-20 flex flex-col items-center justify-center rounded-lg transition-all duration-300">
-                <div class="text-center p-6 bg-white shadow-xl rounded-lg border">
-                    <i class="fas fa-lock text-4xl text-green-600 mb-3"></i>
-                    <p class="text-gray-600 font-medium mb-4">Zone Sécurisée</p>
-                    <button type="button" onclick="showSecurityCodePrompt('show')" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 shadow-md transform transition active:scale-95">
-                        <i class="fas fa-key mr-2"></i>Saisir le Code PIN
-                    </button>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-8 filter blur-md transition-all duration-500" id="credentials-fields">
-                <!-- Instance Mali -->
-                <div>
-                    <h3 class="font-bold text-gray-600 mb-3 flex items-center">
-                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>Instance Mali
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm text-gray-600 mb-1">Instance ID</label>
-                            {{ form.wachap_mali_instance_id }}
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-600 mb-1">Access Token</label>
-                            {{ form.wachap_mali_access_token }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Instance Chine -->
-                <div>
-                    <h3 class="font-bold text-gray-600 mb-3 flex items-center">
-                        <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>Instance Chine
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm text-gray-600 mb-1">Instance ID</label>
-                            {{ form.wachap_chine_instance_id }}
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-600 mb-1">Access Token</label>
-                            {{ form.wachap_chine_access_token }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Instance Système -->
-                <div>
-                    <h3 class="font-bold text-gray-600 mb-3 flex items-center">
-                        <span class="w-2 h-2 bg-indigo-500 rounded-full mr-2"></span>Instance Système (Alertes/OTP)
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm text-gray-600 mb-1">Instance ID</label>
-                            {{ form.wachap_system_instance_id }}
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-600 mb-1">Access Token</label>
-                            {{ form.wachap_system_access_token }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section Sécurité & Alertes -->
+        <!-- Rapport journalier -->
         <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">
-                <i class="fas fa-shield-alt mr-2 text-green-500"></i>Sécurité & Alertes
+            <h2 class="text-lg font-semibold text-gray-700 mb-5 border-b pb-2 flex items-center gap-2">
+                <i class="fas fa-chart-bar text-green-500"></i>
+                Rapport journalier (23h50)
             </h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="relative">
-                    <label class="block text-gray-700 font-medium mb-2">Code de Sécurité (PIN)</label>
-                    <div id="pin-field-container" class="hidden">
-                        {{ form.security_code }}
-                        <p class="text-sm text-gray-500 mt-1">Code pour déverrouiller la zone WaChap.</p>
-                    </div>
-                    <div id="pin-placeholder" class="flex items-center space-x-2">
-                        <span class="text-gray-400 font-mono tracking-widest text-lg">••••</span>
-                        <button type="button" onclick="revealPinField()" class="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded hover:bg-gray-200 border">
-                            <i class="fas fa-edit mr-1"></i>Modifier
-                        </button>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 font-medium mb-2">Téléphone Développeur (+223...)</label>
-                    {{ form.developer_phone }}
-                    <p class="text-sm text-gray-500 mt-1">Reçoit les alertes critiques.</p>
-                </div>
+            <div>
+                <label class="block text-sm text-gray-600 font-medium mb-1">
+                    Numéro WhatsApp pour le rapport du soir
+                </label>
+                {{ form.admin_mali_phone }}
+                <p class="text-xs text-gray-400 mt-1">
+                    Si renseigné, reçoit chaque soir à 23h50 le récapitulatif Cargo / Express / Bateau, dépenses et solde caisse.
+                    Laissez vide pour désactiver.
+                </p>
             </div>
         </div>
 
-        <div class="flex justify-end pt-4">
-            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded shadow-lg transform transition hover:scale-105">
-                <i class="fas fa-save mr-2"></i>Enregistrer la Configuration
+        <!-- Note info -->
+        <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
+            <i class="fas fa-info-circle text-blue-400 mt-0.5 flex-shrink-0"></i>
+            <p class="text-sm text-blue-700">
+                La configuration des clés API WhatsApp (instances) est gérée par l'administrateur.
+                Contactez-le si une instance semble déconnectée.
+            </p>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg shadow transition hover:scale-105">
+                <i class="fas fa-save mr-2"></i>Enregistrer
             </button>
         </div>
     </form>
 </div>
-
-<!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    function getStoredCode() {
-        return document.getElementById('id_security_code').value;
-    }
-
-    function revealPinField() {
-        document.getElementById('pin-field-container').classList.remove('hidden');
-        document.getElementById('pin-placeholder').classList.add('hidden');
-    }
-
-    function unlockUI() {
-        const mask = document.getElementById('credentials-mask');
-        const fields = document.getElementById('credentials-fields');
-        
-        if (mask) mask.style.display = 'none';
-        if (fields) {
-            fields.classList.remove('blur-sm', 'blur-md');
-            fields.style.filter = 'none';
-        }
-        
-        // Show all fields as text
-        const ids = ['mali', 'chine', 'system'];
-        ids.forEach(inst => {
-            const instField = document.getElementById(`id_wachap_${inst}_instance_id`);
-            const tokenField = document.getElementById(`id_wachap_${inst}_access_token`);
-            if (instField) instField.type = 'text';
-            if (tokenField) tokenField.type = 'text';
-        });
-    }
-
-    function resetCredentials() {
-        const ids = ['mali', 'chine', 'system'];
-        ids.forEach(inst => {
-            const instField = document.getElementById(`id_wachap_${inst}_instance_id`);
-            const tokenField = document.getElementById(`id_wachap_${inst}_access_token`);
-            if (instField) instField.value = '';
-            if (tokenField) tokenField.value = '';
-        });
-        unlockUI();
-        Swal.fire('Réinitialisé !', 'Tous les identifiants ont été effacés. N\'oubliez pas d\'enregistrer.', 'success');
-    }
-
-    function showSecurityCodePrompt(action) {
-        const correctCode = getStoredCode();
-
-        Swal.fire({
-            title: 'Sécurité',
-            text: 'Entrez le code PIN pour continuer',
-            input: 'password',
-            inputAttributes: {
-                autocapitalize: 'off',
-                autocorrect: 'off'
-            },
-            showCancelButton: true,
-            confirmButtonText: 'Valider',
-            cancelButtonText: 'Annuler',
-            confirmButtonColor: '#10B981', 
-        }).then((result) => {
-            if (result.isConfirmed) {
-                if (result.value === correctCode || result.value === "admin") {
-                    if (action === 'show') {
-                        unlockUI();
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Déverrouillé',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    } else if (action === 'reset') {
-                         Swal.fire({
-                            title: 'Êtes-vous sûr ?',
-                            text: "Cela effacera TOUTES les clés API WaChap !",
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonColor: '#EF4444',
-                            confirmButtonText: 'Oui, tout effacer',
-                            cancelButtonText: 'Annuler'
-                        }).then((confirmResult) => {
-                            if (confirmResult.isConfirmed) {
-                                resetCredentials();
-                            }
-                        });
-                    }
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Code Incorrect',
-                        text: 'L\'accès est refusé.'
-                    });
-                }
-            }
-        });
-    }
-</script>
 {% endblock %}

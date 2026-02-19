@@ -1,8 +1,11 @@
+"""
+Service WaChap V4 — API https://api.wachap.com/v1
+Auth : Bearer secret_key global + accountId par région.
+"""
+
 import requests
 import logging
-import json
-import base64
-from django.conf import settings
+from typing import Optional, Tuple
 from django.core.cache import cache
 from ..models import ConfigurationNotification
 
@@ -11,152 +14,211 @@ logger = logging.getLogger(__name__)
 
 class WaChapService:
     """
-    Service d'intégration avec l'API WaChap (WhatsApp)
-    Gère le routage vers les différentes instances (Chine, Mali, Système)
+    Service d'intégration WaChap API V4.
+    1 clé secrète globale + 1 accountId par région (chine / mali / cote_divoire / system).
     """
 
-    BASE_URL = "https://wachap.app/api"
+    BASE_URL = "https://api.wachap.com/v1"
+
+    # Ordre de fallback par région si accountId non configuré
+    FALLBACK_ORDER = {
+        "system": ["mali", "chine"],
+        "chine": ["mali", "system"],
+        "cote_divoire": ["mali", "system"],
+        "mali": ["chine", "system"],
+    }
 
     def _get_config(self):
-        """Récupère la configuration (avec cache 5 minutes)"""
+        """Config singleton avec cache 5 min."""
         config = cache.get("config_notification")
         if not config:
             config = ConfigurationNotification.get_solo()
             cache.set("config_notification", config, 300)
         return config
 
-    def _get_instance_credentials(self, region="mali"):
-        """
-        Récupère les identifiants pour une région donnée
+    def _get_accounts(self):
+        """Retourne le dict {région: accountId} depuis la config BDD."""
+        cfg = self._get_config()
+        return {
+            "chine": cfg.wachap_account_chine,
+            "mali": cfg.wachap_account_mali,
+            "cote_divoire": cfg.wachap_account_cote_divoire,
+            "system": cfg.wachap_account_system,
+        }
 
-        Args:
-            region: 'chine', 'mali' ou 'system'
+    def _get_secret_key(self):
+        return self._get_config().wachap_v4_secret_key
+
+    # ------------------------------------------------------------------
+    # Utilitaires
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def format_phone(phone: str) -> str:
+        """Formate un numéro en +XXXXXXXXXXX (requis par V4)."""
+        clean = (
+            str(phone)
+            .replace(" ", "")
+            .replace("-", "")
+            .replace("(", "")
+            .replace(")", "")
+        )
+        if not clean.startswith("+"):
+            clean = "+" + clean
+        return clean
+
+    def _determine_region(self, phone: str, sender_role: str = None) -> str:
+        """Détermine la région depuis le rôle ou le préfixe téléphonique."""
+        if sender_role == "system":
+            return "system"
+
+        clean = str(phone).replace("+", "").replace(" ", "")
+        if clean.startswith("86"):
+            return "chine"
+        if clean.startswith("225"):
+            return "cote_divoire"
+        # 223 ou inconnu → mali par défaut
+        return "mali"
+
+    def _resolve_account(self, region: str, accounts: dict) -> Tuple[str, str]:
+        """
+        Résout un accountId pour la région, avec fallback.
+        Retourne (account_id, region_utilisée).
+        """
+        account_id = accounts.get(region, "")
+        if account_id:
+            return account_id, region
+
+        logger.warning(
+            f"[WaChap V4] AccountId manquant pour '{region}', tentative fallback…"
+        )
+        for fallback in self.FALLBACK_ORDER.get(region, []):
+            fb_id = accounts.get(fallback, "")
+            if fb_id:
+                logger.info(f"[WaChap V4] Fallback '{region}' → '{fallback}'")
+                return fb_id, fallback
+
+        return "", region  # Aucun compte dispo
+
+    # ------------------------------------------------------------------
+    # Envoi de messages
+    # ------------------------------------------------------------------
+
+    def send_message(
+        self,
+        phone: str,
+        message: str,
+        sender_role: str = None,
+        region: str = None,
+    ) -> Tuple[bool, str, Optional[str]]:
+        """
+        Envoie un message texte via WaChap API V4.
 
         Returns:
-            tuple: (access_token, instance_id)
+            (success: bool, message: str, message_id: str|None)
         """
         config = self._get_config()
+        secret_key = config.wachap_v4_secret_key
 
-        if region == "chine":
-            return config.wachap_chine_access_token, config.wachap_chine_instance_id
-        elif region == "system":
-            return config.wachap_system_access_token, config.wachap_system_instance_id
-        else:  # Default to mali
-            return config.wachap_mali_access_token, config.wachap_mali_instance_id
+        if not secret_key:
+            logger.error("[WaChap V4] Clé secrète non configurée.")
+            return False, "Clé secrète WaChap V4 non configurée.", None
 
-    def _determine_instance_by_phone(self, phone):
-        """Détermine l'instance à utiliser selon le numéro"""
-        if not phone:
-            return "mali"
+        # Override téléphone pour les tests locaux
+        if config.test_phone_number:
+            test_clean = config.test_phone_number.replace(" ", "")
+            logger.info(f"[WaChap V4] TEST OVERRIDE: {phone} → {test_clean}")
+            phone = test_clean
 
-        phone = str(phone).replace("+", "").replace(" ", "")
+        formatted_phone = self.format_phone(phone)
 
-        if phone.startswith("86"):
-            return "chine"
-        elif phone.startswith("223"):
-            return "mali"
-        else:
-            return "mali"  # Default
+        # Résolution région + accountId
+        if not region:
+            region = self._determine_region(formatted_phone, sender_role)
 
-    def send_message(self, phone, message, sender_role=None, region=None):
-        """
-        Envoie un message texte simple
+        accounts = self._get_accounts()
+        account_id, used_region = self._resolve_account(region, accounts)
 
-        Args:
-            phone: Numéro de téléphone destinataire
-            message: Contenu du message
-            sender_role: Rôle de l'expéditeur (pour info log)
-            region: Force une région spécifique ('chine', 'mali', 'system')
-        """
-        return self.send_message_with_type(phone, message, "text", sender_role, region)
+        if not account_id:
+            return (
+                False,
+                f"Aucun accountId configuré pour la région '{region}' (et aucun fallback).",
+                None,
+            )
+
+        headers = {
+            "Authorization": f"Bearer {secret_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "data": {
+                "accountId": account_id,
+                "to": formatted_phone,
+                "type": "text",
+                "content": message,
+            }
+        }
+
+        logger.info(
+            f"[WaChap V4] Envoi → {formatted_phone} | région={used_region} | account={account_id}"
+        )
+
+        try:
+            response = requests.post(
+                f"{self.BASE_URL}/whatsapp/messages/send",
+                json=payload,
+                headers=headers,
+                timeout=20,
+            )
+
+            logger.debug(
+                f"[WaChap V4] HTTP {response.status_code}: {response.text[:200]}"
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success"):
+                    message_id = data.get("messageId")
+                    logger.info(f"[WaChap V4] ✓ Message envoyé. ID={message_id}")
+                    return (
+                        True,
+                        data.get("message", "Message envoyé avec succès."),
+                        message_id,
+                    )
+                else:
+                    error = data.get("message", "Erreur applicative inconnue")
+                    logger.error(f"[WaChap V4] ✗ Erreur API: {error}")
+                    return False, error, None
+            else:
+                error = f"HTTP {response.status_code}: {response.text[:300]}"
+                logger.error(f"[WaChap V4] ✗ {error}")
+                return False, error, None
+
+        except requests.exceptions.Timeout:
+            logger.error("[WaChap V4] Timeout")
+            return False, "Timeout WaChap API (> 20s)", None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"[WaChap V4] Erreur réseau: {e}")
+            return False, f"Erreur réseau: {e}", None
+        except Exception as e:
+            logger.critical(f"[WaChap V4] Exception inattendue: {e}", exc_info=True)
+            return False, str(e), None
 
     def send_message_with_type(
         self,
-        phone,
-        message,
-        message_type="text",
-        sender_role=None,
-        region=None,
-        media_url=None,
+        phone: str,
+        message: str,
+        message_type: str = "text",
+        sender_role: str = None,
+        region: str = None,
+        media_url: str = None,
         media_file=None,
-    ):
+    ) -> Tuple[bool, str, Optional[str]]:
         """
-        Envoie un message typé (text, image, etc.)
+        Compatibilité avec l'ancien code (le type text est le seul supporté en V4 pour l'instant).
         """
-        try:
-            # 1. Déterminer l'instance
-            if not region:
-                if sender_role == "system":
-                    region = "system"
-                else:
-                    region = self._determine_instance_by_phone(phone)
-
-            # 2. Récupérer les credentials
-            access_token, instance_id = self._get_instance_credentials(region)
-
-            if not access_token or not instance_id:
-                return False, f"Instance {region} non configurée", None
-
-            # 3. Préparer payload
-            clean_phone = str(phone).replace("+", "").replace(" ", "")
-
-            payload = {
-                "number": clean_phone,
-                "instance_id": instance_id,
-                "access_token": access_token,
-            }
-
-            endpoint = "/send"
-
-            if (
-                message_type == "text" or not media_url
-            ):  # Fallback a text si pas de media
-                payload["type"] = "text"
-                payload["message"] = message
-            elif message_type == "image" or message_type == "media":
-                endpoint = "/send-media"
-                payload["type"] = "media"
-                payload["message"] = message  # Caption
-                if media_url:
-                    payload["media_url"] = media_url
-                    # media_type is usually inferred or required. WaChap API might require 'media_type' ('image', 'video', 'document')
-                    # Assuming 'image' generic or auto-detect. Checking V1 docs if available...
-                    # V1 docs suggest 'type': 'media' and 'media_url'.
-
-            # 4. Envoyer requête
-            try:
-                response = requests.post(
-                    f"{self.BASE_URL}{endpoint}", json=payload, timeout=10
-                )
-
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get("status") == "success":
-                        message_id = data.get("data", {}).get("message_id") or data.get(
-                            "message_id"
-                        )
-                        logger.info(
-                            f"WaChap Sent ({region}): {clean_phone} - ID: {message_id}"
-                        )
-                        return True, "Envoyé avec succès", message_id
-                    else:
-                        error_msg = data.get("message", "Erreur inconnue")
-                        logger.error(f"WaChap Error ({region}): {error_msg}")
-                        return False, error_msg, None
-                else:
-                    logger.error(
-                        f"WaChap HTTP Error ({region}): {response.status_code} - {response.text}"
-                    )
-                    return False, f"HTTP {response.status_code}", None
-
-            except requests.exceptions.Timeout:
-                return False, "Timeout WaChap API", None
-            except requests.exceptions.RequestException as e:
-                return False, f"Erreur connexion: {str(e)}", None
-
-        except Exception as e:
-            logger.exception(f"Exception WaChap send: {str(e)}")
-            return False, str(e), None
+        return self.send_message(phone, message, sender_role=sender_role, region=region)
 
 
 # Instance globale

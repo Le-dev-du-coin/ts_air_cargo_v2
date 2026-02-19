@@ -1,8 +1,10 @@
 from django.views.generic import TemplateView, ListView, View, DetailView
+from django.views.generic.edit import UpdateView
 from django.shortcuts import get_object_or_404, redirect
 from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
+from django.urls import reverse_lazy
 from django.db.models import Q, Count, Sum, Value, F
 from django.db.models.functions import Concat
 from core.models import Country, Lot, Colis, Client
@@ -11,14 +13,10 @@ from django.contrib import messages
 
 from notification.models import ConfigurationNotification
 from .forms import NotificationConfigForm
-from django.views.generic.edit import UpdateView
-from django.urls import reverse_lazy
 
+import logging
 
-from notification.models import ConfigurationNotification
-from .forms import NotificationConfigForm
-from django.views.generic.edit import UpdateView
-from django.urls import reverse_lazy
+logger = logging.getLogger(__name__)
 
 
 class AgentMaliRequiredMixin:
@@ -778,6 +776,7 @@ class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
                 message=message,
                 categorie="colis_arrive",
                 titre=f"Arrivée de {nb} colis",
+                region="cote_divoire",
             )
 
             # Marquer comme notifié
@@ -836,6 +835,7 @@ class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
                 message=message,
                 categorie="colis_arrive",
                 titre=f"Arrivée de {nb} colis",
+                region="mali",
             )
 
             # Marquer comme notifié
@@ -893,7 +893,8 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
                     user_id=colis.client.user.id,
                     message=message,
                     categorie="colis_livre",
-                    titre=f"Livraison effectuée - {colis.reference}"
+                    titre=f"Livraison effectuée - {colis.reference}",
+                    region="mali",
                 )
         except Exception as e:
             from chine.views import logger
@@ -917,44 +918,6 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             )
 
         messages.success(request, f"Colis {colis.reference} livré avec succès.")
-        return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
-            messages.error(request, "Seuls les colis déjà arrivés peuvent être livrés.")
-            return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
-
-        # Mise à jour des informations de livraison
-        colis.mode_livraison = request.POST.get("mode_livraison", "AGENCE")
-        colis.infos_recepteur = request.POST.get("infos_recepteur", "")
-        colis.commentaire_livraison = request.POST.get("commentaire", "")
-
-        # Gestion Jeton Cédé
-        try:
-            jc = request.POST.get("montant_jc", "0")
-            colis.montant_jc = float(jc) if jc else 0
-        except ValueError:
-            colis.montant_jc = 0
-
-        # Gestion Paiement
-        status_paiement = request.POST.get("status_paiement")
-        if status_paiement == "PAYE":
-            colis.est_paye = True
-
-        # Gestion WhatsApp (Marquage uniquement pour l'instant)
-        if request.POST.get("whatsapp_notified") == "on":
-            colis.whatsapp_notified = True
-
-        colis.status = "LIVRE"
-        colis.save()
-
-        if request.headers.get("HX-Request"):
-            from django.shortcuts import render
-
-            return render(
-                request,
-                "mali/partials/colis_status_badge.html",
-                {"colis": colis, "lot": colis.lot},
-            )
-
-        messages.success(request, f"Colis {colis.reference} marqué comme Livré.")
         return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
 
 
@@ -1224,21 +1187,19 @@ class LotTransitPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
 
 
 class NotificationConfigView(LoginRequiredMixin, AgentMaliRequiredMixin, UpdateView):
+    """
+    Permet à l'agent Mali de configurer les rappels automatiques.
+    NB : La configuration des credentials API WaChap est gestion de l'admin_app.
+    """
+
     model = ConfigurationNotification
-    form_class = NotificationConfigForm
+    form_class = NotificationConfigForm  # Rappels uniquement
     template_name = "mali/config_notifications.html"
     success_url = reverse_lazy("mali:dashboard")
 
     def get_object(self, queryset=None):
         return ConfigurationNotification.get_solo()
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # S'assurer que l'objet existe avant le binding du formulaire
-        if not self.object:
-            self.object = ConfigurationNotification.get_solo()
-        return context
-
     def form_valid(self, form):
-        messages.success(self.request, "Configuration des notifications mise à jour.")
+        messages.success(self.request, "✅ Configuration des rappels mise à jour.")
         return super().form_valid(form)

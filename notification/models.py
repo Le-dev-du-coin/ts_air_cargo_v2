@@ -10,28 +10,31 @@ class ConfigurationNotification(models.Model):
     Gère les clés API WaChap pour les différentes instances
     """
 
-    # Instance Chine
-    wachap_chine_access_token = models.CharField(
-        "Token WaChap Chine", max_length=255, blank=True
-    )
-    wachap_chine_instance_id = models.CharField(
-        "Instance ID Chine", max_length=255, blank=True
+    # ---- API WaChap V4 ----
+    # 1 clé secrète globale + 1 accountId par région (remplace les instance_id/access_token V1)
+
+    wachap_v4_secret_key = models.CharField(
+        "Clé Secrète WaChap V4 (globale)",
+        max_length=255,
+        blank=True,
+        help_text="Clé Bearer commune à tous les comptes WaChap V4",
     )
 
-    # Instance Mali
-    wachap_mali_access_token = models.CharField(
-        "Token WaChap Mali", max_length=255, blank=True
+    # AccountId par région (V4)
+    wachap_account_chine = models.CharField(
+        "Account ID Chine (V4)", max_length=255, blank=True
     )
-    wachap_mali_instance_id = models.CharField(
-        "Instance ID Mali", max_length=255, blank=True
+    wachap_account_mali = models.CharField(
+        "Account ID Mali (V4)", max_length=255, blank=True
     )
-
-    # Instance Système (OTP/Alertes)
-    wachap_system_access_token = models.CharField(
-        "Token WaChap Système", max_length=255, blank=True
+    wachap_account_cote_divoire = models.CharField(
+        "Account ID Côte d'Ivoire (V4)", max_length=255, blank=True
     )
-    wachap_system_instance_id = models.CharField(
-        "Instance ID Système", max_length=255, blank=True
+    wachap_account_system = models.CharField(
+        "Account ID Système (V4)",
+        max_length=255,
+        blank=True,
+        help_text="Utilisé pour les OTP et alertes administrateur",
     )
 
     # Configuration des rappels
@@ -70,6 +73,20 @@ class ConfigurationNotification(models.Model):
         help_text="Format international (+223...)",
     )
 
+    admin_mali_phone = models.CharField(
+        "Téléphone Admin Mali (Rapports journaliers)",
+        max_length=20,
+        blank=True,
+        help_text="Si rempli, reçoit le rapport journalier WhatsApp à 23h50 (Cargo, Express, Bateau, Dépenses, Solde)",
+    )
+
+    test_phone_number = models.CharField(
+        "Téléphone de Test (Override)",
+        max_length=20,
+        blank=True,
+        help_text="Si rempli, TOUTES les notifications seront envoyées à ce numéro (utile pour le local).",
+    )
+
     class Meta:
         verbose_name = "Configuration des Notifications"
         verbose_name_plural = "Configuration des Notifications"
@@ -105,9 +122,10 @@ class Notification(models.Model):
     CATEGORIE_CHOICES = [
         ("colis_recu", "Colis Reçu (Chine)"),
         ("lot_expedie", "Lot Expédié"),
-        ("lot_arrive", "Lot Arrivé (Mali)"),
+        ("lot_arrive", "Lot Arrivé"),
         ("colis_livre", "Colis Livré"),
         ("rappel_colis", "Rappel Colis"),
+        ("rapport_journalier", "Rapport Journalier Mali"),
         ("otp", "Code OTP"),
         ("alerte_admin", "Alerte Admin"),
         ("alerte_dev", "Alerte Développeur"),

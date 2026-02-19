@@ -33,28 +33,31 @@ class WaChapMonitor:
         config = self._get_config()
         return {
             "chine": {
-                "access_token": config.wachap_chine_access_token,
-                "instance_id": config.wachap_chine_instance_id,
-                "name": "Instance Chine",
-                "description": "Instance WhatsApp pour les agents et notifications Chine",
+                "account_id": config.wachap_account_chine,
+                "name": "Instance Chine 🇨🇳",
+                "description": "Notifications et agents Chine",
             },
             "mali": {
-                "access_token": config.wachap_mali_access_token,
-                "instance_id": config.wachap_mali_instance_id,
-                "name": "Instance Mali",
-                "description": "Instance WhatsApp pour les agents et notifications Mali",
+                "account_id": config.wachap_account_mali,
+                "name": "Instance Mali 🇲🇱",
+                "description": "Notifications et agents Mali",
+            },
+            "cote_divoire": {
+                "account_id": config.wachap_account_cote_divoire,
+                "name": "Instance Côte d'Ivoire 🇨🇮",
+                "description": "Notifications et agents Côte d'Ivoire",
             },
             "system": {
-                "access_token": config.wachap_system_access_token,
-                "instance_id": config.wachap_system_instance_id,
-                "name": "Instance Système",
-                "description": "Instance WhatsApp pour les OTP et alertes administrateur",
+                "account_id": config.wachap_account_system,
+                "name": "Instance Système ⚙️",
+                "description": "OTP et alertes administrateur",
             },
         }
 
     def check_instance_status(self, region: str) -> Dict:
         """
-        Vérifie le statut d'une instance WaChap spécifique
+        Vérifie le statut d'un compte WaChap V4 via un appel API léger.
+        On utilise l'endpoint /whatsapp/messages/send avec un envoi réel (vers developer_phone).
         """
         instances = self._get_instances()
         instance = instances.get(region)
@@ -63,73 +66,126 @@ class WaChapMonitor:
             return {
                 "region": region,
                 "connected": False,
-                "error": "Instance non trouvée",
+                "error": "Région inconnue",
                 "timestamp": timezone.now().isoformat(),
             }
 
-        if not instance["access_token"] or not instance["instance_id"]:
+        config = self._get_config()
+        secret_key = config.wachap_v4_secret_key
+        account_id = instance.get("account_id", "")
+
+        if not secret_key:
             return {
                 "region": region,
                 "connected": False,
-                "error": "Tokens manquants",
+                "error": "Clé secrète V4 manquante",
+                "timestamp": timezone.now().isoformat(),
+            }
+
+        if not account_id:
+            return {
+                "region": region,
+                "connected": False,
+                "error": "Account ID non configuré",
                 "timestamp": timezone.now().isoformat(),
             }
 
         try:
-            # Test de connexion avec message test vers admin (ou numero fictif si pas d'admin)
-            config = self._get_config()
-            admin_phone = config.developer_phone or getattr(
-                settings, "ADMIN_PHONE", "22373451676"
-            )
+            # Vérification légère : on tente un envoi vers le developer_phone
+            # (WaChap V4 n'expose pas d'endpoint /status standalone)
+            admin_phone = config.developer_phone or "+22300000000"
+            clean_phone = admin_phone.replace(" ", "")
+            if not clean_phone.startswith("+"):
+                clean_phone = "+" + clean_phone
 
+            headers = {
+                "Authorization": f"Bearer {secret_key}",
+                "Content-Type": "application/json",
+            }
             payload = {
-                "number": admin_phone.replace("+", ""),
-                "type": "text",
-                "message": f'[MONITORING] Test connexion {instance["name"]} - {datetime.now().strftime("%H:%M")}',
-                "instance_id": instance["instance_id"],
-                "access_token": instance["access_token"],
+                "data": {
+                    "accountId": account_id,
+                    "to": clean_phone,
+                    "type": "text",
+                    "content": f"[Monitor V4] Vérification {instance['name']}",
+                }
             }
 
-            # NOTE: L'endpoint /send envoie réellement un message. Pour juste checker le status,
-            # WaChap a peut-être un endpoint /status ou /profile.
-            # V1 utilisait /send. On garde ça pour l'instant.
-            response = requests.post(f"{self.base_url}/send", json=payload, timeout=15)
+            response = requests.post(
+                "https://api.wachap.com/v1/whatsapp/messages/send",
+                json=payload,
+                headers=headers,
+                timeout=15,
+            )
 
             if response.status_code == 200:
-                try:
-                    data = response.json()
-
-                    if data.get("status") == "success":
-                        return {
-                            "region": region,
-                            "connected": True,
-                            "message": "Instance connectée et fonctionnelle",
-                            "response": data,
-                            "timestamp": timezone.now().isoformat(),
-                        }
-                    else:
-                        error_msg = data.get("message", "Erreur inconnue")
-                        return {
-                            "region": region,
-                            "connected": False,
-                            "error": error_msg,
-                            "response": data,
-                            "timestamp": timezone.now().isoformat(),
-                        }
-                except json.JSONDecodeError:
+                data = response.json()
+                if data.get("success"):
                     return {
                         "region": region,
-                        "connected": False,
-                        "error": "Réponse non-JSON (page HTML reçue)",
+                        "connected": True,
+                        "message": "Connecté",
                         "timestamp": timezone.now().isoformat(),
                     }
-            else:
                 return {
                     "region": region,
                     "connected": False,
-                    "error": f"HTTP {response.status_code}",
+                    "error": data.get("message", "Erreur API"),
                     "timestamp": timezone.now().isoformat(),
                 }
+
+            if response.status_code == 400:
+                # 400 = l'API répond → l'instance est joignable.
+                # "Numéro invalide" est normal pour un numéro de test fictif.
+                # Ce n'est PAS une déconnexion — seul le destinataire est inconnu.
+                try:
+                    data = response.json()
+                    err = data.get("error", {})
+                    err_code = err.get("code", "") if isinstance(err, dict) else ""
+                    err_msg = (
+                        err.get("message", "") if isinstance(err, dict) else str(err)
+                    )
+                    send_errors = ("SEND_ERROR", "INVALID_PHONE", "RECIPIENT_NOT_FOUND")
+                    if (
+                        err_code in send_errors
+                        or "numéro" in err_msg.lower()
+                        or "invalid" in err_msg.lower()
+                    ):
+                        return {
+                            "region": region,
+                            "connected": True,
+                            "message": "Connecté (compte actif)",
+                            "timestamp": timezone.now().isoformat(),
+                        }
+                    return {
+                        "region": region,
+                        "connected": False,
+                        "error": err_msg or "Erreur 400",
+                        "timestamp": timezone.now().isoformat(),
+                    }
+                except Exception:
+                    # Réponse 400 mais parsable → l'API répond = connecté
+                    return {
+                        "region": region,
+                        "connected": True,
+                        "message": "Connecté",
+                        "timestamp": timezone.now().isoformat(),
+                    }
+
+            if response.status_code in (401, 403):
+                return {
+                    "region": region,
+                    "connected": False,
+                    "error": "Clé secrète invalide ou expirée (401/403)",
+                    "timestamp": timezone.now().isoformat(),
+                }
+
+            return {
+                "region": region,
+                "connected": False,
+                "error": f"HTTP {response.status_code}",
+                "timestamp": timezone.now().isoformat(),
+            }
 
         except requests.exceptions.Timeout:
             return {
@@ -214,16 +270,50 @@ class WaChapMonitor:
 
             connected_count = 0
             disconnected_instances = []
+            reconnected_instances = []
 
             for region, status in all_status.items():
+                prev_cache_key = f"wachap_prev_connected_{region}"
+                was_connected = cache.get(
+                    prev_cache_key, True
+                )  # Suppose connecté par défaut
+
                 if status["connected"]:
                     connected_count += 1
+                    # Si on était déconnecté avant → reconnexion → déclencher retry
+                    if not was_connected:
+                        reconnected_instances.append(region)
+                        logger.info(
+                            f"✅ Instance {region} reconnectée ! Déclenchement du retry..."
+                        )
+                    cache.set(
+                        prev_cache_key,
+                        True,
+                        timeout=self.check_interval_minutes * 60 * 2,
+                    )
                 else:
                     disconnected_instances.append((region, status))
+                    cache.set(
+                        prev_cache_key,
+                        False,
+                        timeout=self.check_interval_minutes * 60 * 2,
+                    )
 
             # Envoyer alertes pour les instances déconnectées
             for region, status in disconnected_instances:
                 self.send_disconnect_alert(region, status)
+
+            # Déclencher le retry des messages en attente pour les instances reconnectées
+            if reconnected_instances:
+                try:
+                    from notification.tasks import retry_failed_notifications_periodic
+
+                    retry_failed_notifications_periodic.delay()
+                    logger.info(
+                        f"File d'attente relancée suite à reconnexion : {reconnected_instances}"
+                    )
+                except Exception as e:
+                    logger.error(f"Erreur déclenchement retry après reconnexion: {e}")
 
             total_instances = len(self._get_instances())
             summary = f"Monitoring terminé: {connected_count}/{total_instances} instances connectées"

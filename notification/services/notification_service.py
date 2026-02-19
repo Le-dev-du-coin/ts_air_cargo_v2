@@ -14,7 +14,7 @@ class NotificationService:
 
     @staticmethod
     def send_notification(
-        destinataire, message, categorie="autre", titre="", media_url=None
+        destinataire, message, categorie="autre", titre="", media_url=None, region=None
     ):
         """
         Envoie une notification (WhatsApp par défaut)
@@ -25,17 +25,26 @@ class NotificationService:
             categorie: Catégorie métier
             titre: Titre (pour log/historique)
             media_url: URL d'une image/média à joindre (optionnel)
+            region: Region WaChap ('chine', 'mali', 'system') - Optionnel
         """
         try:
             # 1. Vérifier si les notifications sont actives globalement
             config = ConfigurationNotification.get_solo()
             # On pourrait ajouter un switch global ici, pour l'instant on suppose actif
 
-            # 2. Créer l'objet Notification
+            # 2. Récupérer le numéro de téléphone intelligemment
+            # On cherche sur User.telephone, User.phone, ou Client.telephone
+            phone = getattr(destinataire, "telephone", "") or getattr(
+                destinataire, "phone", ""
+            )
+
+            if not phone and hasattr(destinataire, "client_profile"):
+                phone = getattr(destinataire.client_profile, "telephone", "")
+
+            # 3. Créer l'objet Notification
             notification = Notification.objects.create(
                 destinataire=destinataire,
-                telephone_destinataire=getattr(destinataire, "telephone", "")
-                or getattr(destinataire, "phone", ""),
+                telephone_destinataire=phone,
                 email_destinataire=getattr(destinataire, "email", ""),
                 message=message,
                 categorie=categorie,
@@ -61,8 +70,7 @@ class NotificationService:
                     message=message,
                     message_type=msg_type,
                     media_url=media_url,
-                    # Le routage (Chine/Mali) est géré automatiquement par WaChapService
-                    # sauf si on veut le forcer ici selon la catégorie
+                    region=region,
                 )
 
             # 4. Mettre à jour le statut
@@ -85,13 +93,15 @@ class NotificationService:
             return False, None
 
     @staticmethod
-    def send_mass_notification(queryset_users, message, categorie="autre"):
+    def send_mass_notification(queryset_users, message, categorie="autre", region=None):
         """
         Envoie une notification à une liste d'utilisateurs (utilisé par Celery)
         """
         results = {"success": 0, "failed": 0}
         for user in queryset_users:
-            success, _ = NotificationService.send_notification(user, message, categorie)
+            success, _ = NotificationService.send_notification(
+                user, message, categorie, region=region
+            )
             if success:
                 results["success"] += 1
             else:
