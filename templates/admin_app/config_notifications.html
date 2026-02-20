@@ -132,16 +132,22 @@
             </div>
         </div>
 
-        <!-- CONTACTS SYSTÈME -->
+        <!-- CONTACTS SYSTÈME & EMAIL ALERTES -->
         <div class="bg-white shadow-sm rounded-xl border border-gray-100">
             <div class="px-6 py-4 border-b border-gray-100">
-                <h2 class="text-base font-semibold text-gray-800">📞 Contacts système</h2>
+                <h2 class="text-base font-semibold text-gray-800">📞 Contacts & Alertes développeur</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Reçoit les alertes système (déconnexions WaChap, erreurs critiques) par WhatsApp <em>et</em> par email.</p>
             </div>
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">🔧 Développeur</label>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">📱 Téléphone développeur (WhatsApp)</label>
                     {{ form.developer_phone }}
-                    <p class="text-xs text-gray-400 mt-1">Reçoit les alertes système (déconnexions, erreurs critiques).</p>
+                    <p class="text-xs text-gray-400 mt-1">Format international (+223...)</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">📧 Email développeur (Alertes)</label>
+                    {{ form.developer_email }}
+                    <p class="text-xs text-gray-400 mt-1">Reçoit les alertes critiques par email.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">🧪 Téléphone de test</label>
@@ -159,6 +165,49 @@
             </div>
         </div>
 
+        <!-- CONFIG SMTP (Hostinger / autre) -->
+        <div class="bg-white shadow-sm rounded-xl border border-gray-100">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h2 class="text-base font-semibold text-gray-800">✉️ Configuration Email (SMTP)</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Serveur email pour l'envoi des alertes — recommandé : Hostinger Pro (smtp.hostinger.com:465)</p>
+                </div>
+                <span class="text-xs bg-blue-100 text-blue-700 font-medium px-2.5 py-1 rounded-full">SMTP</span>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Serveur SMTP</label>
+                    {{ form.smtp_host }}
+                    <p class="text-xs text-gray-400 mt-1">Ex: <code class="bg-gray-100 px-1 rounded">smtp.hostinger.com</code></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Port</label>
+                    {{ form.smtp_port }}
+                    <p class="text-xs text-gray-400 mt-1">465 (SSL) ou 587 (TLS)</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Email expéditeur</label>
+                    {{ form.smtp_user }}
+                    <p class="text-xs text-gray-400 mt-1">Ex: <code class="bg-gray-100 px-1 rounded">noreply@ts-aircargo.com</code></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">🔒 Mot de passe SMTP</label>
+                    <div id="smtp-pass-placeholder" class="flex items-center gap-3">
+                        <span class="text-gray-400 font-mono tracking-widest">••••••••</span>
+                        <button type="button" onclick="showPIN('reveal_smtp')" class="text-xs text-indigo-600 hover:underline">Modifier</button>
+                    </div>
+                    <div id="smtp-pass-field" class="hidden">
+                        {{ form.smtp_password }}
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 md:col-span-2">
+                    {{ form.smtp_use_ssl }}
+                    <label class="text-sm font-medium text-gray-700">Utiliser SSL (port 465 Hostinger)</label>
+                    <span class="text-xs text-gray-400 italic">Décocher pour TLS (port 587)</span>
+                </div>
+            </div>
+        </div>
+
         <div class="flex justify-end">
             <button type="submit" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-8 rounded-xl shadow-sm transition">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -169,6 +218,7 @@
         </div>
     </form>
 </div>
+
 
 <script>
     /* ---------- Statut Alpine ---------- */
@@ -228,6 +278,9 @@
                 } else if (action === 'reveal_pin') {
                     document.getElementById('pin-placeholder').classList.add('hidden');
                     document.getElementById('pin-field').classList.remove('hidden');
+                } else if (action === 'reveal_smtp') {
+                    document.getElementById('smtp-pass-placeholder').classList.add('hidden');
+                    document.getElementById('smtp-pass-field').classList.remove('hidden');
                 }
                 Swal.fire({ icon: 'success', title: 'Déverrouillé', timer: 1000, showConfirmButton: false });
             } else {

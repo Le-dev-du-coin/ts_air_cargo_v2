@@ -265,13 +265,13 @@ def send_daily_report_mali():
     from .services.wachap_service import wachap_service
 
     config = ConfigurationNotification.get_solo()
-    admin_phone = config.admin_mali_phone
+    admin_phone = config.admin_mali_phone or config.developer_phone
 
     if not admin_phone:
         logger.info(
-            "[RapportJour] admin_mali_phone non configuré — rapport non envoyé."
+            "[RapportJour] Ni admin_mali_phone ni developer_phone configuré — rapport non envoyé."
         )
-        return "Rapport non envoyé : admin_mali_phone non configuré."
+        return "Rapport non envoyé : aucun numéro destinataire configuré."
 
     try:
         from django.db.models import Sum, F

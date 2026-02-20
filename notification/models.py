@@ -49,12 +49,19 @@ class ConfigurationNotification(models.Model):
     template_rappel = models.TextField(
         "Message de rappel (Adaptatif)",
         default=(
-            "Bonjour {client_nom}, vous avez {nombre_colis} colis disponibles à l'agence depuis plus de {jours} jours.\n"
-            "Références : {liste_ref}\n"
-            "Total à payer : {total_montant}\n"
-            "Merci de passer les récupérer."
+            "Bonjour *{client_nom}*,\n\n"
+            "⏰ *Rappel — Colis en attente de retrait*\n\n"
+            "{'Votre colis' if nombre_colis == 1 else 'Vos {nombre_colis} colis'} "
+            "{'est disponible' if nombre_colis == 1 else 'sont disponibles'} "
+            "à l'agence depuis plus de *{jours} jours* :\n"
+            "{liste_ref}\n\n"
+            "💰 *Montant à régler : {total_montant}*\n\n"
+            "Merci de passer les récupérer dès que possible.\n\n"
+            "🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
+            "——\n"
+            "*Équipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
         ),
-        help_text="Variables : {client_nom}, {nombre_colis}, {jours}, {liste_ref}, {total_montant}, {numero_suivi}, {montant}",
+        help_text="Variables disponibles : {client_nom}, {nombre_colis}, {jours}, {liste_ref}, {total_montant}, {numero_suivi}, {montant}",
     )
 
     # Sécurité
@@ -85,6 +92,43 @@ class ConfigurationNotification(models.Model):
         max_length=20,
         blank=True,
         help_text="Si rempli, TOUTES les notifications seront envoyées à ce numéro (utile pour le local).",
+    )
+
+    # ---- Email Alertes & SMTP ----
+    developer_email = models.EmailField(
+        "Email Développeur (Alertes système)",
+        blank=True,
+        help_text="Reçoit toutes les alertes critiques par email (erreurs, déconnexions WaChap, etc.)",
+    )
+
+    # Serveur SMTP (ex: Hostinger pro)
+    smtp_host = models.CharField(
+        "Serveur SMTP",
+        max_length=255,
+        blank=True,
+        default="smtp.hostinger.com",
+        help_text="Ex: smtp.hostinger.com",
+    )
+    smtp_port = models.PositiveIntegerField(
+        "Port SMTP",
+        default=465,
+        help_text="465 (SSL) ou 587 (TLS) — Hostinger recommande 465",
+    )
+    smtp_user = models.CharField(
+        "Utilisateur SMTP (Email expéditeur)",
+        max_length=255,
+        blank=True,
+        help_text="Ex: noreply@ts-aircargo.com",
+    )
+    smtp_password = models.CharField(
+        "Mot de passe SMTP",
+        max_length=255,
+        blank=True,
+    )
+    smtp_use_ssl = models.BooleanField(
+        "Utiliser SSL",
+        default=True,
+        help_text="True pour port 465 (SSL). False avec TLS pour port 587.",
     )
 
     class Meta:

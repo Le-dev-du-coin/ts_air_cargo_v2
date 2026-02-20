@@ -184,9 +184,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "notification.tasks.retry_failed_notifications_periodic",
         "schedule": timedelta(minutes=5),
     },
-    # Rapport journalier Mali à 23h50 UTC
+    # Rapport journalier Mali — ⚠️ MODE DEV : toutes les 10 min pour test
+    # En production : crontab(hour=23, minute=50)
     "send_daily_report_mali": {
         "task": "notification.tasks.send_daily_report_mali",
-        "schedule": crontab(hour=23, minute=50),
+        "schedule": timedelta(minutes=20),
     },
 }

@@ -682,14 +682,59 @@ class ColisArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         colis.status = "ARRIVE"
         colis.save()
 
+        # Notification immédiate au client avec rappel du prix
+        try:
+            from notification.tasks import send_notification_async
+            from django.contrib.humanize.templatetags.humanize import intcomma
+
+            if colis.client and colis.client.user:
+                prix = colis.prix_final or 0
+                jc = colis.montant_jc or 0
+                montant_a_payer = max(0, prix - jc)
+                fmt_prix = f"{montant_a_payer:,.0f}".replace(",", " ")
+
+                date_arrive = timezone.now().strftime("%d/%m/%Y \u00e0 %H:%M")
+                nom_pointage = (
+                    colis.client.user.get_full_name() or colis.client.user.username
+                )
+                notif_msg = (
+                    f"Bonjour *{nom_pointage}*,\n\n"
+                    f"📍 *Bonne nouvelle ! Votre colis est arriv\u00e9 !*\n\n"
+                    f"Nous venons de r\u00e9ceptionner votre colis *{colis.reference}* "
+                    f"dans notre agence au Mali 🇲🇱 le *{date_arrive}*.\n\n"
+                    f"💰 *Montant \u00e0 r\u00e9gler : {fmt_prix} FCFA*\n\n"
+                    f"Merci de passer le r\u00e9cup\u00e9rer \u00e0 votre convenance.\n\n"
+                    f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
+                    f"\u2014\u2014\n"
+                    f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+                )
+                send_notification_async.delay(
+                    user_id=colis.client.user.id,
+                    message=notif_msg,
+                    categorie="colis_arrive",
+                    titre=f"Colis {colis.reference} arrivé — {fmt_prix} FCFA à régler",
+                    region="mali",
+                )
+        except Exception as e:
+            import logging as _log
+
+            _log.getLogger(__name__).error(
+                f"Erreur notif pointage colis {colis.pk}: {e}"
+            )
+
         if request.headers.get("HX-Request"):
             from django.shortcuts import render
+            import json
 
-            return render(
+            response = render(
                 request,
                 "mali/partials/colis_status_badge.html",
                 {"colis": colis, "lot": colis.lot},
             )
+            # Déclenche l'événement JS "colisArrived" écouté dans lot_transit_detail.html
+            # → retire le <li id="colis-item-{pk}"> avec animation de sortie
+            response["HX-Trigger"] = json.dumps({"colisArrived": {"pk": colis.pk}})
+            return response
 
         messages.success(request, f"Colis {colis.reference} marqué comme Arrivé.")
         return redirect("mali:lot_transit_detail", pk=colis.lot.pk)
@@ -820,21 +865,37 @@ class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             user = data["user"]
             colis_list = data["colis"]
             nb = len(colis_list)
-            refs = ", ".join([c.reference for c in colis_list])
 
+            # Construire la liste détaillée avec le prix de chaque colis
+            lines = []
+            total = 0
+            for c in colis_list:
+                prix = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
+                total += prix
+                fmt = f"{prix:,.0f}".replace(",", " ")
+                lines.append(f"   \u2022 *{c.reference}* — {fmt} FCFA")
+
+            liste_str = "\n".join(lines)
+            fmt_total = f"{total:,.0f}".replace(",", " ")
+
+            nom_notify = user.get_full_name() or user.username
             message = (
-                f"📦 *Colis Arrivé(s) au Mali*\n\n"
-                f"Bonjour {user.get_full_name() or user.username},\n"
-                f"Vos colis suivants sont disponibles à l'agence :\n"
-                f"Ref(s): *{refs}*\n\n"
-                f"Merci de passer pour le retrait."
+                f"Bonjour *{nom_notify}*,\n\n"
+                f"📍 *{'Bonne nouvelle ! Votre colis est arriv\u00e9 !' if nb == 1 else f'Bonne nouvelle ! Vos {nb} colis sont arriv\u00e9s !'}*\n\n"
+                f"Nous venons de r\u00e9ceptionner {'votre colis' if nb == 1 else 'vos colis'} \u00e0 l'agence au Mali 🇲🇱 :\n"
+                f"{liste_str}\n\n"
+                f"💰 *Total \u00e0 r\u00e9gler : {fmt_total} FCFA*\n\n"
+                f"Merci de passer {'le' if nb == 1 else 'les'} r\u00e9cup\u00e9rer \u00e0 votre convenance.\n\n"
+                f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
+                f"\u2014\u2014\n"
+                f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
             )
 
             send_notification_async.delay(
                 user_id=user.id,
                 message=message,
                 categorie="colis_arrive",
-                titre=f"Arrivée de {nb} colis",
+                titre=f"{'Colis arrivé' if nb == 1 else f'{nb} colis arrivés'} — {fmt_total} FCFA à régler",
                 region="mali",
             )
 
@@ -884,10 +945,18 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             from notification.tasks import send_notification_async
 
             if colis.client and colis.client.user:
+                nom_livre = (
+                    colis.client.user.get_full_name() or colis.client.user.username
+                )
                 message = (
-                    f"✅ *Confirmation de Retrait*\n\n"
-                    f"Votre colis *{colis.reference}* a été marqué comme livré.\n"
-                    f"Merci de votre confiance et à bientôt !"
+                    f"Bonjour *{nom_livre}*,\n\n"
+                    f"\u2705 *Livraison r\u00e9ussie !*\n\n"
+                    f"Votre colis *{colis.reference}* a bien \u00e9t\u00e9 livr\u00e9 avec succ\u00e8s.\n\n"
+                    f"Merci d'avoir choisi TS AIR CARGO pour vos envois !\n"
+                    f"Nous esp\u00e9rons vous revoir tr\u00e8s prochainement. 😊\n\n"
+                    f"🌐 Cr\u00e9ez une nouvelle commande : https://ts-aircargo.com/login\n"
+                    f"\u2014\u2014\n"
+                    f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
                 )
                 send_notification_async.delay(
                     user_id=colis.client.user.id,
