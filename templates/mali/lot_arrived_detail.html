@@ -25,6 +25,51 @@
     colisRef: '', 
     colisClient: '', 
     colisMontant: 0,
+    async submitDelivery() {
+        const form = document.getElementById('deliveryForm');
+        const formData = new FormData(form);
+        
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'HX-Request': 'true',
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                },
+                body: formData
+            });
+            
+            if (response.ok) {
+                // Close Modal
+                this.showDeliveryModal = false;
+
+                // Success Message
+                Swal.fire({
+                    title: 'Livraison Confirmée!',
+                    text: `Colis ${this.colisRef} livré avec succès.`,
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+
+                // Remove item from list with animation
+                const item = document.getElementById(`colis-item-${this.colisId}`);
+                if (item) {
+                    item.style.transition = 'all 0.5s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateX(100px)';
+                    setTimeout(() => {
+                        item.remove();
+                    }, 500);
+                }
+            } else {
+                Swal.fire('Erreur', 'Une erreur est survenue lors de la communication serveur.', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            Swal.fire('Erreur', 'Erreur de connexion internet.', 'error');
+        }
+    },
     openDeliveryModal(id, ref, client, montant) {
         this.colisId = id;
         this.colisRef = ref;
@@ -215,7 +260,7 @@
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
                  class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                 
-                <form id="deliveryForm" method="POST" action="">
+                <form id="deliveryForm" method="POST" action="" @submit.prevent="submitDelivery">
                     {% csrf_token %}
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
