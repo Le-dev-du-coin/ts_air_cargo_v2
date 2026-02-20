@@ -12,11 +12,12 @@ from .views import (
     ColisArriveView,
     ColisLivreView,
     ColisPerduView,
-    ColisPerduView,
     ColisAttentePaiementView,
     ColisEncaissementView,
     RapportJourPDFView,
     LotTransitPDFView,
+    NotificationConfigView,
+    NotifyArrivalsView,
 )
 from report.views import (
     DepenseListView,
@@ -32,6 +33,11 @@ app_name = "mali"
 
 urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path(
+        "notifications/config/",
+        NotificationConfigView.as_view(),
+        name="notifications_config",
+    ),
     path("aujourdhui/", AujourdhuiView.as_view(), name="aujourdhui"),
     path("lots/transit/", LotsEnTransitView.as_view(), name="lots_transit"),
     path("lots/arrives/", LotsArrivesView.as_view(), name="lots_arrives"),
@@ -52,6 +58,11 @@ urlpatterns = [
         name="lot_livre_detail",
     ),
     path("lots/<int:pk>/arrive/", LotArriveView.as_view(), name="lot_arrive"),
+    path(
+        "lots/<int:pk>/notify-arrivals/",
+        NotifyArrivalsView.as_view(),
+        name="lot_notify_arrivals",
+    ),
     path("colis/<int:pk>/arrive/", ColisArriveView.as_view(), name="colis_arrive"),
     path("colis/<int:pk>/livre/", ColisLivreView.as_view(), name="colis_livre"),
     path("colis/<int:pk>/perdu/", ColisPerduView.as_view(), name="colis_perdu"),

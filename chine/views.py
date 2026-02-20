@@ -512,7 +512,47 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
                 form.instance.country = self.request.tenant_country
             elif self.request.user.country:
                 form.instance.country = self.request.user.country
-        return super().form_valid(form)
+
+        response = super().form_valid(form)
+
+        # Notification Nouveau Client
+        try:
+            from notification.tasks import send_notification_async
+
+            client = self.object
+            if client.telephone and client.user:
+                # Mot de passe auto-généré récupéré depuis le formulaire
+                raw_password = getattr(form, "generated_password", None) or "****"
+                nom_complet = (
+                    f"{client.prenom} {client.nom}".strip() or client.user.username
+                )
+                date_creation = timezone.now().strftime("%d/%m/%Y à %H:%M")
+
+                message = (
+                    f"👋 Bonjour *{nom_complet}*,\n\n"
+                    f"Bienvenue chez *TS AIR CARGO* !\n"
+                    f"Votre espace client a été créé le {date_creation}.\n\n"
+                    f"🔐 *Vos identifiants de connexion :*\n"
+                    f"   • Identifiant : *{client.user.username}*\n"
+                    f"   • Mot de passe : *{raw_password}*\n\n"
+                    f"⚠️ *Important :* Veuillez modifier votre mot de passe dès votre première connexion pour sécuriser votre compte.\n\n"
+                    f"🌐 Connectez-vous ici :\n"
+                    f"https://ts-aircargo.com/login\n\n"
+                    f"Merci de votre confiance !\n"
+                    f"——\n"
+                    f"*Équipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+                )
+                send_notification_async.delay(
+                    user_id=client.user.id,
+                    message=message,
+                    categorie="compte_cree",
+                    titre="Bienvenue — Vos identifiants TS AIR CARGO",
+                    region="chine",
+                )
+        except Exception as e:
+            logger.error(f"Erreur trigger notification client {self.object.id}: {e}")
+
+        return response
 
 
 class ClientUpdateView(LoginRequiredMixin, UpdateView):
@@ -564,6 +604,94 @@ class ClientBulkDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
         deleted_count, _ = Client.objects.filter(id__in=client_ids).delete()
         messages.success(request, f"{deleted_count} clients supprimés.")
         return redirect("chine:client_list")
+
+
+class ClientDetailView(LoginRequiredMixin, DetailView):
+    model = Client
+    template_name = "chine/clients/detail.html"
+    context_object_name = "client"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from core.models import Colis
+        from django.db.models import Sum, F
+
+        client = self.object
+        colis_list = Colis.objects.filter(client=client).order_by("-created_at")
+
+        # Calculate total CA (Chiffre d'Affaires) for this client
+        # It's the sum of prix_final for all parcels
+        total_ca = colis_list.aggregate(total=Sum("prix_final"))["total"] or 0
+
+        context["colis_list"] = colis_list
+        context["total_ca"] = total_ca
+        context["total_colis"] = colis_list.count()
+        return context
+
+
+class ClientPasswordResetView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        client = get_object_or_404(Client, pk=pk)
+
+        if not client.user or not client.telephone:
+            messages.error(
+                request,
+                "Impossible de réinitialiser le mot de passe : le client n'a pas de compte utilisateur ou de numéro de téléphone enregistré.",
+            )
+            return redirect("chine:client_detail", pk=pk)
+
+        # Generate new password
+        from chine.forms import ClientForm
+
+        new_password = ClientForm._generate_password(10)
+
+        # Save new password
+        user = client.user
+        user.set_password(new_password)
+        user.save()
+
+        # Send notification via WhatsApp
+        try:
+            from notification.tasks import send_notification_async
+
+            nom_complet = client.user.get_full_name() or client.user.username
+
+            message = (
+                f"🔄 Bonjour *{nom_complet}*,\n\n"
+                f"Votre mot de passe a été réinitialisé avec succès.\n\n"
+                f"🔐 *Vos nouveaux identifiants :*\n"
+                f"   • Identifiant : *{user.username}*\n"
+                f"   • Mot de passe : *{new_password}*\n\n"
+                f"⚠️ *Important :* Veuillez modifier votre mot de passe dès votre prochaine connexion.\n\n"
+                f"🌐 Connectez-vous ici :\n"
+                f"https://ts-aircargo.com/login\n\n"
+                f"——\n"
+                f"*Équipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+            )
+
+            send_notification_async.delay(
+                user_id=user.id,
+                message=message,
+                categorie="autre",
+                titre="Réinitialisation de mot de passe",
+                region="chine",
+            )
+
+            messages.success(
+                request,
+                f"Le mot de passe de {client.nom} a été réinitialisé et envoyé par WhatsApp.",
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Erreur lors de la réinitialisation du mot de passe pour {client.id}: {e}"
+            )
+            messages.warning(
+                request,
+                "Le mot de passe a été réinitialisé mais l'envoi WhatsApp a échoué.",
+            )
+
+        return redirect("chine:client_detail", pk=pk)
 
 
 class LotListView(LoginRequiredMixin, ListView):
@@ -658,6 +786,69 @@ class LotCloseView(LoginRequiredMixin, StrictAgentChineRequiredMixin, View):
             lot.status = "FERME"
             lot.save()
             messages.success(request, f"Lot {lot.numero} fermé. Prêt pour expédition.")
+
+            # Notification clients — uniquement si frais transport saisis
+            # et uniquement pour les colis pas encore notifiés (évite doublons si réouverture)
+            if not lot.frais_transport or lot.frais_transport <= 0:
+                messages.warning(
+                    request,
+                    "Lot fermé. ⚠️ Aucune notification envoyée : renseignez les frais de transport d'abord.",
+                )
+            else:
+                try:
+                    from notification.tasks import send_notification_async
+
+                    # Seulement les colis pas encore notifiés (nouveaux ou après réouverture)
+                    colis_a_notifier = lot.colis.filter(
+                        notifie_fermeture=False
+                    ).select_related("client__user")
+
+                    # Grouper par client (1 seul message par client)
+                    by_client = {}
+                    for colis in colis_a_notifier:
+                        if not colis.client or not colis.client.user:
+                            continue
+                        cid = colis.client.id
+                        if cid not in by_client:
+                            by_client[cid] = {"user": colis.client.user, "colis": []}
+                        by_client[cid]["colis"].append(colis)
+
+                    for cid, data in by_client.items():
+                        user = data["user"]
+                        colis_list = data["colis"]
+                        nb = len(colis_list)
+                        nom_complet = user.get_full_name() or user.username
+                        lines = "\n".join(
+                            f"   \u2022 {c.reference}" for c in colis_list
+                        )
+                        msg = (
+                            f"Bonjour *{nom_complet}*,\n\n"
+                            f"\U0001f4e6 *Lot ferm\u00e9 \u2014 Pr\u00eat \u00e0 exp\u00e9dier !*\n\n"
+                            f"Nous venons de fermer le lot *{lot.numero}* contenant "
+                            f"{'votre colis' if nb == 1 else f'vos {nb} colis'} :\n"
+                            f"{lines}\n\n"
+                            f"\u23f3 L'exp\u00e9dition est pr\u00e9vue prochainement depuis la Chine.\n"
+                            f"\U0001f514 Vous recevrez une notification d\u00e8s le d\u00e9part.\n\n"
+                            f"\U0001f310 Suivez vos colis : https://ts-aircargo.com/login\n"
+                            f"\u2014\u2014\n"
+                            f"*\u00c9quipe TS AIR CARGO* \U0001f1e8\U0001f1f3 \U0001f1f2\U0001f1f1 \U0001f1e8\U0001f1ee"
+                        )
+                        send_notification_async.delay(
+                            user_id=user.id,
+                            message=msg,
+                            categorie="lot_ferme",
+                            titre=f"Lot {lot.numero} ferm\u00e9 \u2014 Exp\u00e9dition \u00e0 venir",
+                            region="chine",
+                        )
+
+                    # Marquer les colis comme notifiés (anti-doublon réouverture)
+                    colis_a_notifier.update(notifie_fermeture=True)
+
+                except Exception as e:
+                    logger.error(
+                        f"Erreur trigger notification fermeture lot {lot.id}: {e}"
+                    )
+
         return redirect("chine:lot_detail", pk=pk)
 
 
@@ -693,6 +884,56 @@ class LotStatusUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Vie
             messages.success(
                 request, f"Lot {lot.numero} EXPÉDIÉ ! (Mode Lecture Seule activé)"
             )
+
+            # Notification Clients — Groupée par client (1 seul message par client)
+            try:
+                from notification.tasks import send_notification_async
+
+                by_client = {}
+                for colis in lot.colis.all():
+                    if not colis.client or not colis.client.user:
+                        continue
+                    cid = colis.client.id
+                    if cid not in by_client:
+                        by_client[cid] = {"user": colis.client.user, "colis": []}
+                    by_client[cid]["colis"].append(colis)
+
+                for cid, data in by_client.items():
+                    user = data["user"]
+                    colis_list = data["colis"]
+                    nb = len(colis_list)
+                    nom_complet = user.get_full_name() or user.username
+                    lines = "\n".join(f"   \u2022 {c.reference}" for c in colis_list)
+                    date_exp = (
+                        lot.date_expedition.strftime("%d/%m/%Y \u00e0 %H:%M")
+                        if lot.date_expedition
+                        else "date non renseign\u00e9e"
+                    )
+                    msg = (
+                        f"Bonjour *{nom_complet}*,\n\n"
+                        f"✈️ *{'Colis exp\u00e9di\u00e9' if nb == 1 else f'{nb} colis exp\u00e9di\u00e9s'} \u2014 En transit !*\n\n"
+                        f"Votre {'colis est' if nb == 1 else 'commande est'} en route vers le Mali 🇲🇱 :\n"
+                        f"{lines}\n\n"
+                        f"📋 Lot : *{lot.numero}*\n"
+                        f"📅 Date d'exp\u00e9dition : *{date_exp}*\n"
+                        f"📡 Transport : *{lot.get_type_transport_display()}*\n\n"
+                        f"🔔 Vous recevrez une notification d\u00e8s l'arriv\u00e9e au Mali.\n\n"
+                        f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
+                        f"\u2014\u2014\n"
+                        f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+                    )
+                    send_notification_async.delay(
+                        user_id=user.id,
+                        message=msg,
+                        categorie="lot_expedie",
+                        titre=f"Exp\u00e9dition Lot {lot.numero} \u2014 {nb} colis en route",
+                        region="chine",
+                    )
+
+            except Exception as e:
+                logger.error(
+                    f"Erreur trigger notification exp\u00e9dition lot {lot.id}: {e}"
+                )
         return redirect("chine:lot_detail", pk=pk)
 
 
@@ -792,9 +1033,6 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
                 )
                 colis.photo.save(photo_content.name, photo_content, save=False)
             except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.error(f"Error saving base64 photo: {e}")
                 messages.warning(
                     self.request,
@@ -802,6 +1040,53 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
                 )
 
         colis.save()
+
+        # Notification Client V2 (Async)
+        try:
+            from notification.tasks import send_notification_async
+
+            if colis.client and colis.client.user:
+                nom_complet = (
+                    colis.client.user.get_full_name() or colis.client.user.username
+                )
+                date_reception = timezone.now().strftime("%d/%m/%Y à %H:%M")
+
+                # Téléphone → pièces, autres → poids
+                if colis.type_colis == "TELEPHONE":
+                    quantite_info = f"📱 Quantité : *{colis.nombre_pieces} pièce(s)*"
+                else:
+                    quantite_info = f"⚖️ Poids : *{colis.poids} kg*"
+
+                prix_info = (
+                    f"💰 Prix : *{colis.prix_final:,.0f} FCFA*".replace(",", " ")
+                    if colis.prix_final
+                    else ""
+                )
+
+                message = (
+                    f"Bonjour *{nom_complet}*,\n\n"
+                    f"📦 *Votre colis a bien été réceptionné dans notre entrepôt en Chine !*\n\n"
+                    f"Nous venons d'enregistrer votre colis le *{date_reception}*.\n\n"
+                    f"🔖 Référence : *{colis.reference}*\n"
+                    f"📋 Type : *{colis.get_type_colis_display()}*\n"
+                    f"{quantite_info}\n"
+                    + (f"{prix_info}\n" if prix_info else "")
+                    + f"📍 Statut : *Réceptionné — en attente d'expédition*\n\n"
+                    f"🌐 Suivez votre colis : https://ts-aircargo.com/login\n"
+                    f"——\n"
+                    f"*Équipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+                )
+
+                # Envoi asynchrone via Celery
+                send_notification_async.delay(
+                    user_id=colis.client.user.id,
+                    message=message,
+                    categorie="colis_recu",
+                    titre=f"Colis réceptionné — {colis.reference}",
+                    region="chine",
+                )
+        except Exception as e:
+            logger.error(f"Erreur trigger notification colis {colis.reference}: {e}")
 
         success_msg = "Colis ajouté avec succès !"
 

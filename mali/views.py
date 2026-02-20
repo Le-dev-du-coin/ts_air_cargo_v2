@@ -1,13 +1,22 @@
 from django.views.generic import TemplateView, ListView, View, DetailView
+from django.views.generic.edit import UpdateView
 from django.shortcuts import get_object_or_404, redirect
 from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
+from django.urls import reverse_lazy
 from django.db.models import Q, Count, Sum, Value, F
 from django.db.models.functions import Concat
 from core.models import Country, Lot, Colis, Client
 from report.models import Depense
 from django.contrib import messages
+
+from notification.models import ConfigurationNotification
+from .forms import NotificationConfigForm
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AgentMaliRequiredMixin:
@@ -673,14 +682,59 @@ class ColisArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         colis.status = "ARRIVE"
         colis.save()
 
+        # Notification immédiate au client avec rappel du prix
+        try:
+            from notification.tasks import send_notification_async
+            from django.contrib.humanize.templatetags.humanize import intcomma
+
+            if colis.client and colis.client.user:
+                prix = colis.prix_final or 0
+                jc = colis.montant_jc or 0
+                montant_a_payer = max(0, prix - jc)
+                fmt_prix = f"{montant_a_payer:,.0f}".replace(",", " ")
+
+                date_arrive = timezone.now().strftime("%d/%m/%Y \u00e0 %H:%M")
+                nom_pointage = (
+                    colis.client.user.get_full_name() or colis.client.user.username
+                )
+                notif_msg = (
+                    f"Bonjour *{nom_pointage}*,\n\n"
+                    f"📍 *Bonne nouvelle ! Votre colis est arriv\u00e9 !*\n\n"
+                    f"Nous venons de r\u00e9ceptionner votre colis *{colis.reference}* "
+                    f"dans notre agence au Mali 🇲🇱 le *{date_arrive}*.\n\n"
+                    f"💰 *Montant \u00e0 r\u00e9gler : {fmt_prix} FCFA*\n\n"
+                    f"Merci de passer le r\u00e9cup\u00e9rer \u00e0 votre convenance.\n\n"
+                    f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
+                    f"\u2014\u2014\n"
+                    f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+                )
+                send_notification_async.delay(
+                    user_id=colis.client.user.id,
+                    message=notif_msg,
+                    categorie="colis_arrive",
+                    titre=f"Colis {colis.reference} arrivé — {fmt_prix} FCFA à régler",
+                    region="mali",
+                )
+        except Exception as e:
+            import logging as _log
+
+            _log.getLogger(__name__).error(
+                f"Erreur notif pointage colis {colis.pk}: {e}"
+            )
+
         if request.headers.get("HX-Request"):
             from django.shortcuts import render
+            import json
 
-            return render(
+            response = render(
                 request,
                 "mali/partials/colis_status_badge.html",
                 {"colis": colis, "lot": colis.lot},
             )
+            # Déclenche l'événement JS "colisArrived" écouté dans lot_transit_detail.html
+            # → retire le <li id="colis-item-{pk}"> avec animation de sortie
+            response["HX-Trigger"] = json.dumps({"colisArrived": {"pk": colis.pk}})
+            return response
 
         messages.success(request, f"Colis {colis.reference} marqué comme Arrivé.")
         return redirect("mali:lot_transit_detail", pk=colis.lot.pk)
@@ -700,6 +754,10 @@ class LotArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             lot.frais_douane = frais_douane
         if frais_transport:
             lot.frais_transport = frais_transport
+
+        # Enregistrer la date d'arrivée si pas encore définie
+        if not lot.date_arrivee:
+            lot.date_arrivee = timezone.now()
 
         # Si le lot était en transit, il passe en ARRIVE (global)
         # MODIF : On ne change PAS le statut automatiquement ici pour permettre le pointage dans la vue Transit.
@@ -721,6 +779,140 @@ class LotArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return redirect("mali:lot_transit_detail", pk=lot.pk)
 
 
+class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
+
+    def post(self, request, pk):
+        lot = get_object_or_404(Lot, pk=pk)
+
+        # Trouver les colis ARRIVE dans ce lot qui n'ont pas encore été notifiés par WhatsApp
+        colis_to_notify = lot.colis.filter(
+            status="ARRIVE", whatsapp_notified=False
+        ).select_related("client", "client__user")
+
+        if not colis_to_notify.exists():
+            messages.warning(request, "Aucun nouveau colis pointé à notifier.")
+            return redirect("mali:lot_transit_detail", pk=pk)
+
+        # Grouper par client
+        by_client = {}
+        for c in colis_to_notify:
+            if not c.client or not c.client.user:
+                continue
+            if c.client.id not in by_client:
+                by_client[c.client.id] = {"user": c.client.user, "colis": []}
+            by_client[c.client.id]["colis"].append(c)
+
+        count_clients = 0
+        from notification.tasks import send_notification_async
+
+        for cid, data in by_client.items():
+            user = data["user"]
+            colis_list = data["colis"]
+            nb = len(colis_list)
+            refs = ", ".join([c.reference for c in colis_list])
+
+            message = (
+                f"📦 *Colis Arrivé(s) au Mali*\n\n"
+                f"Bonjour {user.get_full_name() or user.username},\n"
+                f"Vos colis suivants sont disponibles à l'agence :\n"
+                f"Ref(s): *{refs}*\n\n"
+                f"Merci de passer pour le retrait."
+            )
+
+            send_notification_async.delay(
+                user_id=user.id,
+                message=message,
+                categorie="colis_arrive",
+                titre=f"Arrivée de {nb} colis",
+                region="cote_divoire",
+            )
+
+            # Marquer comme notifié
+            lot.colis.filter(id__in=[c.id for c in colis_list]).update(
+                whatsapp_notified=True
+            )
+            count_clients += 1
+
+        messages.success(request, f"Notifications envoyées à {count_clients} clients.")
+        return redirect("mali:lot_transit_detail", pk=pk)
+
+
+class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+    """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
+
+    def post(self, request, pk):
+        lot = get_object_or_404(Lot, pk=pk)
+
+        # Trouver les colis ARRIVE dans ce lot qui n'ont pas encore été notifiés par WhatsApp
+        colis_to_notify = lot.colis.filter(
+            status="ARRIVE", whatsapp_notified=False
+        ).select_related("client", "client__user")
+
+        if not colis_to_notify.exists():
+            messages.warning(request, "Aucun nouveau colis pointé à notifier.")
+            return redirect("mali:lot_transit_detail", pk=pk)
+
+        # Grouper par client
+        by_client = {}
+        for c in colis_to_notify:
+            if not c.client or not c.client.user:
+                continue
+            if c.client.id not in by_client:
+                by_client[c.client.id] = {"user": c.client.user, "colis": []}
+            by_client[c.client.id]["colis"].append(c)
+
+        count_clients = 0
+        from notification.tasks import send_notification_async
+
+        for cid, data in by_client.items():
+            user = data["user"]
+            colis_list = data["colis"]
+            nb = len(colis_list)
+
+            # Construire la liste détaillée avec le prix de chaque colis
+            lines = []
+            total = 0
+            for c in colis_list:
+                prix = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
+                total += prix
+                fmt = f"{prix:,.0f}".replace(",", " ")
+                lines.append(f"   \u2022 *{c.reference}* — {fmt} FCFA")
+
+            liste_str = "\n".join(lines)
+            fmt_total = f"{total:,.0f}".replace(",", " ")
+
+            nom_notify = user.get_full_name() or user.username
+            message = (
+                f"Bonjour *{nom_notify}*,\n\n"
+                f"📍 *{'Bonne nouvelle ! Votre colis est arriv\u00e9 !' if nb == 1 else f'Bonne nouvelle ! Vos {nb} colis sont arriv\u00e9s !'}*\n\n"
+                f"Nous venons de r\u00e9ceptionner {'votre colis' if nb == 1 else 'vos colis'} \u00e0 l'agence au Mali 🇲🇱 :\n"
+                f"{liste_str}\n\n"
+                f"💰 *Total \u00e0 r\u00e9gler : {fmt_total} FCFA*\n\n"
+                f"Merci de passer {'le' if nb == 1 else 'les'} r\u00e9cup\u00e9rer \u00e0 votre convenance.\n\n"
+                f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
+                f"\u2014\u2014\n"
+                f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+            )
+
+            send_notification_async.delay(
+                user_id=user.id,
+                message=message,
+                categorie="colis_arrive",
+                titre=f"{'Colis arrivé' if nb == 1 else f'{nb} colis arrivés'} — {fmt_total} FCFA à régler",
+                region="mali",
+            )
+
+            # Marquer comme notifié
+            lot.colis.filter(id__in=[c.id for c in colis_list]).update(
+                whatsapp_notified=True
+            )
+            count_clients += 1
+
+        messages.success(request, f"Notifications envoyées à {count_clients} clients.")
+        return redirect("mali:lot_transit_detail", pk=pk)
+
+
 class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
     """Marquer un colis individuel comme LIVRÉ"""
 
@@ -749,12 +941,38 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         if status_paiement == "PAYE":
             colis.est_paye = True
 
-        # Gestion WhatsApp (Marquage uniquement pour l'instant)
-        if request.POST.get("whatsapp_notified") == "on":
-            colis.whatsapp_notified = True
-
         colis.status = "LIVRE"
         colis.save()
+
+        # Notification Livraison (Async)
+        try:
+            from notification.tasks import send_notification_async
+
+            if colis.client and colis.client.user:
+                nom_livre = (
+                    colis.client.user.get_full_name() or colis.client.user.username
+                )
+                message = (
+                    f"Bonjour *{nom_livre}*,\n\n"
+                    f"\u2705 *Livraison r\u00e9ussie !*\n\n"
+                    f"Votre colis *{colis.reference}* a bien \u00e9t\u00e9 livr\u00e9 avec succ\u00e8s.\n\n"
+                    f"Merci d'avoir choisi TS AIR CARGO pour vos envois !\n"
+                    f"Nous esp\u00e9rons vous revoir tr\u00e8s prochainement. 😊\n\n"
+                    f"🌐 Cr\u00e9ez une nouvelle commande : https://ts-aircargo.com/login\n"
+                    f"\u2014\u2014\n"
+                    f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+                )
+                send_notification_async.delay(
+                    user_id=colis.client.user.id,
+                    message=message,
+                    categorie="colis_livre",
+                    titre=f"Livraison effectuée - {colis.reference}",
+                    region="mali",
+                )
+        except Exception as e:
+            from chine.views import logger
+
+            logger.error(f"Erreur trigger notification livraison {colis.id}: {e}")
 
         if request.headers.get("HX-Request"):
             from django.shortcuts import render
@@ -772,58 +990,7 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
                 {"colis": colis, "lot": colis.lot},
             )
 
-        messages.success(
-            request,
-            f"Frais enregistrés pour le lot {lot.numero}. Vous pouvez maintenant pointer les colis.",
-        )
-        return redirect("mali:lot_transit_detail", pk=lot.pk)
-
-
-class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
-    """Marquer un colis individuel comme LIVRÉ"""
-
-    def post(self, request, pk):
-        colis = get_object_or_404(Colis, pk=pk)
-
-        # On ne peut livrer qu'un colis ARRIVÉ
-        if colis.status != "ARRIVE":
-            messages.error(request, "Seuls les colis déjà arrivés peuvent être livrés.")
-            return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
-
-        # Mise à jour des informations de livraison
-        colis.mode_livraison = request.POST.get("mode_livraison", "AGENCE")
-        colis.infos_recepteur = request.POST.get("infos_recepteur", "")
-        colis.commentaire_livraison = request.POST.get("commentaire", "")
-
-        # Gestion Jeton Cédé
-        try:
-            jc = request.POST.get("montant_jc", "0")
-            colis.montant_jc = float(jc) if jc else 0
-        except ValueError:
-            colis.montant_jc = 0
-
-        # Gestion Paiement
-        status_paiement = request.POST.get("status_paiement")
-        if status_paiement == "PAYE":
-            colis.est_paye = True
-
-        # Gestion WhatsApp (Marquage uniquement pour l'instant)
-        if request.POST.get("whatsapp_notified") == "on":
-            colis.whatsapp_notified = True
-
-        colis.status = "LIVRE"
-        colis.save()
-
-        if request.headers.get("HX-Request"):
-            from django.shortcuts import render
-
-            return render(
-                request,
-                "mali/partials/colis_status_badge.html",
-                {"colis": colis, "lot": colis.lot},
-            )
-
-        messages.success(request, f"Colis {colis.reference} marqué comme Livré.")
+        messages.success(request, f"Colis {colis.reference} livré avec succès.")
         return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
 
 
@@ -1090,3 +1257,22 @@ class LotTransitPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
             return HttpResponse("Erreur lors de la génération du PDF", status=500)
 
         return response
+
+
+class NotificationConfigView(LoginRequiredMixin, AgentMaliRequiredMixin, UpdateView):
+    """
+    Permet à l'agent Mali de configurer les rappels automatiques.
+    NB : La configuration des credentials API WaChap est gestion de l'admin_app.
+    """
+
+    model = ConfigurationNotification
+    form_class = NotificationConfigForm  # Rappels uniquement
+    template_name = "mali/config_notifications.html"
+    success_url = reverse_lazy("mali:dashboard")
+
+    def get_object(self, queryset=None):
+        return ConfigurationNotification.get_solo()
+
+    def form_valid(self, form):
+        messages.success(self.request, "✅ Configuration des rappels mise à jour.")
+        return super().form_valid(form)

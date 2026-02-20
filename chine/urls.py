@@ -20,6 +20,8 @@ from .views import (
     ClientUpdateView,
     ClientDeleteView,
     ClientBulkDeleteView,
+    ClientDetailView,
+    ClientPasswordResetView,
     TarifListView,
     TarifCreateView,
     TarifUpdateView,
@@ -56,8 +58,14 @@ urlpatterns = [
         ClientBulkDeleteView.as_view(),
         name="client_bulk_delete",
     ),
+    path("clients/<int:pk>/", ClientDetailView.as_view(), name="client_detail"),
     path("clients/<int:pk>/update/", ClientUpdateView.as_view(), name="client_update"),
     path("clients/<int:pk>/delete/", ClientDeleteView.as_view(), name="client_delete"),
+    path(
+        "clients/<int:pk>/reset-password/",
+        ClientPasswordResetView.as_view(),
+        name="client_reset_password",
+    ),
     # Countries
     path("countries/add/", CountryCreateView.as_view(), name="country_add"),
     # Lots

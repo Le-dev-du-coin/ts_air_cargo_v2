@@ -117,6 +117,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                    <a href="{% url 'chine:client_detail' client.pk %}" class="text-blue-600 hover:text-blue-900 mr-3">Détails</a>
                                     <a href="{% url 'chine:client_update' client.pk %}" class="text-indigo-600 hover:text-indigo-900">Modifier</a>
                                     {% if request.user.role == 'ADMIN_CHINE' %}
                                     <a href="{% url 'chine:client_delete' client.pk %}" class="text-red-600 hover:text-red-900">Supprimer</a>

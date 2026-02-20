@@ -7,7 +7,14 @@
 {% block header %}Pointage Arrivée : Lot {{ lot.numero }}{% endblock %}
 
 {% block actions %}
-<div class="flex items-center space-x-3">
+    <form action="{% url 'mali:lot_notify_arrivals' pk=lot.pk %}" method="POST" onsubmit="return confirm('Notifier les clients des colis arrivés ?')">
+        {% csrf_token %}
+        <button type="submit"
+           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors shadow-lg">
+            <i class="fab fa-whatsapp mr-2 text-lg"></i>
+            Notifier les Arrivées
+        </button>
+    </form>
     <a href="{% url 'mali:lot_manifeste_pdf' pk=lot.pk %}" target="_blank"
        class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors">
         <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -26,7 +33,7 @@
 {% endblock %}
 
 {% block mali_content %}
-<div class="space-y-6">
+<div class="space-y-6 px-4 sm:px-6 pb-8">
     <!-- Infos Lot -->
     <div class="bg-white shadow rounded-lg border border-gray-100 overflow-hidden">
         <div class="px-4 py-5 sm:p-6">

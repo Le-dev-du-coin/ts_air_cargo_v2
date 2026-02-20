@@ -40,8 +40,6 @@
             });
             
             if (response.ok) {
-                const html = await response.text();
-                
                 // Close Modal
                 this.showDeliveryModal = false;
 
@@ -62,15 +60,14 @@
                     item.style.transform = 'translateX(100px)';
                     setTimeout(() => {
                         item.remove();
-                        // Update count if possible? (Optional but nice)
                     }, 500);
                 }
             } else {
-                Swal.fire('Erreur', 'Une erreur est survenue.', 'error');
+                Swal.fire('Erreur', 'Une erreur est survenue lors de la communication serveur.', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            Swal.fire('Erreur', 'Erreur de connexion.', 'error');
+            Swal.fire('Erreur', 'Erreur de connexion internet.', 'error');
         }
     },
     openDeliveryModal(id, ref, client, montant) {
@@ -84,6 +81,14 @@
         const form = document.getElementById('deliveryForm');
         if (form) {
             form.action = `/mali/colis/${id}/livre/`;
+            // Réinitialiser le champ JC pour ne pas garder la valeur du colis précédent
+            const jcInput = form.querySelector('input[name=\'montant_jc\']');
+            if (jcInput) jcInput.value = '';
+            // Réinitialiser aussi le commentaire et le récepteur
+            const recepteurInput = form.querySelector('input[name=\'infos_recepteur\']');
+            if (recepteurInput) recepteurInput.value = '';
+            const commentInput = form.querySelector('textarea[name=\'commentaire\']');
+            if (commentInput) commentInput.value = '';
         } else {
             console.error('Form deliveryForm not found!');
         }
