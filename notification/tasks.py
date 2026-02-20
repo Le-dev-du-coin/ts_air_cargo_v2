@@ -98,19 +98,24 @@ def send_parcel_reminders_periodic():
     # Et qui sont toujours statut ARRIVE
     threshold_date = timezone.now() - timezone.timedelta(days=config.delai_rappel_jours)
 
+    # Anti-spam : exclure les clients déjà notifiés dans les 20 dernières heures
+    recent_cutoff = timezone.now() - timezone.timedelta(hours=20)
+    clients_recemment_notifies = (
+        Notification.objects.filter(
+            categorie="rappel_colis",
+            date_creation__gte=recent_cutoff,
+        )
+        .values_list("user_id", flat=True)
+        .distinct()
+    )
+
     colis_to_remind = (
         Colis.objects.filter(
             status="ARRIVE",
-            updated_at__lte=threshold_date,  # updated_at est mis à jour quand statut change en ARRIVE
-            # On peut aussi utiliser un champ date_arrivee s'il existe (il existe sur Lot, pas explicite sur Colis, mais updated_at fait l'affaire si statut changé)
+            updated_at__lte=threshold_date,
         )
         .exclude(
-            # Exclure ceux déjà notifiés récemment pour éviter le spam quotidien ?
-            # Pour l'instant on envoie une fois par jour si toujours pas récupéré.
-            # Ou on vérifie s'il y a déjà une notif "rappel_colis" récente ?
-            notifications__categorie="rappel_colis",
-            notifications__date_creation__gte=timezone.now()
-            - timezone.timedelta(hours=20),
+            client__user_id__in=clients_recemment_notifies,
         )
         .select_related("client", "client__user")
     )

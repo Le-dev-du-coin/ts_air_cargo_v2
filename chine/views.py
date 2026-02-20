@@ -521,8 +521,8 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
 
             client = self.object
             if client.telephone and client.user:
-                # Récupérer le mot de passe saisi dans le formulaire
-                raw_password = form.cleaned_data.get("password", "")
+                # Mot de passe auto-généré récupéré depuis le formulaire
+                raw_password = getattr(form, "generated_password", None) or "****"
                 nom_complet = (
                     f"{client.prenom} {client.nom}".strip() or client.user.username
                 )
@@ -604,6 +604,94 @@ class ClientBulkDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
         deleted_count, _ = Client.objects.filter(id__in=client_ids).delete()
         messages.success(request, f"{deleted_count} clients supprimés.")
         return redirect("chine:client_list")
+
+
+class ClientDetailView(LoginRequiredMixin, DetailView):
+    model = Client
+    template_name = "chine/clients/detail.html"
+    context_object_name = "client"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from core.models import Colis
+        from django.db.models import Sum, F
+
+        client = self.object
+        colis_list = Colis.objects.filter(client=client).order_by("-created_at")
+
+        # Calculate total CA (Chiffre d'Affaires) for this client
+        # It's the sum of prix_final for all parcels
+        total_ca = colis_list.aggregate(total=Sum("prix_final"))["total"] or 0
+
+        context["colis_list"] = colis_list
+        context["total_ca"] = total_ca
+        context["total_colis"] = colis_list.count()
+        return context
+
+
+class ClientPasswordResetView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        client = get_object_or_404(Client, pk=pk)
+
+        if not client.user or not client.telephone:
+            messages.error(
+                request,
+                "Impossible de réinitialiser le mot de passe : le client n'a pas de compte utilisateur ou de numéro de téléphone enregistré.",
+            )
+            return redirect("chine:client_detail", pk=pk)
+
+        # Generate new password
+        from chine.forms import ClientForm
+
+        new_password = ClientForm._generate_password(10)
+
+        # Save new password
+        user = client.user
+        user.set_password(new_password)
+        user.save()
+
+        # Send notification via WhatsApp
+        try:
+            from notification.tasks import send_notification_async
+
+            nom_complet = client.user.get_full_name() or client.user.username
+
+            message = (
+                f"🔄 Bonjour *{nom_complet}*,\n\n"
+                f"Votre mot de passe a été réinitialisé avec succès.\n\n"
+                f"🔐 *Vos nouveaux identifiants :*\n"
+                f"   • Identifiant : *{user.username}*\n"
+                f"   • Mot de passe : *{new_password}*\n\n"
+                f"⚠️ *Important :* Veuillez modifier votre mot de passe dès votre prochaine connexion.\n\n"
+                f"🌐 Connectez-vous ici :\n"
+                f"https://ts-aircargo.com/login\n\n"
+                f"——\n"
+                f"*Équipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+            )
+
+            send_notification_async.delay(
+                user_id=user.id,
+                message=message,
+                categorie="autre",
+                titre="Réinitialisation de mot de passe",
+                region="chine",
+            )
+
+            messages.success(
+                request,
+                f"Le mot de passe de {client.nom} a été réinitialisé et envoyé par WhatsApp.",
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Erreur lors de la réinitialisation du mot de passe pour {client.id}: {e}"
+            )
+            messages.warning(
+                request,
+                "Le mot de passe a été réinitialisé mais l'envoi WhatsApp a échoué.",
+            )
+
+        return redirect("chine:client_detail", pk=pk)
 
 
 class LotListView(LoginRequiredMixin, ListView):

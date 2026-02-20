@@ -289,14 +289,16 @@ class WaChapMonitor:
                     cache.set(
                         prev_cache_key,
                         True,
-                        timeout=self.check_interval_minutes * 60 * 2,
+                        timeout=4
+                        * 3600,  # 4h pour survivre aux checks toutes les 15min
                     )
                 else:
                     disconnected_instances.append((region, status))
                     cache.set(
                         prev_cache_key,
                         False,
-                        timeout=self.check_interval_minutes * 60 * 2,
+                        timeout=4
+                        * 3600,  # 4h — évite les fausses alertes au redémarrage
                     )
 
             # Envoyer alertes pour les instances déconnectées

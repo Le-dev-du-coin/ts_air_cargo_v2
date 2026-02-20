@@ -27,37 +27,7 @@
                         </div>
                     </div>
                     {% endif %}
-
-                    {% if not form.instance.pk %}
-                    <div class="bg-indigo-50 p-4 rounded-md mb-6 border border-indigo-100">
-                        <h4 class="text-sm font-medium text-indigo-800 mb-4">Identifiants de Connexion</h4>
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
-                                <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-indigo-700 sm:mt-px sm:pt-2">
-                                    Nom d'utilisateur <span class="text-red-500">*</span>
-                                </label>
-                                <div class="mt-1 sm:mt-0 sm:col-span-2">
-                                    {{ form.username }}
-                                    {% if form.username.errors %}
-                                    <p class="mt-2 text-sm text-red-600">{{ form.username.errors.0 }}</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
-                                <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-indigo-700 sm:mt-px sm:pt-2">
-                                    Mot de passe <span class="text-red-500">*</span>
-                                </label>
-                                <div class="mt-1 sm:mt-0 sm:col-span-2">
-                                    {{ form.password }}
-                                    {% if form.password.errors %}
-                                    <p class="mt-2 text-sm text-red-600">{{ form.password.errors.0 }}</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
+            
                     <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
                         <label for="{{ form.nom.id_for_label }}"
                             class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
