@@ -1,5 +1,5 @@
 {% extends "chine/base.html" %}
-{% load static %}
+{% load static humanize %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -66,7 +66,7 @@
         <div class="bg-white overflow-hidden shadow rounded-lg px-4 py-5 sm:p-6 text-center border border-gray-100 flex flex-col justify-center relative">
             <dt class="text-sm font-bold text-gray-500 uppercase tracking-wide">Chiffre d'Affaires Total</dt>
             <dd class="mt-2 text-3xl font-extrabold text-blue-600">
-                {{ total_ca|default_if_none:"0" }} <span class="text-lg text-gray-500 font-normal">FCFA</span>
+                {{ total_ca|default_if_none:"0"|intcomma }} <span class="text-lg text-gray-500 font-normal">FCFA</span>
             </dd>
             <p class="text-xs text-gray-400 mt-2">Basé sur tous les colis</p>
         </div>
@@ -103,34 +103,51 @@
         
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-white">
+                <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Référence</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Lot</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Date d'ajout</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Mesures (LxlxH, Poids)</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Statut</th>
-                        <th scope="col" class="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 pr-6">Prix Final (FCFA)</th>
+                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider sm:pl-6">Référence</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Lot</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date d'ajout</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Mesures (Poids / CBM)</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut</th>
+                        <th scope="col" class="px-3 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider pr-6">Prix Final (FCFA)</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 bg-white">
                     {% for colis in colis_list %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                    <tr class="hover:bg-gray-50 transition-colors duration-200">
+                        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-indigo-600 sm:pl-6">
                             {{ colis.reference }}
                         </td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                             {% if colis.lot %}
-                                <a href="{% url 'chine:lot_detail' colis.lot.pk %}" class="text-indigo-600 hover:underline hover:text-indigo-900">{{ colis.lot.numero }}</a>
+                                <a href="{% url 'chine:lot_detail' colis.lot.pk %}" class="inline-flex items-center text-gray-700 hover:text-indigo-600 font-medium">
+                                    <svg class="mr-1.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                    </svg>
+                                    {{ colis.lot.numero|upper }}
+                                    <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                        {% if colis.lot.type_transport == 'CARGO' %}bg-blue-100 text-blue-800
+                                        {% elif colis.lot.type_transport == 'EXPRESS' %}bg-red-100 text-red-800
+                                        {% elif colis.lot.type_transport == 'BATEAU' %}bg-emerald-100 text-emerald-800
+                                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                        {{ colis.lot.type_transport }}
+                                    </span>
+                                </a>
                             {% else %}
                                 <span class="text-gray-400 italic">Sans lot</span>
                             {% endif %}
                         </td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {{ colis.created_at|date:"d/m/Y H:i" }}
+                            {{ colis.created_at|date:"d/m/y à H:i" }}
                         </td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {{ colis.longueur|default:"-" }}x{{ colis.largeur|default:"-" }}x{{ colis.hauteur|default:"-" }} cm, {{ colis.poids|default:"-" }} kg
+                            {% if colis.lot.type_transport == 'BATEAU' %}
+                                {{ colis.longueur|default:"0" }}x{{ colis.largeur|default:"0" }}x{{ colis.hauteur|default:"0" }} cm 
+                                <span class="font-semibold ml-1 text-gray-700">({{ colis.cbm|default:"-" }} CBM)</span>
+                            {% else %}
+                                <span class="font-semibold text-gray-700">{{ colis.poids|default:"-" }} kg</span>
+                            {% endif %}
                         </td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm">
                             {% if colis.status == 'RECU' %}
@@ -140,13 +157,13 @@
                             {% elif colis.status == 'ARRIVE' %}
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">Arrivé</span>
                             {% elif colis.status == 'LIVRE' %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">Livré</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">Livré</span>
                             {% else %}
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{{ colis.get_status_display }}</span>
                             {% endif %}
                         </td>
-                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 text-right pr-6 font-semibold">
-                            {{ colis.prix_final|default:"0" }}
+                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 text-right pr-6 font-bold">
+                            {{ colis.prix_final|default:"0"|intcomma }}
                         </td>
                     </tr>
                     {% empty %}
