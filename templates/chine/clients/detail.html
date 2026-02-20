@@ -68,7 +68,7 @@
         <div class="bg-white overflow-hidden shadow rounded-lg px-4 py-5 sm:p-6 text-center border border-gray-100 flex flex-col justify-center relative">
             <dt class="text-sm font-bold text-gray-500 uppercase tracking-wide">Chiffre d'Affaires Total</dt>
             <dd class="mt-2 text-3xl font-extrabold text-blue-600">
-                {{ total_ca|default_if_none:"0"|intcomma }} <span class="text-lg text-gray-500 font-normal">FCFA</span>
+                {{ total_ca|default_if_none:"0"|floatformat:0|intcomma }} <span class="text-lg text-gray-500 font-normal">FCFA</span>
             </dd>
             <p class="text-xs text-gray-400 mt-2">Basé sur tous les colis</p>
         </div>
@@ -144,7 +144,9 @@
                             {{ colis.created_at|date:"d/m/y à H:i" }}
                         </td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {% if colis.lot.type_transport == 'BATEAU' %}
+                            {% if colis.type_colis == 'TELEPHONE' %}
+                                <span class="font-semibold text-gray-700">{{ colis.nombre_pieces|default:"0" }} pièce{{ colis.nombre_pieces|pluralize }}</span>
+                            {% elif colis.lot and colis.lot.type_transport == 'BATEAU' %}
                                 {{ colis.longueur|default:"0" }}x{{ colis.largeur|default:"0" }}x{{ colis.hauteur|default:"0" }} cm 
                                 <span class="font-semibold ml-1 text-gray-700">({{ colis.cbm|default:"-" }} CBM)</span>
                             {% else %}
@@ -165,7 +167,7 @@
                             {% endif %}
                         </td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 text-right pr-6 font-bold">
-                            {{ colis.prix_final|default:"0"|intcomma }}
+                            {{ colis.prix_final|default:"0"|floatformat:0|intcomma }}
                         </td>
                     </tr>
                     {% empty %}
