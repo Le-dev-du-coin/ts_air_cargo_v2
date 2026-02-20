@@ -25,54 +25,6 @@
     colisRef: '', 
     colisClient: '', 
     colisMontant: 0,
-    async submitDelivery() {
-        const form = document.getElementById('deliveryForm');
-        const formData = new FormData(form);
-        
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'HX-Request': 'true',
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                },
-                body: formData
-            });
-            
-            if (response.ok) {
-                const html = await response.text();
-                
-                // Close Modal
-                this.showDeliveryModal = false;
-
-                // Success Message
-                Swal.fire({
-                    title: 'Livraison Confirmée!',
-                    text: `Colis ${this.colisRef} livré avec succès.`,
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-
-                // Remove item from list with animation
-                const item = document.getElementById(`colis-item-${this.colisId}`);
-                if (item) {
-                    item.style.transition = 'all 0.5s ease';
-                    item.style.opacity = '0';
-                    item.style.transform = 'translateX(100px)';
-                    setTimeout(() => {
-                        item.remove();
-                        // Update count if possible? (Optional but nice)
-                    }, 500);
-                }
-            } else {
-                Swal.fire('Erreur', 'Une erreur est survenue.', 'error');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            Swal.fire('Erreur', 'Erreur de connexion.', 'error');
-        }
-    },
     openDeliveryModal(id, ref, client, montant) {
         this.colisId = id;
         this.colisRef = ref;
@@ -85,12 +37,12 @@
         if (form) {
             form.action = `/mali/colis/${id}/livre/`;
             // Réinitialiser le champ JC pour ne pas garder la valeur du colis précédent
-            const jcInput = form.querySelector('input[name="montant_jc"]');
+            const jcInput = form.querySelector('input[name=\'montant_jc\']');
             if (jcInput) jcInput.value = '';
             // Réinitialiser aussi le commentaire et le récepteur
-            const recepteurInput = form.querySelector('input[name="infos_recepteur"]');
+            const recepteurInput = form.querySelector('input[name=\'infos_recepteur\']');
             if (recepteurInput) recepteurInput.value = '';
-            const commentInput = form.querySelector('textarea[name="commentaire"]');
+            const commentInput = form.querySelector('textarea[name=\'commentaire\']');
             if (commentInput) commentInput.value = '';
         } else {
             console.error('Form deliveryForm not found!');
@@ -263,7 +215,7 @@
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
                  class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                 
-                <form id="deliveryForm" method="POST" action="" @submit.prevent="submitDelivery">
+                <form id="deliveryForm" method="POST" action="">
                     {% csrf_token %}
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
