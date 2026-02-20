@@ -699,48 +699,68 @@ class LotCloseView(LoginRequiredMixin, StrictAgentChineRequiredMixin, View):
             lot.save()
             messages.success(request, f"Lot {lot.numero} fermé. Prêt pour expédition.")
 
-            # Notification clients du lot : leurs colis sont en cours de conditionnement
-            try:
-                from notification.tasks import send_notification_async
+            # Notification clients — uniquement si frais transport saisis
+            # et uniquement pour les colis pas encore notifiés (évite doublons si réouverture)
+            if not lot.frais_transport or lot.frais_transport <= 0:
+                messages.warning(
+                    request,
+                    "Lot fermé. ⚠️ Aucune notification envoyée : renseignez les frais de transport d'abord.",
+                )
+            else:
+                try:
+                    from notification.tasks import send_notification_async
 
-                # Grouper par client (1 seul message par client)
-                by_client = {}
-                for colis in lot.colis.all():
-                    if not colis.client or not colis.client.user:
-                        continue
-                    cid = colis.client.id
-                    if cid not in by_client:
-                        by_client[cid] = {"user": colis.client.user, "colis": []}
-                    by_client[cid]["colis"].append(colis)
+                    # Seulement les colis pas encore notifiés (nouveaux ou après réouverture)
+                    colis_a_notifier = lot.colis.filter(
+                        notifie_fermeture=False
+                    ).select_related("client__user")
 
-                for cid, data in by_client.items():
-                    user = data["user"]
-                    colis_list = data["colis"]
-                    nb = len(colis_list)
-                    nom_complet = user.get_full_name() or user.username
-                    lines = "\n".join(f"   \u2022 {c.reference}" for c in colis_list)
-                    msg = (
-                        f"Bonjour *{nom_complet}*,\n\n"
-                        f"📦 *Lot ferm\u00e9 \u2014 Pr\u00eat \u00e0 exp\u00e9dier !*\n\n"
-                        f"Nous venons de fermer le lot *{lot.numero}* contenant "
-                        f"{'votre colis' if nb == 1 else f'vos {nb} colis'} :\n"
-                        f"{lines}\n\n"
-                        f"⏳ L'exp\u00e9dition est pr\u00e9vue prochainement depuis la Chine.\n"
-                        f"🔔 Vous recevrez une notification d\u00e8s le d\u00e9part.\n\n"
-                        f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
-                        f"\u2014\u2014\n"
-                        f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+                    # Grouper par client (1 seul message par client)
+                    by_client = {}
+                    for colis in colis_a_notifier:
+                        if not colis.client or not colis.client.user:
+                            continue
+                        cid = colis.client.id
+                        if cid not in by_client:
+                            by_client[cid] = {"user": colis.client.user, "colis": []}
+                        by_client[cid]["colis"].append(colis)
+
+                    for cid, data in by_client.items():
+                        user = data["user"]
+                        colis_list = data["colis"]
+                        nb = len(colis_list)
+                        nom_complet = user.get_full_name() or user.username
+                        lines = "\n".join(
+                            f"   \u2022 {c.reference}" for c in colis_list
+                        )
+                        msg = (
+                            f"Bonjour *{nom_complet}*,\n\n"
+                            f"\U0001f4e6 *Lot ferm\u00e9 \u2014 Pr\u00eat \u00e0 exp\u00e9dier !*\n\n"
+                            f"Nous venons de fermer le lot *{lot.numero}* contenant "
+                            f"{'votre colis' if nb == 1 else f'vos {nb} colis'} :\n"
+                            f"{lines}\n\n"
+                            f"\u23f3 L'exp\u00e9dition est pr\u00e9vue prochainement depuis la Chine.\n"
+                            f"\U0001f514 Vous recevrez une notification d\u00e8s le d\u00e9part.\n\n"
+                            f"\U0001f310 Suivez vos colis : https://ts-aircargo.com/login\n"
+                            f"\u2014\u2014\n"
+                            f"*\u00c9quipe TS AIR CARGO* \U0001f1e8\U0001f1f3 \U0001f1f2\U0001f1f1 \U0001f1e8\U0001f1ee"
+                        )
+                        send_notification_async.delay(
+                            user_id=user.id,
+                            message=msg,
+                            categorie="lot_ferme",
+                            titre=f"Lot {lot.numero} ferm\u00e9 \u2014 Exp\u00e9dition \u00e0 venir",
+                            region="chine",
+                        )
+
+                    # Marquer les colis comme notifiés (anti-doublon réouverture)
+                    colis_a_notifier.update(notifie_fermeture=True)
+
+                except Exception as e:
+                    logger.error(
+                        f"Erreur trigger notification fermeture lot {lot.id}: {e}"
                     )
-                    send_notification_async.delay(
-                        user_id=user.id,
-                        message=msg,
-                        categorie="lot_ferme",
-                        titre=f"Lot {lot.numero} ferm\u00e9 \u2014 Exp\u00e9dition \u00e0 venir",
-                        region="chine",
-                    )
 
-            except Exception as e:
-                logger.error(f"Erreur trigger notification fermeture lot {lot.id}: {e}")
         return redirect("chine:lot_detail", pk=pk)
 
 
@@ -938,13 +958,35 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
             from notification.tasks import send_notification_async
 
             if colis.client and colis.client.user:
-                # Construire le message
+                nom_complet = (
+                    colis.client.user.get_full_name() or colis.client.user.username
+                )
+                date_reception = timezone.now().strftime("%d/%m/%Y à %H:%M")
+
+                # Téléphone → pièces, autres → poids
+                if colis.type_colis == "TELEPHONE":
+                    quantite_info = f"📱 Quantité : *{colis.nombre_pieces} pièce(s)*"
+                else:
+                    quantite_info = f"⚖️ Poids : *{colis.poids} kg*"
+
+                prix_info = (
+                    f"💰 Prix : *{colis.prix_final:,.0f} FCFA*".replace(",", " ")
+                    if colis.prix_final
+                    else ""
+                )
+
                 message = (
-                    f"📦 *Colis Reçu en Chine*\n"
-                    f"Ref: *{colis.reference}*\n"
-                    f"Poids: {colis.poids} kg\n"
-                    f"Statut: Reçu à l'entrepôt\n"
-                    f"Merci de votre confiance."
+                    f"Bonjour *{nom_complet}*,\n\n"
+                    f"📦 *Votre colis a bien été réceptionné dans notre entrepôt en Chine !*\n\n"
+                    f"Nous venons d'enregistrer votre colis le *{date_reception}*.\n\n"
+                    f"🔖 Référence : *{colis.reference}*\n"
+                    f"📋 Type : *{colis.get_type_colis_display()}*\n"
+                    f"{quantite_info}\n"
+                    + (f"{prix_info}\n" if prix_info else "")
+                    + f"📍 Statut : *Réceptionné — en attente d'expédition*\n\n"
+                    f"🌐 Suivez votre colis : https://ts-aircargo.com/login\n"
+                    f"——\n"
+                    f"*Équipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
                 )
 
                 # Envoi asynchrone via Celery
@@ -952,7 +994,7 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
                     user_id=colis.client.user.id,
                     message=message,
                     categorie="colis_recu",
-                    titre="Nouveau Colis Reçu",
+                    titre=f"Colis réceptionné — {colis.reference}",
                     region="chine",
                 )
         except Exception as e:

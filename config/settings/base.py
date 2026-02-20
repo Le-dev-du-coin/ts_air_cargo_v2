@@ -174,10 +174,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "notification.tasks.check_system_health_periodic",
         "schedule": timedelta(hours=1),
     },
-    # Envoi des rappels de colis chaque jour (24h)
+    # Envoi des rappels de colis — ⚠️ MODE DEV : toutes les 10 min pour test
+    # En production : timedelta(hours=24)
     "send_parcel_reminders_periodic": {
         "task": "notification.tasks.send_parcel_reminders_periodic",
-        "schedule": timedelta(hours=24),
+        "schedule": timedelta(minutes=10),
     },
     # File d'attente WhatsApp : retry des notifications en échec toutes les 5 min
     "retry_failed_notifications_periodic": {

@@ -755,6 +755,10 @@ class LotArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         if frais_transport:
             lot.frais_transport = frais_transport
 
+        # Enregistrer la date d'arrivée si pas encore définie
+        if not lot.date_arrivee:
+            lot.date_arrivee = timezone.now()
+
         # Si le lot était en transit, il passe en ARRIVE (global)
         # MODIF : On ne change PAS le statut automatiquement ici pour permettre le pointage dans la vue Transit.
         # Le statut passera à ARRIVE quand ? Manuellement ou quand tout est pointé ?

@@ -262,6 +262,10 @@ class Colis(TenantAwareModel):
     whatsapp_notified = models.BooleanField(
         default=False, help_text=_("Notification WhatsApp envoyée/demandée")
     )
+    notifie_fermeture = models.BooleanField(
+        default=False,
+        help_text=_("Notification 'lot fermé' déjà envoyée pour ce colis"),
+    )
 
     photo = models.ImageField(upload_to="colis/%Y/%m/", blank=True, null=True)
     status = models.CharField(
