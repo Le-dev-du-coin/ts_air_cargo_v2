@@ -31,3 +31,6 @@ db.sqlite3
 media/
 project-context.md
 *.log
+
+# Celery
+celerybeat-schedule*
