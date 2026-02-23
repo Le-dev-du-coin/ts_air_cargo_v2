@@ -1,0 +1,173 @@
+{% extends "ivoire/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block title %}Historique des Lots Arrivés - Côte d'Ivoire - TS Air Cargo{% endblock %}
+
+{% block header %}Historique des Lots Arrivés{% endblock %}
+
+{% block actions %}
+<!-- Barre de Recherche -->
+<form method="GET" action="{% url 'ivoire:lots_arrives' %}" class="flex w-full max-w-md">
+    <div class="relative w-full">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        </div>
+        <input type="text" name="q" value="{{ q|default:'' }}"
+            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 sm:text-sm shadow-sm transition-all"
+            placeholder="Lot, Nom ou Tél Client...">
+    </div>
+    <button type="submit" class="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-orange-600 hover:bg-orange-700 shadow-sm transition-all">
+        Rechercher
+    </button>
+    {% if q %}
+    <a href="{% url 'ivoire:lots_arrives' %}" class="ml-2 inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all shadow-sm" title="Effacer la recherche">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+    </a>
+    {% endif %}
+</form>
+{% endblock %}
+
+{% block ivoire_content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <p class="text-sm font-medium text-gray-500 italic">
+            {% if paginator.count %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800 mr-2">
+                    {{ paginator.count }} LOT{{ paginator.count|pluralize:"S" }}
+                </span>
+                réceptionné{{ paginator.count|pluralize }} au Côte d'Ivoire
+            {% else %}
+                Aucun lot dans l'historique pour le moment
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Table des Lots -->
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">N° Lot</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Transport</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Colis</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Poids/Vol.</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Recettes</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Arrivée</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Statut</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for lot in object_list %}
+                    <tr class="hover:bg-orange-50/50 transition-colors duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm font-black text-gray-900 uppercase">
+                                {{ lot.numero }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if lot.type_transport == 'CARGO' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 uppercase border border-orange-200">Cargo</span>
+                            {% elif lot.type_transport == 'EXPRESS' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase border border-blue-200">Express</span>
+                            {% elif lot.type_transport == 'BATEAU' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 uppercase border border-teal-200">Bateau</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-full">{{ lot.nb_colis_arrive }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-xs font-medium text-gray-500">
+                                {% if lot.poids_total_arrive %}{{ lot.poids_total_arrive|floatformat:1 }} kg{% else %}-{% endif %}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-sm font-extrabold text-orange-700">
+                                {{ lot.total_recettes_arrive|default:"0"|floatformat:0|intcomma }} FCFA
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-xs font-bold text-gray-500">
+                                {% if lot.date_arrivee %}
+                                    {{ lot.date_arrivee|date:"d/m/Y" }}
+                                {% else %}
+                                    {{ lot.created_at|date:"d/m/Y" }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if lot.status == 'ARRIVE' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orange-100 text-orange-800 border border-orange-200 uppercase tracking-tighter">Arrivé</span>
+                            {% elif lot.status == 'LIVRE' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gray-100 text-gray-800 border border-gray-200 uppercase tracking-tighter">Archivé</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold">
+                            <a href="{% url 'ivoire:lot_arrived_detail' lot.pk %}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-black rounded-lg text-white bg-orange-600 hover:bg-orange-700 transition-all shadow-sm">
+                                DÉTAILS
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-16 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="p-4 bg-gray-50 rounded-full mb-4">
+                                    <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                </div>
+                                <h3 class="mt-2 text-sm font-bold text-gray-900">Aucun lot archivé</h3>
+                                <p class="mt-1 text-sm text-gray-500 max-w-xs mx-auto">
+                                    L'historique se remplira dès que les lots en transit seront réceptionnés.
+                                </p>
+                                {% if q %}
+                                <div class="mt-6">
+                                    <a href="{% url 'ivoire:lots_arrives' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all">
+                                        Effacer les filtres
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">
+                        Page <span class="text-orange-700 font-black">{{ page_obj.number }}</span> sur {{ page_obj.paginator.num_pages }}
+                    </p>
+                </div>
+                <nav class="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px border border-gray-200 overflow-hidden" aria-label="Pagination">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="relative inline-flex items-center px-4 py-2 bg-white text-sm font-bold text-gray-700 hover:bg-gray-50 border-r border-gray-200">
+                        Précédent
+                    </a>
+                    {% endif %}
+                    
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="relative inline-flex items-center px-4 py-2 bg-white text-sm font-bold text-gray-700 hover:bg-gray-50">
+                        Suivant
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "ivoire/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block title %}Archives Lot {{ lot.numero }} - Côte d'Ivoire - TS Air Cargo{% endblock %}
+
+{% block header %}Archives : Lot {{ lot.numero }}{% endblock %}
+
+{% block actions %}
+<div class="flex items-center space-x-3">
+    <a href="{% url 'ivoire:lots_livres' %}" 
+       class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+        <svg class="-ml-1 mr-2 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Retour Archives
+    </a>
+</div>
+{% endblock %}
+
+{% block ivoire_content %}
+<div class="space-y-6">
+    <!-- Infos Lot -->
+    <div class="bg-white shadow-xl rounded-xl border border-gray-100 overflow-hidden">
+        <div class="p-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Transport</p>
+                    <p class="text-sm font-black text-gray-900 uppercase">{{ lot.get_type_transport_display }}</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Colis Archivés</p>
+                    <p class="text-sm font-black text-gray-900">{{ colis_list.paginator.count }} colis</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Total Encaissé</p>
+                    <p class="text-sm font-black text-orange-600">{{ total_montant_colis|fcfa }}</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Destination</p>
+                    <p class="text-sm font-black text-gray-900 uppercase">{{ lot.destination.name }}</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Dates</p>
+                    <p class="text-[10px] text-gray-600">Exp: {{ lot.date_expedition|date:"d/m/Y" }}</p>
+                    <p class="text-[10px] text-gray-600">Arr: {{ lot.date_arrivee|date:"d/m/Y" }}</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Poids / Vol.</p>
+                    <p class="text-sm font-bold text-gray-900">{{ total_poids|floatformat:1 }} kg</p>
+                    <p class="text-xs text-gray-500">{{ total_cbm }} m³</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Dépenses</p>
+                    <p class="text-[10px] text-red-600">Trans: -{{ lot.frais_transport|fcfa }}</p>
+                    <p class="text-[10px] text-red-600">Douane: -{{ lot.frais_douane|fcfa }}</p>
+                </div>
+                <div class="space-y-1 bg-gray-50 p-1 rounded">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Bénéfice Net</p>
+                    <p class="text-sm font-black {% if benefice >= 0 %}text-orange-600{% else %}text-red-600{% endif %}">
+                        {{ benefice|fcfa }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des Colis Archivés -->
+    <div class="bg-white shadow-xl rounded-xl border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <h3 class="text-sm font-black text-gray-700 uppercase tracking-widest">Colis Livrés ou Perdus</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Référence</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Client</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Montant</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Statut</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Date Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 bg-white">
+                    {% for colis in colis_list %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm font-black text-gray-900 uppercase">{{ colis.reference }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-bold text-gray-900 uppercase">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
+                            <div class="text-[10px] text-gray-500">{{ colis.client.telephone }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-sm font-bold text-gray-900">{{ colis.net_price|fcfa }}</span>
+                            {% if colis.montant_jc > 0 %}
+                            <div class="text-[10px] text-gray-500 italic">JC: {{ colis.montant_jc|fcfa }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if colis.status == 'LIVRE' %}
+                                <span class="px-2 py-1 text-[10px] font-black bg-orange-100 text-orange-800 rounded uppercase">LIVRÉ</span>
+                            {% else %}
+                                <span class="px-2 py-1 text-[10px] font-black bg-red-100 text-red-800 rounded uppercase">PERDU</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-xs text-gray-500">
+                            {{ colis.updated_at|date:"d/m/Y H:i" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if colis_list.has_other_pages %}
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-between items-center">
+            <span class="text-xs font-bold text-gray-500">Lot {{ lot.numero }} - Page {{ colis_list.number }}</span>
+            <div class="flex space-x-1">
+                {% if colis_list.has_previous %}
+                    <a href="?page={{ colis_list.previous_page_number }}" class="px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-50">Précédent</a>
+                {% endif %}
+                {% if colis_list.has_next %}
+                    <a href="?page={{ colis_list.next_page_number }}" class="px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-50">Suivant</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

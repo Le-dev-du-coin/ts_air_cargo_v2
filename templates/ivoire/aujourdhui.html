@@ -1,0 +1,178 @@
+{% extends "ivoire/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block title %}Aujourd'hui - Côte d'Ivoire - TS Air Cargo{% endblock %}
+
+{% block header %}Rapport Journalier & Caisse{% endblock %}
+
+{% block actions %}
+<div class="flex flex-wrap gap-2">
+    <a href="{% url 'ivoire:rapport_jour_pdf' %}?type=global" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+        📄 Global
+    </a>
+    <a href="{% url 'ivoire:rapport_jour_pdf' %}?type=cargo" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+        ✈️ Cargo
+    </a>
+    <a href="{% url 'ivoire:rapport_jour_pdf' %}?type=express" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+        🚀 Express
+    </a>
+    <a href="{% url 'ivoire:rapport_jour_pdf' %}?type=bateau" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+        🚢 Bateau
+    </a>
+</div>
+{% endblock %}
+
+{% block ivoire_content %}
+<!-- Synthèse Financière (Cartes) -->
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+    <!-- Report Veille -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-gray-400">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-xs font-medium text-gray-500 truncate uppercase">Report Veille</dt>
+            <dd class="mt-1 text-xl font-bold text-gray-700 truncate" title="{{ solde_veille|fcfa }}">{{ solde_veille|fcfa }}</dd>
+        </div>
+    </div>
+
+    <!-- Recettes Jour -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-orange-500">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-xs font-medium text-gray-500 truncate uppercase">Recettes Jour</dt>
+            <dd class="mt-1 text-xl font-bold text-orange-600 truncate" title="{{ total_recettes_jour|fcfa }}">{{ total_recettes_jour|fcfa }}</dd>
+            <p class="mt-1 text-[10px] text-orange-500 font-medium">Dont JC: -{{ total_jc_jour|fcfa }}</p>
+        </div>
+    </div>
+
+    <!-- Sorties Jour (Dépenses + Transferts) -->
+    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-red-500">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-xs font-medium text-gray-500 truncate uppercase">Sorties Jour</dt>
+            <dd class="mt-1 text-xl font-bold text-red-600 truncate" title="-{{ total_sorties_jour|fcfa }}">-{{ total_sorties_jour|fcfa }}</dd>
+            <p class="mt-1 text-[10px] text-red-500 font-medium">Dép: {{ total_depenses_only|fcfa }} | Trans: {{ total_transferts_only|fcfa }}</p>
+        </div>
+    </div>
+
+    <!-- Solde Caisse Actuel -->
+    <div class="bg-indigo-900 overflow-hidden shadow rounded-lg border border-indigo-700">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-xs font-medium text-indigo-200 truncate uppercase">Solde Caisse Actuel</dt>
+            <dd class="mt-1 text-2xl font-black text-white truncate" title="{{ solde_caisse_actuel|fcfa }}">{{ solde_caisse_actuel|fcfa }}</dd>
+            <p class="mt-1 text-[10px] text-indigo-300">Disponible Immédiatement</p>
+        </div>
+    </div>
+</div>
+
+<!-- Sections / Onglets (Alpine.js) -->
+<div x-data="{ activeTab: 'cargo' }" class="bg-white shadow rounded-lg border border-gray-200 min-h-[500px]">
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex" aria-label="Tabs">
+            <button @click="activeTab = 'cargo'"
+                :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'cargo', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'cargo' }"
+                class="w-1/4 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center">
+                <span class="mr-0 sm:mr-2">✈️</span> 
+                <span>Cargo <span class="hidden sm:inline">({{ recette_cargo_jour|fcfa }})</span></span>
+            </button>
+            <button @click="activeTab = 'express'"
+                :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'express', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'express' }"
+                class="w-1/4 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center">
+                <span class="mr-0 sm:mr-2">🚀</span> 
+                <span>Express <span class="hidden sm:inline">({{ recette_express_jour|fcfa }})</span></span>
+            </button>
+            <button @click="activeTab = 'bateau'"
+                :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'bateau', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'bateau' }"
+                class="w-1/4 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center">
+                <span class="mr-0 sm:mr-2">🚢</span> 
+                <span>Bateau <span class="hidden sm:inline">({{ recette_bateau_jour|fcfa }})</span></span>
+            </button>
+            <button @click="activeTab = 'sorties'"
+                :class="{ 'border-red-500 text-red-600': activeTab === 'sorties', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'sorties' }"
+                class="w-1/4 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center">
+                <span class="mr-0 sm:mr-2">📉</span> 
+                <span>Sorties <span class="hidden sm:inline">(-{{ total_sorties_jour|fcfa }})</span></span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Contenu des Onglets -->
+    
+    <!-- 1. Cargo -->
+    <div x-show="activeTab === 'cargo'" class="p-4" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Livraisons Cargo (Aujourd'hui)</h3>
+             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                Total: {{ recette_cargo_jour|fcfa }}
+            </span>
+        </div>
+        {% include "ivoire/partials/today_colis_table.html" with colis_list=colis_cargo_list type="Cargo" total_recette=recette_cargo_jour %}
+    </div>
+
+    <!-- 2. Express -->
+    <div x-show="activeTab === 'express'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+         <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Livraisons Express (Aujourd'hui)</h3>
+             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                Total: {{ recette_express_jour|fcfa }}
+            </span>
+        </div>
+        {% include "ivoire/partials/today_colis_table.html" with colis_list=colis_express_list type="Express" total_recette=recette_express_jour %}
+    </div>
+
+    <!-- 3. Bateau -->
+    <div x-show="activeTab === 'bateau'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+         <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Livraisons Bateau (Aujourd'hui)</h3>
+             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                Total: {{ recette_bateau_jour|fcfa }}
+            </span>
+        </div>
+        {% include "ivoire/partials/today_colis_table.html" with colis_list=colis_bateau_list type="Bateau" total_recette=recette_bateau_jour %}
+    </div>
+
+    <!-- 4. Sorties (Dépenses + Transferts) -->
+    <div x-show="activeTab === 'sorties'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Dépenses -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold text-gray-700">Dépenses Courantes</h4>
+                    <span class="text-sm font-medium bg-gray-200 px-2 py-1 rounded">{{ total_depenses_only|fcfa }}</span>
+                </div>
+                <ul class="divide-y divide-gray-200 bg-white rounded shadow-sm">
+                    {% for depense in depenses_jour_list %}
+                    <li class="px-4 py-3 text-sm flex justify-between">
+                        <div>
+                            <span class="font-medium text-gray-900">{{ depense.description }}</span>
+                            <span class="text-gray-500 block text-xs">{{ depense.get_categorie_display }}</span>
+                        </div>
+                        <span class="font-bold text-gray-900">-{{ depense.montant|fcfa }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="px-4 py-3 text-sm text-gray-500 italic text-center">Aucune dépense aujourd'hui.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <!-- Transferts -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold text-gray-700">Transferts d'Argent</h4>
+                    <span class="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ total_transferts_only|fcfa }}</span>
+                </div>
+                <ul class="divide-y divide-gray-200 bg-white rounded shadow-sm">
+                    {% for transfert in transferts_jour_list %}
+                    <li class="px-4 py-3 text-sm flex justify-between">
+                        <div>
+                            <span class="font-medium text-gray-900">Transfert vers Chine</span>
+                            <span class="text-gray-500 block text-xs">{{ transfert.description|default:"Sans note" }}</span>
+                        </div>
+                        <span class="font-bold text-blue-600">-{{ transfert.montant|fcfa }}</span>
+                    </li>
+                     {% empty %}
+                    <li class="px-4 py-3 text-sm text-gray-500 italic text-center">Aucun transfert aujourd'hui.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -167,7 +167,7 @@ CELERY_BEAT_SCHEDULE = {
     # Vérification des instances WaChap toutes les 15 min
     "check_wachap_status_periodic": {
         "task": "notification.tasks.check_wachap_status_periodic",
-        "schedule": timedelta(minutes=15),
+        "schedule": timedelta(minutes=60),
     },
     # Vérification de santé du système chaque heure
     "check_system_health_periodic": {

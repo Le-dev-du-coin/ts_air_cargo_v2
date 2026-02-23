@@ -1,0 +1,129 @@
+{% extends "ivoire/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block title %}Historique des Livraisons - Côte d'Ivoire - TS Air Cargo{% endblock %}
+
+{% block header %}Historique des Lots Livrés{% endblock %}
+
+{% block actions %}
+<div class="flex items-center space-x-4">
+    <!-- Barre de Recherche -->
+    <form method="GET" action="{% url 'ivoire:lots_livres' %}" class="flex w-full max-w-sm">
+        <div class="relative w-full">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+            <input type="text" name="q" value="{{ q|default:'' }}"
+                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 sm:text-sm shadow-sm transition-all"
+                placeholder="Lot, Client...">
+        </div>
+        <button type="submit" class="hidden">Rechercher</button>
+    </form>
+
+    <!-- Filtres Mois/Année -->
+    <form method="GET" action="{% url 'ivoire:lots_livres' %}" class="flex space-x-2">
+        <select name="month" onchange="this.form.submit()" class="block w-32 pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-orange-500 focus:border-orange-500 rounded-lg shadow-sm font-bold">
+            <option value="">Mois</option>
+            <option value="1">Janvier</option>
+            <option value="2">Février</option>
+            <option value="3">Mars</option>
+            <option value="4">Avril</option>
+            <option value="5">Mai</option>
+            <option value="6">Juin</option>
+            <option value="7">Juillet</option>
+            <option value="8">Août</option>
+            <option value="9">Septembre</option>
+            <option value="10">Octobre</option>
+            <option value="11">Novembre</option>
+            <option value="12">Décembre</option>
+        </select>
+        <select name="year" onchange="this.form.submit()" class="block w-28 pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-orange-500 focus:border-orange-500 rounded-lg shadow-sm font-bold">
+            <option value="">Année</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+        </select>
+    </form>
+</div>
+{% endblock %}
+
+{% block ivoire_content %}
+<div class="space-y-6">
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">N° Lot</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Colis Livrés</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Recettes Totales</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Dernière Action</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for lot in lots %}
+                    <tr class="hover:bg-orange-50 transition-colors duration-150 group">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm font-black text-gray-900 group-hover:text-orange-700 transition-colors">
+                                {{ lot.numero }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-sm font-bold text-gray-900 bg-gray-100 px-3 py-1 rounded-full">
+                                {{ lot.nb_colis_livre }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-sm font-extrabold text-orange-700">
+                                {{ lot.total_recettes_livre|fcfa }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-xs text-gray-500 font-medium italic">
+                            {{ lot.updated_at|date:"d M Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold">
+                            <a href="{% url 'ivoire:lot_livre_detail' lot.pk %}" class="inline-flex items-center px-4 py-2 border border-transparent text-xs font-black rounded-lg text-white bg-orange-600 hover:bg-orange-700 transition-all shadow-sm">
+                                VOIR ARCHIVES
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-16 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="p-4 bg-gray-50 rounded-full mb-4">
+                                    <svg class="h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-sm font-bold text-gray-900 uppercase">Aucune archive trouvée</h3>
+                                <p class="mt-1 text-sm text-gray-500">Les lots s'affichent ici une fois les colis livrés.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination (Optionnelle si paginate_by est défini) -->
+        {% if is_paginated %}
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+            <span class="text-sm text-gray-500">Page {{ page_obj.number }} / {{ paginator.num_pages }}</span>
+            <div class="flex space-x-2">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-bold text-gray-700 hover:bg-gray-50">Précédent</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-bold text-gray-700 hover:bg-gray-50">Suivant</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,365 @@
+{% extends "ivoire/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block title %}Lot {{ lot.numero }} (Arrivé) - Côte d'Ivoire - TS Air Cargo{% endblock %}
+
+{% block header %}Gestion Livraison : Lot {{ lot.numero }}{% endblock %}
+
+{% block actions %}
+<div class="flex items-center space-x-3">
+    <a href="{% url 'ivoire:lots_arrives' %}" 
+       class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+        <svg class="-ml-1 mr-2 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Retour Historique
+    </a>
+</div>
+{% endblock %}
+
+{% block ivoire_content %}
+<div class="space-y-6" x-data="{ 
+    showDeliveryModal: false, 
+    colisId: null, 
+    colisRef: '', 
+    colisClient: '', 
+    colisMontant: 0,
+    async submitDelivery() {
+        const form = document.getElementById('deliveryForm');
+        const formData = new FormData(form);
+        
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'HX-Request': 'true',
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                },
+                body: formData
+            });
+            
+            if (response.ok) {
+                // Close Modal
+                this.showDeliveryModal = false;
+
+                // Success Message
+                Swal.fire({
+                    title: 'Livraison Confirmée!',
+                    text: `Colis ${this.colisRef} livré avec succès.`,
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+
+                // Remove item from list with animation
+                const item = document.getElementById(`colis-item-${this.colisId}`);
+                if (item) {
+                    item.style.transition = 'all 0.5s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateX(100px)';
+                    setTimeout(() => {
+                        item.remove();
+                    }, 500);
+                }
+            } else {
+                Swal.fire('Erreur', 'Une erreur est survenue lors de la communication serveur.', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            Swal.fire('Erreur', 'Erreur de connexion internet.', 'error');
+        }
+    },
+    openDeliveryModal(id, ref, client, montant) {
+        this.colisId = id;
+        this.colisRef = ref;
+        this.colisClient = client;
+        this.colisMontant = montant;
+        this.showDeliveryModal = true;
+        
+        // Update form action dynamically
+        const form = document.getElementById('deliveryForm');
+        if (form) {
+            form.action = `/ivoire/colis/${id}/livre/`;
+            // Réinitialiser le champ JC pour ne pas garder la valeur du colis précédent
+            const jcInput = form.querySelector('input[name=\'montant_jc\']');
+            if (jcInput) jcInput.value = '';
+            // Réinitialiser aussi le commentaire et le récepteur
+            const recepteurInput = form.querySelector('input[name=\'infos_recepteur\']');
+            if (recepteurInput) recepteurInput.value = '';
+            const commentInput = form.querySelector('textarea[name=\'commentaire\']');
+            if (commentInput) commentInput.value = '';
+        } else {
+            console.error('Form deliveryForm not found!');
+        }
+    }
+}">
+    <!-- Infos Lot -->
+    <div class="bg-white shadow rounded-lg border border-gray-100 overflow-hidden">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- Statut et Type -->
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Statut Actuel</p>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-200 uppercase">ARRIVÉ</span>
+                </div>
+                <!-- Arrivée -->
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Réceptionné le</p>
+                    <p class="text-sm font-bold text-gray-900">{{ lot.date_arrivee|date:"d M Y" }}</p>
+                </div>
+                <!-- Frais Douane (Info) -->
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Frais Douane</p>
+                    <p class="text-sm font-black text-gray-900 uppercase">{{ lot.frais_douane|fcfa|default:"Non saisi" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Colis List (Livraison) -->
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
+        <div class="px-6 py-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 bg-gray-50/50">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900">Livraison aux Clients</h3>
+                <p class="mt-1 text-sm text-gray-500 font-medium">{{ colis_list.paginator.count }} colis restants ou livrés.</p>
+            </div>
+            
+            <!-- Recherche de Colis -->
+            <form method="GET" class="flex w-full max-sm:w-full">
+                <div class="relative w-full">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" name="qc" value="{{ qc|default:'' }}"
+                        class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-sm shadow-sm transition-all"
+                        placeholder="Réf ou Nom Client...">
+                </div>
+                <button type="submit" class="hidden">Rechercher</button>
+            </form>
+        </div>
+        
+        <ul class="divide-y divide-gray-200">
+            {% for colis in colis_list %}
+            <li id="colis-item-{{ colis.pk }}" class="px-6 py-5 hover:bg-orange-50/30 transition-colors">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center min-w-0 flex-1">
+                        <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                            {% if colis.photo %}
+                                <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover">
+                            {% endif %}
+                        </div>
+                        <div class="ml-4 min-w-0">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-black text-indigo-700 uppercase">{{ colis.reference }}</span>
+                                {% if colis.status == 'LIVRE' %}
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-gray-100 text-gray-500 border border-gray-200 uppercase">Livré</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-sm font-bold text-gray-900">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
+                            <div class="text-xs text-gray-500 flex items-center mt-1">
+                                <span class="font-bold text-orange-600">{{ colis.prix_final|fcfa }}</span>
+                                <span class="mx-2 text-gray-300">|</span>
+                                {{ colis.client.telephone }}
+                            </div>
+                        </div>
+                    </div>
+                    <div id="colis-status-{{ colis.pk }}" class="flex-shrink-0">
+                        {% include "ivoire/partials/colis_status_badge.html" with colis=colis lot=lot %}
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+            <div class="flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Précédent</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Suivant</a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Affichage <span class="font-medium">{{ page_obj.start_index }}</span> à <span class="font-medium">{{ page_obj.end_index }}</span> sur <span class="font-medium">{{ page_obj.paginator.count }}</span> résultats
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if page_obj.has_previous %}
+                                <a href="?page={{ page_obj.previous_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Précédent</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                            {% endif %}
+                            
+                            {% for i in page_obj.paginator.page_range %}
+                                {% if page_obj.number == i %}
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-indigo-50 text-sm font-medium text-indigo-600">{{ i }}</span>
+                                {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                                    <a href="?page={{ i }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ i }}</a>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <a href="?page={{ page_obj.next_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Suivant</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Delivery Modal -->
+    <div x-show="showDeliveryModal" 
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         x-cloak
+         aria-labelledby="modal-title" 
+         role="dialog" 
+         aria-modal="true">
+        
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div x-show="showDeliveryModal" 
+                 x-transition:enter="ease-out duration-300" 
+                 x-transition:enter-start="opacity-0" 
+                 x-transition:enter-end="opacity-100" 
+                 x-transition:leave="ease-in duration-200" 
+                 x-transition:leave-start="opacity-100" 
+                 x-transition:leave-end="opacity-0" 
+                 class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+                 @click="showDeliveryModal = false"
+                 aria-hidden="true"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <!-- Modal panel -->
+            <div x-show="showDeliveryModal" 
+                 x-transition:enter="ease-out duration-300" 
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                 x-transition:leave="ease-in duration-200" 
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                 class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                
+                <form id="deliveryForm" method="POST" action="" @submit.prevent="submitDelivery">
+                    {% csrf_token %}
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                </svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                    Confirmer Livraison <span x-text="colisRef" class="font-bold"></span>
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500">
+                                        Client: <span x-text="colisClient" class="font-semibold text-gray-700"></span><br>
+                                        Montant à payer: <span x-text="colisMontant" class="font-bold text-orange-600"></span> FCFA
+                                    </p>
+                                </div>
+
+                                <!-- Form Fields -->
+                                <div class="mt-4 space-y-3 text-sm">
+                                    <!-- Mode Livraison -->
+                                    <div>
+                                        <label class="block text-gray-700 font-bold mb-1">Mode de livraison</label>
+                                        <div class="flex space-x-4">
+                                            <label class="inline-flex items-center">
+                                                <input type="radio" name="mode_livraison" value="AGENCE" checked class="form-radio text-indigo-600">
+                                                <span class="ml-2">À l'agence</span>
+                                            </label>
+                                            <label class="inline-flex items-center">
+                                                <input type="radio" name="mode_livraison" value="DOMICILE" class="form-radio text-indigo-600">
+                                                <span class="ml-2">À domicile</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Récepteur -->
+                                    <div>
+                                        <label class="block text-gray-700 font-bold mb-1">Personne réceptrice</label>
+                                        <input type="text" name="infos_recepteur" placeholder="Laisser vide si propriétaire" 
+                                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                    </div>
+
+                                    <!-- Commentaire -->
+                                    <div>
+                                        <label class="block text-gray-700 font-bold mb-1">Commentaire</label>
+                                        <textarea name="commentaire" rows="2" 
+                                                  class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
+                                    </div>
+
+                                    <!-- Status Paiement -->
+                                    <div>
+                                        <label class="block text-gray-700 font-bold mb-1">Status Paiement</label>
+                                        <select name="status_paiement" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                            <option value="PAYE" selected>Payé (Reçu)</option>
+                                            <option value="NON_PAYE">En attente de paiement</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Jeton Cédé -->
+                                    <div>
+                                        <label class="block text-gray-700 font-bold mb-1" title="Montant remis au client ou écart de caisse">JC (Jeton Cédé)</label>
+                                        <div class="relative rounded-md shadow-sm">
+                                            <input type="number" name="montant_jc" placeholder="0" 
+                                                   class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <span class="text-gray-500 sm:text-sm">FCFA</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mt-1">Ex: Si total 2200, payé 2000 => JC = 200</p>
+                                    </div>
+
+                                    <!-- WhatsApp API -->
+                                    <div class="flex items-start">
+                                        <div class="flex items-center h-5">
+                                            <input id="whatsapp_notified" name="whatsapp_notified" type="checkbox" 
+                                                   class="focus:ring-orange-500 h-4 w-4 text-orange-600 border-gray-300 rounded">
+                                        </div>
+                                        <div class="ml-3 text-sm">
+                                            <label for="whatsapp_notified" class="font-medium text-gray-700">Envoyer notification WhatsApp</label>
+                                            <p class="text-gray-500 text-xs">Sera traité par l'API (à venir)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Confirmer Livraison
+                        </button>
+                        <button type="button" @click="showDeliveryModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Annuler
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.urls import reverse_lazy
 from django.db.models import Q, Count, Sum, Value, F
 from django.db.models.functions import Concat
+from core.mixins import DestinationAgentRequiredMixin
 from core.models import Country, Lot, Colis, Client
 from report.models import Depense
 from django.contrib import messages
@@ -19,45 +20,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class AgentMaliRequiredMixin:
-    """Mixin pour restreindre l'accès aux agents Mali"""
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return self.handle_no_permission()
-
-        # Vérifier que l'utilisateur est agent ou admin Mali
-        if request.user.role not in ["AGENT_MALI", "ADMIN_MALI"]:
-            from django.contrib import messages
-            from django.shortcuts import redirect
-
-            messages.error(
-                request, "Accès refusé. Cette section est réservée aux agents Mali."
-            )
-            return redirect("index")
-
-        return super().dispatch(request, *args, **kwargs)
-
-    def handle_no_permission(self):
-        from django.contrib import messages
-
-        messages.error(
-            self.request, "Veuillez vous connecter pour accéder à l'Espace Mali."
-        )
-        return redirect("index")
-
-
-class DashboardView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
+class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateView):
     template_name = "mali/dashboard.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Récupérer le pays Mali
-        try:
-            mali = Country.objects.get(code="ML")
-        except Country.DoesNotExist:
-            context["error"] = "Pays Mali non configuré"
+        # Récupérer la destination dynamique
+        mali = self.get_current_country()
+        if not mali:
+            context["error"] = "Destination non configurée"
             return context
 
         # Date du jour et mois en cours
@@ -173,7 +145,7 @@ class DashboardView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
         return context
 
 
-class AujourdhuiView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
+class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateView):
     """Page Aujourd'hui avec statistiques quotidiennes et rapports imprimables"""
 
     template_name = "mali/aujourdhui.html"
@@ -181,11 +153,10 @@ class AujourdhuiView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Récupérer le pays Mali
-        try:
-            mali = Country.objects.get(code="ML")
-        except Country.DoesNotExist:
-            context["error"] = "Pays Mali non configuré"
+        # Récupérer la destination dynamique
+        mali = self.get_current_country()
+        if not mali:
+            context["error"] = "Destination non configurée"
             return context
 
         today = timezone.now().date()
@@ -312,7 +283,7 @@ class AujourdhuiView(LoginRequiredMixin, AgentMaliRequiredMixin, TemplateView):
         return context
 
 
-class LotsEnTransitView(LoginRequiredMixin, AgentMaliRequiredMixin, ListView):
+class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
     """Liste des lots en transit vers le Mali"""
 
     template_name = "mali/lots_transit.html"
@@ -320,9 +291,8 @@ class LotsEnTransitView(LoginRequiredMixin, AgentMaliRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        try:
-            mali = Country.objects.get(code="ML")
-        except Country.DoesNotExist:
+        mali = self.get_current_country()
+        if not mali:
             return Lot.objects.none()
 
         # Un lot apparaît en transit s'il a au moins un colis EXPEDIE
@@ -382,9 +352,8 @@ class LotsArrivesView(LotsEnTransitView):
     template_name = "mali/lots_arrives.html"
 
     def get_queryset(self):
-        try:
-            mali = Country.objects.get(code="ML")
-        except Country.DoesNotExist:
+        mali = self.get_current_country()
+        if not mali:
             return Lot.objects.none()
 
         # Un lot apparaît en arrivés s'il a au moins un colis ARRIVE
@@ -437,9 +406,8 @@ class LotsLivresView(LotsEnTransitView):
     template_name = "mali/lots_livres.html"
 
     def get_queryset(self):
-        try:
-            mali = Country.objects.get(code="ML")
-        except Country.DoesNotExist:
+        mali = self.get_current_country()
+        if not mali:
             return Lot.objects.none()
 
         # Un lot apparaît en livrés s'il a au moins un colis LIVRE ou PERDU
@@ -491,7 +459,7 @@ class LotsLivresView(LotsEnTransitView):
         return queryset.order_by("-updated_at")
 
 
-class LotDetailView(LoginRequiredMixin, AgentMaliRequiredMixin, DetailView):
+class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailView):
     """Vue détaillée d'un lot pour l'agent Mali (avec pointage des colis)"""
 
     model = Lot
@@ -657,7 +625,7 @@ class LotLivreDetailView(LotDetailView):
         return context
 
 
-class ColisArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+class ColisArriveView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Marquer un colis individuel comme ARRIVÉ (Pointage)"""
 
     def post(self, request, pk):
@@ -740,7 +708,7 @@ class ColisArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return redirect("mali:lot_transit_detail", pk=colis.lot.pk)
 
 
-class LotArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+class LotArriveView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Vue pour finaliser l'arrivée d'un lot et saisir les frais"""
 
     def post(self, request, pk):
@@ -779,7 +747,7 @@ class LotArriveView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return redirect("mali:lot_transit_detail", pk=lot.pk)
 
 
-class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+class NotifyArrivalsView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
 
     def post(self, request, pk):
@@ -825,7 +793,7 @@ class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
                 message=message,
                 categorie="colis_arrive",
                 titre=f"Arrivée de {nb} colis",
-                region="cote_divoire",
+                region="mali",
             )
 
             # Marquer comme notifié
@@ -838,7 +806,7 @@ class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return redirect("mali:lot_transit_detail", pk=pk)
 
 
-class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+class NotifyArrivalsView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
 
     def post(self, request, pk):
@@ -913,7 +881,7 @@ class NotifyArrivalsView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return redirect("mali:lot_transit_detail", pk=pk)
 
 
-class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Marquer un colis individuel comme LIVRÉ"""
 
     def post(self, request, pk):
@@ -994,7 +962,7 @@ class ColisLivreView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
 
 
-class ColisPerduView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+class ColisPerduView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Marquer un colis comme PERDU"""
 
     def post(self, request, pk):
@@ -1013,7 +981,9 @@ class ColisPerduView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
 
 
-class ColisAttentePaiementView(LoginRequiredMixin, AgentMaliRequiredMixin, ListView):
+class ColisAttentePaiementView(
+    LoginRequiredMixin, DestinationAgentRequiredMixin, ListView
+):
     """Liste des colis LIVRÉS mais NON PAYÉS"""
 
     template_name = "mali/colis_attente_paiement.html"
@@ -1021,9 +991,8 @@ class ColisAttentePaiementView(LoginRequiredMixin, AgentMaliRequiredMixin, ListV
     paginate_by = 20
 
     def get_queryset(self):
-        try:
-            mali = Country.objects.get(code="ML")
-        except Country.DoesNotExist:
+        mali = self.get_current_country()
+        if not mali:
             return Colis.objects.none()
 
         queryset = (
@@ -1062,7 +1031,7 @@ class ColisAttentePaiementView(LoginRequiredMixin, AgentMaliRequiredMixin, ListV
         return context
 
 
-class ColisEncaissementView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Encaisser un colis (marquer comme payé) avec mise à jour de la date"""
 
     def post(self, request, pk):
@@ -1080,7 +1049,7 @@ class ColisEncaissementView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return redirect("mali:colis_attente_paiement")
 
 
-class RapportJourPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Génération du rapport journalier en PDF (xhtml2pdf)"""
 
     def get(self, request):
@@ -1222,7 +1191,7 @@ class RapportJourPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return response
 
 
-class LotTransitPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
+class LotTransitPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Génération du manifeste de lot en PDF"""
 
     def get(self, request, pk):
@@ -1259,7 +1228,9 @@ class LotTransitPDFView(LoginRequiredMixin, AgentMaliRequiredMixin, View):
         return response
 
 
-class NotificationConfigView(LoginRequiredMixin, AgentMaliRequiredMixin, UpdateView):
+class NotificationConfigView(
+    LoginRequiredMixin, DestinationAgentRequiredMixin, UpdateView
+):
     """
     Permet à l'agent Mali de configurer les rappels automatiques.
     NB : La configuration des credentials API WaChap est gestion de l'admin_app.

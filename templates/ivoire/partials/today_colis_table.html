@@ -1,0 +1,66 @@
+{% load humanize %}
+{% load currency_tags %}
+
+<div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref. Colis</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poids/Vol</th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">JC (Remise)</th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net Encaissé</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for colis in colis_list %}
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {{ colis.client.nom }} {{ colis.client.prenom }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{{ colis.reference }}</span>
+                    <span class="text-xs text-gray-400 block mt-1">{{ colis.lot.numero }}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {% if type == 'Bateau' %}
+                        {{ colis.cbm }} m³
+                    {% else %}
+                        {{ colis.poids }} kg
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                    {{ colis.prix_final|fcfa }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-red-500">
+                    {% if colis.montant_jc > 0 %}
+                    -{{ colis.montant_jc|fcfa }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-orange-600">
+                    {{ colis.net_price|fcfa }}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500 italic">
+                    Aucun colis {{ type }} livré et payé aujourd'hui.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        {% if colis_list %}
+        <tfoot class="bg-gray-50">
+            <tr>
+                <td colspan="5" class="px-6 py-3 text-right text-sm font-bold text-gray-900">Total Net {{ type }} :</td>
+                <td class="px-6 py-3 text-right text-sm font-black text-orange-700">
+                    {{ total_recette|default:0|fcfa }}
+                </td>
+            </tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</div>
