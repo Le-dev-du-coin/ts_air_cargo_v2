@@ -34,3 +34,17 @@ class CustomLoginView(LoginView):
 def logout_view(request):
     logout(request)
     return redirect("index")
+
+
+from django.contrib.auth.decorators import user_passes_test
+
+
+@user_passes_test(lambda u: u.is_superuser or u.role == "GLOBAL_ADMIN")
+def flower_redirect(request):
+    """
+    Redirige les Super-Administrateurs vers le panel Flower de surveillance des tâches Celery.
+    (Par défaut sur le port 5555 configuré dans start_flower.sh)
+    """
+    # Récupère l'IP/Domaine actuel du serveur et redirige vers le port 5555
+    host = request.META.get("HTTP_HOST", "localhost").split(":")[0]
+    return redirect(f"http://{host}:5555/")

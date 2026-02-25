@@ -27,6 +27,7 @@ from core.models import Client, Lot, Colis, BackgroundTask, Country
 from report.models import Depense, TransfertArgent
 from .forms import ClientForm, LotForm, ColisForm, CountryForm, AgentForm, LotNoteForm
 from .tasks import process_colis_creation
+from django.core.cache import cache
 
 from django.contrib.auth import get_user_model
 
@@ -74,7 +75,13 @@ class AdminChineRequiredMixin(RoleRequiredMixin):
 
 
 def get_country_stats(country_code, year=None, month=None):
-    """Fonction utilitaire pour calculer les stats par pays, avec filtre optionnel par date"""
+    """Fonction utilitaire pour calculer les stats par pays, avec filtre optionnel par date (Mise en cache 1 Heure)"""
+    cache_key = f"stats_{country_code}_{year}_{month}"
+    cached_stats = cache.get(cache_key)
+
+    if cached_stats is not None:
+        return cached_stats
+
     lots = Lot.objects.filter(destination__code=country_code)
     colis = Colis.objects.filter(lot__destination__code=country_code)
     depenses = Depense.objects.filter(pays__code=country_code)
@@ -147,6 +154,9 @@ def get_country_stats(country_code, year=None, month=None):
 
     stats["agents_remuneration"] = agents_remuneration
     stats["total_commissions"] = total_commissions
+
+    # Mise en cache pour 1 heure (3600 secondes) pour optimiser les chargements admin_chine
+    cache.set(cache_key, stats, timeout=3600)
 
     return stats
 
@@ -319,7 +329,7 @@ class ClientListView(LoginRequiredMixin, ListView):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().select_related("country", "user")
 
         # Filter by Country (Tabs)
         country_code = self.request.GET.get("country")
@@ -702,7 +712,12 @@ class LotListView(LoginRequiredMixin, ListView):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = (
+            super()
+            .get_queryset()
+            .select_related("destination", "created_by")
+            .prefetch_related("colis")
+        )
 
         # Filter by Destination Country (Tabs)
         country_code = self.request.GET.get("country")

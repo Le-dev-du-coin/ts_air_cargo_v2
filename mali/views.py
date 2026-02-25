@@ -491,7 +491,9 @@ class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailVie
         # Colis du lot (avec support recherche et pagination)
         from django.core.paginator import Paginator
 
-        colis_queryset = self.object.colis.all().order_by("-created_at")
+        colis_queryset = self.object.colis.select_related("client").order_by(
+            "-created_at"
+        )
 
         qc = self.request.GET.get("qc")
         if qc:

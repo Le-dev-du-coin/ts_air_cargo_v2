@@ -31,6 +31,10 @@ db.sqlite3
 media/
 project-context.md
 *.log
+docs/
 
 # Celery
 celerybeat-schedule*
+
+# Ubuntu
+setup_ubuntu.sh

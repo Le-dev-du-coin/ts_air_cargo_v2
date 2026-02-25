@@ -283,6 +283,20 @@ class Colis(TenantAwareModel):
             # Génère une réf courte avec préfixe TS
             uid = str(uuid.uuid4()).split("-")[0].upper()
             self.reference = f"TS-{uid}"
+
+        # Calcul auto du CBM si dimensions présentes
+        if (
+            getattr(self, "longueur", 0)
+            and getattr(self, "largeur", 0)
+            and getattr(self, "hauteur", 0)
+        ):
+            from decimal import Decimal
+
+            vol_cm3 = (
+                Decimal(self.longueur) * Decimal(self.largeur) * Decimal(self.hauteur)
+            )
+            self.cbm = vol_cm3 / Decimal("1000000")
+
         super().save(*args, **kwargs)
 
     def __str__(self):

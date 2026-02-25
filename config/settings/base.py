@@ -167,28 +167,26 @@ CELERY_BEAT_SCHEDULE = {
     # Vérification des instances WaChap toutes les 15 min
     "check_wachap_status_periodic": {
         "task": "notification.tasks.check_wachap_status_periodic",
-        "schedule": timedelta(minutes=60),
+        "schedule": timedelta(minutes=50),
     },
     # Vérification de santé du système chaque heure
     "check_system_health_periodic": {
         "task": "notification.tasks.check_system_health_periodic",
         "schedule": timedelta(hours=1),
     },
-    # Envoi des rappels de colis — ⚠️ MODE DEV : toutes les 10 min pour test
-    # En production : timedelta(hours=24)
+    # Envoi des rappels de colis (Tous les jours à 8h00 du matin)
     "send_parcel_reminders_periodic": {
         "task": "notification.tasks.send_parcel_reminders_periodic",
-        "schedule": timedelta(minutes=10),
+        "schedule": crontab(hour=8, minute=0),
     },
     # File d'attente WhatsApp : retry des notifications en échec toutes les 5 min
     "retry_failed_notifications_periodic": {
         "task": "notification.tasks.retry_failed_notifications_periodic",
         "schedule": timedelta(minutes=5),
     },
-    # Rapport journalier Mali — ⚠️ MODE DEV : toutes les 10 min pour test
-    # En production : crontab(hour=23, minute=50)
+    # Rapport journalier global — En production : crontab(hour=23, minute=50)
     "send_daily_report_mali": {
         "task": "notification.tasks.send_daily_report_mali",
-        "schedule": timedelta(minutes=20),
+        "schedule": crontab(hour=23, minute=50),
     },
 }
