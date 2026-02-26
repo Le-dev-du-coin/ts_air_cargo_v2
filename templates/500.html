@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Erreur Serveur (500) - TS Air Cargo{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 flex flex-col justify-center items-center h-screen px-4">
+    <div class="text-center max-w-2xl mx-auto">
+        <!-- SVG Animation Engrenages/Colis 500 -->
+        <div class="relative w-64 h-64 mx-auto mb-8">
+            <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+                <!-- Engrenage principal qui tourne -->
+                <path class="text-gray-300 animate-spin" style="animation-duration: 4s;" fill="currentColor" d="M50 20c-16.5 0-30 13.5-30 30s13.5 30 30 30 30-13.5 30-30-13.5-30-30-30zm0 45c-8.3 0-15-6.7-15-15s6.7-15 15-15 15 6.7 15 15-6.7 15-15 15z"/>
+                <!-- Engrenage secondaire -->
+                <path class="text-indigo-200 animate-spin" style="animation-duration: 3s; animation-direction: reverse; transform-origin: 75px 25px;" fill="currentColor" d="M75 10c-8.3 0-15 6.7-15 15s6.7 15 15 15 15-6.7 15-15-6.7-15-15-15zm0 22.5c-4.1 0-7.5-3.4-7.5-7.5s3.4-7.5 7.5-7.5 7.5 3.4 7.5 7.5-3.4 7.5-7.5 7.5z"/>
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <!-- Boîte ouverte/cassée -->
+                <svg class="w-24 h-24 text-red-500 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    <!-- Ligne brisée (éclair) sur la boîte -->
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v8l9-11h-7z" class="text-yellow-400" fill="currentColor"/>
+                </svg>
+            </div>
+        </div>
+
+        <h1 class="text-6xl font-black text-red-600 drop-shadow-sm">500</h1>
+        <p class="text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl mt-4">
+            Erreur interne du serveur.
+        </p>
+        <p class="mt-4 text-gray-500">
+            Oups, quelque chose s'est mal passé de notre côté ! Notre équipe technique a été notifiée.
+        </p>
+
+        <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-4">
+            <a href="{% url 'index' %}" class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 w-full sm:w-auto transition-colors">
+                Retour à l'accueil
+            </a>
+            <button onclick="history.back()" class="text-sm font-semibold text-gray-900 w-full sm:w-auto hover:text-indigo-600 transition-colors">
+                &larr; Page précédente
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

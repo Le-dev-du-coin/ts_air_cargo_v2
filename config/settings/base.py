@@ -103,6 +103,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 STATICFILES_FINDERS = (
@@ -130,6 +131,9 @@ NPM_BIN_PATH = env("NPM_BIN_PATH", default="/usr/local/bin/npm")
 LOGIN_URL = "/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
+
+# Admin URL Configurable via .env
+ADMIN_URL = env("DJANGO_ADMIN_URL", default="ts-admin-portal/")
 
 # Compressor
 COMPRESS_ROOT = STATIC_ROOT
