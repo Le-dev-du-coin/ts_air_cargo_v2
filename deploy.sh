@@ -24,7 +24,8 @@ echo "5. Collecte des fichiers statiques..."
 echo "6. Redémarrage des services systèmes..."
 # Modifiez ces noms selon votre configuration Systemd
 sudo systemctl restart gunicorn
-sudo systemctl restart daphne
 sudo systemctl restart celery
+sudo systemctl restart celerybeat
+sudo systemctl restart flower
 
 echo "✅ Déploiement terminé avec succès."
