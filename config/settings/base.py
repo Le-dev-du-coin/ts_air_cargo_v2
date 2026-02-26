@@ -132,6 +132,10 @@ LOGIN_URL = "/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
+# Sessions Configuration
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 86400  # 24 hours in seconds (instead of 2 weeks)
+
 # Admin URL Configurable via .env
 ADMIN_URL = env("DJANGO_ADMIN_URL", default="ts-admin-portal/")
 
