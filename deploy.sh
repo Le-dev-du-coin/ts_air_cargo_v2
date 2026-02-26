@@ -13,6 +13,7 @@ echo "2. Installation des dépendances Python (Poetry)..."
 ~/.local/bin/poetry install --no-interaction --no-ansi
 
 echo "3. Compilation des assets Tailwind CSS..."
+npm install --prefix ./theme/static_src
 npm run build --prefix ./theme/static_src
 
 echo "4. Exécution des migrations BDD (PostgreSQL)..."
