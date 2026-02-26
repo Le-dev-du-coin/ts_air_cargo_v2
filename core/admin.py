@@ -5,7 +5,13 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
 
+
+@admin.register(User)
 class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
         (
@@ -22,13 +28,27 @@ class CustomUserAdmin(UserAdmin):
         ),
     )
 
+    add_fieldsets = UserAdmin.add_fieldsets + (
+        (
+            "Informations Supplémentaires",
+            {
+                "classes": ("wide",),
+                "fields": (
+                    "role",
+                    "country",
+                    "phone",
+                    "remuneration_mode",
+                    "remuneration_value",
+                ),
+            },
+        ),
+    )
+
 
 app_models = apps.get_app_config("core").get_models()
 for model in app_models:
-    try:
-        if model == User:
-            admin.site.register(User, CustomUserAdmin)
-        else:
+    if model != User:
+        try:
             admin.site.register(model)
-    except admin.sites.AlreadyRegistered:
-        pass
+        except admin.sites.AlreadyRegistered:
+            pass
