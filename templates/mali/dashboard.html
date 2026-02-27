@@ -13,7 +13,7 @@
         <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <!-- LIGNE 1: LOTS -->
             <!-- 1. Lots en Transit -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+            <a href="{% url 'mali:lots_transit' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-orange-300 transition-colors">
                 <dt>
                     <div class="absolute bg-orange-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -26,10 +26,10 @@
                 <dd class="ml-16 flex items-baseline">
                     <p class="text-2xl font-semibold text-orange-600">{{ lots_en_transit|intcomma }}</p>
                 </dd>
-            </div>
+            </a>
 
             <!-- 2. Lots Arrivés (Incomplets) -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+            <a href="{% url 'mali:lots_arrives' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-teal-300 transition-colors">
                 <dt>
                     <div class="absolute bg-teal-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,10 +42,10 @@
                 <dd class="ml-16 flex items-baseline">
                     <p class="text-2xl font-semibold text-teal-600">{{ lots_arrives_incomplets|intcomma }}</p>
                 </dd>
-            </div>
+            </a>
 
             <!-- 3. Lots Livrés (Mois) -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+            <a href="{% url 'mali:lots_livres' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-green-300 transition-colors">
                 <dt>
                     <div class="absolute bg-green-600 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -58,7 +58,7 @@
                 <dd class="ml-16 flex items-baseline">
                     <p class="text-2xl font-semibold text-green-600">{{ lots_livres_mois|intcomma }}</p>
                 </dd>
-            </div>
+            </a>
 
             <!-- Espace vide ou Carte Additionnelle -->
             <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 opacity-50 lg:block hidden bg-gray-50">
@@ -83,7 +83,7 @@
             </div>
 
             <!-- 4 Colis Attente Paiement -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+            <a href="{% url 'mali:colis_attente_paiement' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-amber-300 transition-colors">
                 <dt>
                     <div class="absolute bg-amber-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -96,7 +96,7 @@
                 <dd class="ml-16 flex items-baseline">
                     <p class="text-2xl font-semibold text-amber-600">{{ colis_attente_paiement|intcomma }}</p>
                 </dd>
-            </div>
+            </a>
 
             <!-- 5. Colis Livrés (Mois) -->
             <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
@@ -148,7 +148,7 @@
             </div>
 
             <!-- 8. Dépenses (Mois) -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
+            <a href="{% url 'mali:depenses_list' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-red-300 transition-colors">
                 <dt>
                     <div class="absolute bg-red-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -161,7 +161,7 @@
                 <dd class="ml-16 flex items-baseline">
                     <p class="text-xl font-semibold text-red-600">{{ depenses_mois|fcfa }}</p>
                 </dd>
-            </div>
+            </a>
 
             <!-- 9. Solde (Mois) -->
             <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">

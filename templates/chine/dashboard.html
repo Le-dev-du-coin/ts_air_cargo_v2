@@ -266,7 +266,7 @@
         <!-- AGENT CHINE STATS (8 cards réorganisées) -->
         
         <!-- Lots en Transit (déplacé en premier) -->
-        <div class="bg-white overflow-hidden shadow rounded-lg bg-blue-50/30 border border-blue-100">
+        <a href="{% url 'chine:lot_list' %}?status=EN_TRANSIT" class="block bg-white overflow-hidden shadow rounded-lg bg-blue-50/30 border border-blue-100 hover:border-blue-300 transition-colors">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-blue-600 rounded-md p-3">
@@ -280,10 +280,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- Lots Arrivés au Mali (déplacé en deuxième) -->
-        <div class="bg-white overflow-hidden shadow rounded-lg bg-green-50/30 border border-green-100">
+        <a href="{% url 'chine:lot_list' %}?status=ARRIVE" class="block bg-white overflow-hidden shadow rounded-lg bg-green-50/30 border border-green-100 hover:border-green-300 transition-colors">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-green-600 rounded-md p-3">
@@ -297,11 +297,10 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-gray-50 px-5 py-3"><div class="text-sm"><a href="{% url 'chine:lot_list' %}" class="font-medium text-green-600 hover:text-green-900">Voir les lots disponibles</a></div></div>
-        </div>
+        </a>
         
         <!-- Lots Ouverts -->
-        <div class="bg-white overflow-hidden shadow rounded-lg relative">
+        <a href="{% url 'chine:lot_list' %}?status=OUVERT" class="block bg-white overflow-hidden shadow rounded-lg relative hover:border-gray-300 border border-transparent transition-colors">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
@@ -315,11 +314,10 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-gray-50 px-5 py-3"><div class="text-sm"><a href="{% url 'chine:lot_list' %}" class="font-medium text-indigo-600 hover:text-indigo-900">Voir les lots ouverts</a></div></div>
-        </div>
+        </a>
 
         <!-- Lots Fermés -->
-        <div class="bg-white overflow-hidden shadow rounded-lg relative">
+        <a href="{% url 'chine:lot_list' %}?status=FERME" class="block bg-white overflow-hidden shadow rounded-lg relative hover:border-gray-300 border border-transparent transition-colors">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-amber-500 rounded-md p-3">
@@ -333,8 +331,7 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-gray-50 px-5 py-3"><div class="text-sm"><a href="{% url 'chine:lot_list' %}" class="font-medium text-amber-600 hover:text-amber-900">Lots prêts pour expédition</a></div></div>
-        </div>
+        </a>
 
         <!-- Montant Total Colis (nouveau) -->
         <div class="bg-white overflow-hidden shadow rounded-lg bg-emerald-50/30 border border-emerald-100">
@@ -372,7 +369,7 @@
         </div>
 
         <!-- Total Colis (déplacé vers la fin) -->
-        <div class="bg-white overflow-hidden shadow rounded-lg">
+        <a href="{% url 'chine:lot_list' %}" class="block bg-white overflow-hidden shadow rounded-lg hover:border-gray-300 border border-transparent transition-colors">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
@@ -386,10 +383,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- Total Clients (déplacé vers la fin) -->
-        <div class="bg-white overflow-hidden shadow rounded-lg">
+        <a href="{% url 'chine:client_list' %}" class="block bg-white overflow-hidden shadow rounded-lg hover:border-gray-300 border border-transparent transition-colors">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
@@ -403,8 +400,7 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-gray-50 px-5 py-3"><div class="text-sm"><a href="{% url 'chine:client_list' %}" class="font-medium text-blue-600 hover:text-blue-900">Voir tous les clients</a></div></div>
-        </div>
+        </a>
 
         {% endif %}
     </div>
@@ -551,7 +547,51 @@
                     
                     <!-- Pagination Controls -->
                     {% if recent_lots.has_other_pages %}
-                    <div class=\"bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6\">\n                        <div class=\"flex-1 flex justify-between sm:hidden\">\n                            {% if recent_lots.has_previous %}\n                            <a href=\"?page={{ recent_lots.previous_page_number }}\" class=\"relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50\">Précédent</a>\n                            {% endif %}\n                            {% if recent_lots.has_next %}\n                            <a href=\"?page={{ recent_lots.next_page_number }}\" class=\"ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50\">Suivant</a>\n                            {% endif %}\n                        </div>\n                        <div class=\"hidden sm:flex-1 sm:flex sm:items-center sm:justify-between\">\n                            <div>\n                                <p class=\"text-sm text-gray-700\">\n                                    Affichage <span class=\"font-medium\">{{ recent_lots.start_index }}</span> à <span class=\"font-medium\">{{ recent_lots.end_index }}</span> sur <span class=\"font-medium\">{{ recent_lots.paginator.count }}</span> lots\n                                </p>\n                            </div>\n                            <div>\n                                <nav class=\"relative z-0 inline-flex rounded-md shadow-sm -space-x-px\" aria-label=\"Pagination\">\n                                    {% if recent_lots.has_previous %}\n                                    <a href=\"?page={{ recent_lots.previous_page_number }}\" class=\"relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50\">\n                                        <svg class=\"h-5 w-5\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\">\n                                            <path fill-rule=\"evenodd\" d=\"M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z\" clip-rule=\"evenodd\" />\n                                        </svg>\n                                    </a>\n                                    {% endif %}\n                                    \n                                    {% for num in recent_lots.paginator.page_range %}\n                                        {% if recent_lots.number == num %}\n                                        <span class=\"z-10 bg-indigo-50 border-indigo-500 text-indigo-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium\">{{ num }}</span>\n                                        {% elif num > recent_lots.number|add:'-3' and num < recent_lots.number|add:'3' %}\n                                        <a href=\"?page={{ num }}\" class=\"bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium\">{{ num }}</a>\n                                        {% endif %}\n                                    {% endfor %}\n                                    \n                                    {% if recent_lots.has_next %}\n                                    <a href=\"?page={{ recent_lots.next_page_number }}\" class=\"relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50\">\n                                        <svg class=\"h-5 w-5\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\">\n                                            <path fill-rule=\"evenodd\" d=\"M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z\" clip-rule=\"evenodd\" />\n                                        </svg>\n                                    </a>\n                                    {% endif %}\n                                </nav>\n                            </div>\n                        </div>\n                    </div>\n                    {% endif %}
+                    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                        <div class="flex-1 flex justify-between sm:hidden">
+                            {% if recent_lots.has_previous %}
+                            <a href="?page={{ recent_lots.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Précédent</a>
+                            {% endif %}
+                            {% if recent_lots.has_next %}
+                            <a href="?page={{ recent_lots.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Suivant</a>
+                            {% endif %}
+                        </div>
+                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm text-gray-700">
+                                    Affichage <span class="font-medium">{{ recent_lots.start_index }}</span> à <span class="font-medium">{{ recent_lots.end_index }}</span> sur <span class="font-medium">{{ recent_lots.paginator.count }}</span> lots
+                                </p>
+                            </div>
+                            <div>
+                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                    {% if recent_lots.has_previous %}
+                                    <a href="?page={{ recent_lots.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    {% for num in recent_lots.paginator.page_range %}
+                                        {% if recent_lots.number == num %}
+                                        <span class="z-10 bg-indigo-50 border-indigo-500 text-indigo-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium">{{ num }}</span>
+                                        {% elif num > recent_lots.number|add:'-3' and num < recent_lots.number|add:'3' %}
+                                        <a href="?page={{ num }}" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">{{ num }}</a>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if recent_lots.has_next %}
+                                    <a href="?page={{ recent_lots.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </a>
+                                    {% endif %}
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

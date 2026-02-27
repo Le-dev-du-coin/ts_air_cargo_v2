@@ -3,8 +3,108 @@
 {% block title %}TS Air Cargo - Chine{% endblock %}
 
 {% block content %}
-<div class="flex h-screen overflow-hidden bg-gray-50">
-    <!-- Sidebar -->
+<div class="flex h-screen overflow-hidden bg-gray-50" x-data="{ sidebarOpen: false }">
+
+    <!-- Mobile sidebar -->
+    <div x-show="sidebarOpen" class="relative z-40 md:hidden" x-ref="dialog" aria-modal="true" x-cloak>
+        <!-- Overlay -->
+        <div x-show="sidebarOpen"
+             x-transition:enter="transition-opacity ease-linear duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-gray-600 bg-opacity-75" @click="sidebarOpen = false"></div>
+
+        <div class="fixed inset-0 z-40 flex">
+            <!-- Sidebar panel -->
+            <div x-show="sidebarOpen"
+                 x-transition:enter="transition ease-in-out duration-300 transform"
+                 x-transition:enter-start="-translate-x-full"
+                 x-transition:enter-end="translate-x-0"
+                 x-transition:leave="transition ease-in-out duration-300 transform"
+                 x-transition:leave-start="translate-x-0"
+                 x-transition:leave-end="-translate-x-full"
+                 class="relative flex w-full max-w-xs flex-1 flex-col bg-slate-900 pt-5 pb-4">
+                
+                <div class="absolute top-0 right-0 -mr-12 pt-2">
+                    <button type="button" class="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" @click="sidebarOpen = false">
+                        <span class="sr-only">Fermer le menu</span>
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Logo Mobile -->
+                <div class="flex flex-shrink-0 items-center px-4 gap-2">
+                    <span class="text-2xl font-extrabold text-white tracking-tighter">TS Air Cargo</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500 text-white uppercase">
+                        V.2 Beta
+                    </span>
+                </div>
+                
+                <div class="mt-5 h-0 flex-1 overflow-y-auto">
+                    <!-- Navigation Mobile copiée du Desktop -->
+                    <nav class="px-2 space-y-1">
+                        <a href="{% url 'chine:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-2 py-2 text-base font-medium rounded-md">
+                            Tableau de bord
+                        </a>
+                        
+                        <div class="mt-4 mb-2 px-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gestion</h3></div>
+                        <!-- ... Liens dupliqués pour mobile (abrégé pour la propreté) ... -->
+                        <a href="{% url 'chine:client_list' %}" class="{% if 'client' in request.resolver_match.url_name %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-2 py-2 text-base font-medium rounded-md">
+                            Clients
+                        </a>
+                        <a href="{% url 'chine:lot_list' %}" class="{% if 'lot' in request.resolver_match.url_name %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-2 py-2 text-base font-medium rounded-md">
+                            Lots & Expéditions
+                        </a>
+
+                        <div class="mt-4 mb-2 px-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Finances</h3></div>
+                        {% if user.role == 'AGENT_CHINE' %}
+                        <a href="{% url 'chine:depenses_list' %}" class="{% if 'finance' in request.resolver_match.url_name %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-2 py-2 text-base font-medium rounded-md">
+                            Dépenses
+                        </a>
+                        {% endif %}
+                        {% if user.role == 'ADMIN_CHINE' %}
+                        <a href="{% url 'chine:reception_transferts' %}" class="{% if 'reception_transferts' in request.resolver_match.url_name %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-2 py-2 text-base font-medium rounded-md">
+                            Réception Transferts
+                        </a>
+                        <a href="{% url 'chine:monthly_archives' %}" class="{% if 'archives' in request.resolver_match.url_name %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-2 py-2 text-base font-medium rounded-md">
+                            Archives
+                        </a>
+                        <!-- Configuration et RH absents par concision sur mobile, ou ajoutable ici -->
+                        {% endif %}
+                    </nav>
+                </div>
+
+                <!-- User Profile Mobile -->
+                <div class="flex-shrink-0 flex bg-slate-950 p-4 border-t border-slate-800">
+                    <div class="flex items-center w-full">
+                        <div class="flex-shrink-0">
+                            <div class="h-9 w-9 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+                                {{ user.username|make_list|first|upper }}
+                            </div>
+                        </div>
+                        <div class="ml-3 min-w-0 flex-1">
+                            <p class="text-sm font-medium text-white truncate">{{ user.username }}</p>
+                            <p class="text-xs text-slate-400 truncate">{{ user.get_role_display }}</p>
+                        </div>
+                        <a href="{% url 'core:logout' %}" class="ml-2 text-slate-400 hover:text-white transition-colors" title="Déconnexion">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="w-14 flex-shrink-0" aria-hidden="true"><!-- Dummy element to force sidebar to shrink to fit close icon --></div>
+        </div>
+    </div>
+
+    <!-- Desktop Sidebar (Existante) -->
     <div class="hidden md:flex md:flex-shrink-0">
         <div class="flex flex-col w-64 bg-slate-900 border-r border-gray-800">
             <!-- Header/Logo -->
@@ -186,6 +286,22 @@
 
     <!-- Main content -->
     <div class="flex flex-col w-0 flex-1 overflow-hidden">
+        <!-- Mobile Top bar -->
+        <div class="md:hidden bg-white flex items-center justify-between border-b border-gray-200 px-4 py-2 sm:px-6">
+            <div class="flex items-center">
+                 <button type="button" class="-ml-2 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" @click="sidebarOpen = true">
+                    <span class="sr-only">Ouvrir le menu</span>
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <span class="font-bold text-gray-900 ml-2">TS Air Cargo</span>
+            </div>
+             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500 text-white uppercase">
+                 V.2 Beta
+            </span>
+        </div>
+        
         <main class="flex-1 relative z-0 overflow-y-auto focus:outline-none">
             <div class="py-6">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mb-6">
