@@ -508,7 +508,13 @@ class AgentForm(forms.ModelForm):
             if not self.instance.pk and not password:
                 self.add_error("password", _("Le mot de passe est requis."))
         else:
-            # Si pas de compte, on peut générer un username technique si vide
+            # Si pas de compte, on ignore les erreurs sur username/password créées par ModelForm
+            if "username" in self._errors:
+                del self._errors["username"]
+            if "password" in self._errors:
+                del self._errors["password"]
+
+            # Si pas de compte, on génère un username technique si vide
             if not username:
                 first_name = cleaned_data.get("first_name", "")
                 last_name = cleaned_data.get("last_name", "")

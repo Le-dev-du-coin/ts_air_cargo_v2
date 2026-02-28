@@ -72,7 +72,13 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-medium text-gray-900">{{ notif.telephone_destinataire }}</div>
-                                        <div class="text-xs text-gray-500">{{ notif.user.get_full_name|default:notif.user.username }}</div>
+                                        <div class="text-xs text-gray-500">
+                                            {% if notif.user %}
+                                                {{ notif.user.get_full_name|default:notif.user.username }}
+                                            {% else %}
+                                                Non assigné
+                                            {% endif %}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500">
                                         <div class="truncate max-w-xs" title="{{ notif.message }}">{{ notif.message }}</div>

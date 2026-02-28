@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block chine_content %}
-<div class="max-w-4xl mx-auto" x-data="{ has_account: {% if form.has_account.value %}true{% else %}false{% endif %} }">
+<div class="max-w-4xl mx-auto" x-data="{ has_account: {% if form.instance.pk %}{% if form.has_account.value %}true{% else %}false{% endif %}{% else %}true{% endif %} }">
     <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
         <form method="POST">
             {% csrf_token %}

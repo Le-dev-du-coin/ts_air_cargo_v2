@@ -138,8 +138,11 @@ def get_country_stats(country_code, year=None, month=None):
     stats["nb_lots"] = lots.count()
     stats["nb_colis"] = colis.count()
 
-    # Calcul de la rémunération des agents
-    agents = User.objects.filter(country__code=country_code).exclude(role="CLIENT")
+    # Calcul de la rémunération des agents (uniquement COMMISSION)
+    agents = User.objects.filter(
+        country__code=country_code,
+        remuneration_mode=User.RemunerationMode.COMMISSION,
+    ).exclude(role__in=["CLIENT", "GLOBAL_ADMIN"])
     agents_remuneration = []
     total_commissions = 0
 
@@ -1222,7 +1225,7 @@ class TaskListView(LoginRequiredMixin, TaskMixin, ListView):
 
         # Ajout des notifications en échec pour l'affichage
         context["failed_notifications"] = Notification.objects.filter(
-            statut="echec"
+            statut__in=["echec", "echec_permanent"]
         ).order_by("-prochaine_tentative")
         context["failed_notifications_count"] = context["failed_notifications"].count()
         return context
@@ -1371,6 +1374,7 @@ class AgentUpdateView(LoginRequiredMixin, AdminChineRequiredMixin, UpdateView):
     form_class = AgentForm
     template_name = "chine/agents/form.html"
     success_url = reverse_lazy("chine:agent_list")
+    context_object_name = "agent"
 
     def form_valid(self, form):
         messages.success(self.request, f"Agent {form.instance.username} mis à jour.")
