@@ -42,6 +42,10 @@ from .forms import ClientImportForm
 from django.db.models import F
 from django.db.models import Count, Q
 from notification.models import Notification
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.views.generic import ListView, UpdateView, DeleteView
+from core.models import Tarif
+from .forms import TarifForm
 
 User = get_user_model()
 
@@ -687,10 +691,9 @@ class ClientPasswordResetView(LoginRequiredMixin, View):
         # Définir le flag cooldown pour 60s
         cache.set(cache_key, True, timeout=60)
 
-        # Generate new password
-        from chine.forms import ClientForm
-
-        new_password = ClientForm._generate_password(10)
+        # Generate new password (Format standard TS + Phone)
+        telephone_propre = client.telephone.replace(" ", "")
+        new_password = f"TS{telephone_propre}"
 
         # Save new password
         user = client.user
@@ -1278,12 +1281,6 @@ class TaskRetryView(LoginRequiredMixin, TaskMixin, View):
                 except Exception as sync_e:
                     messages.error(request, f"Échec de la relance : {sync_e}")
         return redirect("chine:task_detail", pk=pk)
-
-
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import ListView, UpdateView, DeleteView
-from core.models import Tarif
-from .forms import TarifForm
 
 
 class TarifMixin(UserPassesTestMixin):

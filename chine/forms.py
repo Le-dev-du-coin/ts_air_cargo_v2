@@ -57,13 +57,6 @@ class ClientForm(forms.ModelForm):
         return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
 
     @staticmethod
-    def _generate_password(length=10):
-        import secrets
-        import string
-
-        alphabet = string.ascii_letters + string.digits
-        return "".join(secrets.choice(alphabet) for _ in range(length))
-
     def clean_telephone(self):
         telephone = self.cleaned_data.get("telephone")
         if telephone:
@@ -98,8 +91,13 @@ class ClientForm(forms.ModelForm):
                     break
                 username = f"{base}.{random.randint(1000, 9999)}"
 
-            # Génération du mot de passe sécurisé
-            password = self._generate_password(10)
+            # Format de mot de passe conventionnel : TS + Téléphone
+            telephone_propre = (
+                client.telephone.replace(" ", "")
+                if client.telephone
+                else random.randint(100000, 999999)
+            )
+            password = f"TS{telephone_propre}"
             self.generated_password = password  # Accessible depuis la vue
 
             user = User.objects.create_user(

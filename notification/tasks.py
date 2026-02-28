@@ -20,8 +20,6 @@ def send_notification_async(
     En cas d'échec définitif (max_retries atteint), la notification reste en BDD
     avec statut 'echec' pour être relancée par retry_failed_notifications_periodic.
     """
-    from celery.exceptions import MaxRetriesExceededError
-
     try:
         # Récupérer l'utilisateur (User ou Client)
         User = apps.get_model(settings.AUTH_USER_MODEL)
@@ -41,31 +39,13 @@ def send_notification_async(
         )
 
         if not success:
-            # Retry avec backoff exponentiel
-            try:
-                raise self.retry(countdown=60 * (2**self.request.retries))
-            except MaxRetriesExceededError:
-                # Max retries atteint : la notification est déjà en statut 'echec'
-                # en BDD, elle sera reprise par retry_failed_notifications_periodic
-                logger.warning(
-                    f"[send_notification_async] Max retries atteint pour user_id={user_id}. "
-                    f"La notification sera relancée par la file d'attente."
-                )
-                return
+            logger.warning(
+                f"[send_notification_async] Échec initial de l'envoi pour user_id={user_id}. "
+                f"La notification est enregistrée en statut 'echec' et sera prise en charge par le retry périodique."
+            )
 
-    except MaxRetriesExceededError:
-        logger.warning(
-            f"[send_notification_async] MaxRetriesExceeded (user_id={user_id}). "
-            f"File d'attente prendra le relais."
-        )
     except Exception as e:
         logger.error(f"[send_notification_async] Erreur inattendue: {e}")
-        try:
-            raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
-        except MaxRetriesExceededError:
-            logger.warning(
-                f"[send_notification_async] Max retries atteint sur exception pour user_id={user_id}."
-            )
 
 
 @shared_task
