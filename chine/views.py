@@ -12,6 +12,7 @@ from django.views.generic import (
     DetailView,
     UpdateView,
     View,
+    DeleteView,
 )
 import os
 import uuid
@@ -39,6 +40,8 @@ from django.contrib import messages
 from django.db import transaction
 from .forms import ClientImportForm
 from django.db.models import F
+from django.db.models import Count, Q
+from notification.models import Notification
 
 User = get_user_model()
 
@@ -1155,6 +1158,24 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
         )
 
 
+class ColisDeleteView(LoginRequiredMixin, AgentChineRequiredMixin, DeleteView):
+    model = Colis
+
+    def get_success_url(self):
+        return reverse_lazy("chine:lot_detail", kwargs={"pk": self.object.lot.pk})
+
+    def form_valid(self, form):
+        if self.object.lot.status != "OUVERT":
+            messages.error(
+                self.request,
+                "Impossible de supprimer un colis d'un lot fermé ou expédié.",
+            )
+            return redirect(self.get_success_url())
+
+        messages.success(self.request, "Le colis a été retiré du lot avec succès.")
+        return super().form_valid(form)
+
+
 class TaskMixin(AgentChineRequiredMixin):
     def test_func(self):
         # Strict for Agent only as requested for Tâches
@@ -1190,7 +1211,6 @@ class TaskListView(LoginRequiredMixin, TaskMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        from django.db.models import Count, Q
 
         stats = BackgroundTask.objects.filter(created_by=self.request.user).aggregate(
             pending=Count("id", filter=Q(status=BackgroundTask.Status.PENDING)),
@@ -1199,7 +1219,26 @@ class TaskListView(LoginRequiredMixin, TaskMixin, ListView):
             failure=Count("id", filter=Q(status=BackgroundTask.Status.FAILURE)),
         )
         context["stats"] = stats
+
+        # Ajout des notifications en échec pour l'affichage
+        context["failed_notifications"] = Notification.objects.filter(
+            statut="echec"
+        ).order_by("-prochaine_tentative")
+        context["failed_notifications_count"] = context["failed_notifications"].count()
         return context
+
+
+class RetryFailedNotificationsView(LoginRequiredMixin, TaskMixin, View):
+    def post(self, request):
+        from notification.tasks import retry_failed_notifications_periodic
+
+        # Déclenche la tâche celery immédiatement en arrière-plan
+        retry_failed_notifications_periodic.delay()
+        messages.success(
+            request,
+            "Les relances des notifications WhatsApp ont été déclenchées en arrière-plan.",
+        )
+        return redirect("chine:task_list")
 
 
 class TaskDetailView(LoginRequiredMixin, TaskMixin, DetailView):

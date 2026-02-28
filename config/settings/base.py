@@ -180,10 +180,10 @@ from datetime import timedelta  # noqa: E402
 from celery.schedules import crontab  # noqa: E402
 
 CELERY_BEAT_SCHEDULE = {
-    # Vérification des instances WaChap toutes les 15 min
+    # Vérification des instances WaChap 1 fois par jour à 8h00
     "check_wachap_status_periodic": {
         "task": "notification.tasks.check_wachap_status_periodic",
-        "schedule": timedelta(minutes=50),
+        "schedule": crontab(hour=8, minute=0),
     },
     # Vérification de santé du système chaque heure
     "check_system_health_periodic": {
@@ -204,5 +204,10 @@ CELERY_BEAT_SCHEDULE = {
     "send_daily_report_mali": {
         "task": "notification.tasks.send_daily_report_mali",
         "schedule": crontab(hour=23, minute=50),
+    },
+    # Nettoyage des anciennes notifications envoyées avec succès (1h00 du matin heure Chine -> 17h00 UTC)
+    "cleanup_old_notifications_periodic": {
+        "task": "notification.tasks.cleanup_old_notifications_periodic",
+        "schedule": crontab(hour=17, minute=0),
     },
 }

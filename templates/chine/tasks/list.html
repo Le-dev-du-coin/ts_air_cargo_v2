@@ -8,15 +8,6 @@
     <div class="flex justify-between items-center">
         <h2 class="text-2xl font-bold text-gray-900">Suivi des Opérations</h2>
         <div class="flex items-center space-x-3">
-            {% if tasks %}
-            <button type="button" onclick="document.getElementById('bulk-delete-form').submit()" 
-                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg>
-                Supprimer la sélection
-            </button>
-            {% endif %}
             <a href="{% url 'chine:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
@@ -26,158 +17,95 @@
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <!-- Pending -->
-        <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-gray-300">
-            <div class="p-5 text-center">
-                <div class="text-3xl font-bold text-gray-900">{{ stats.pending }}</div>
-                <div class="text-sm font-medium text-gray-500 uppercase tracking-wider">En attente</div>
+    <!-- WhatsApp Failed Notifications Section -->
+    <div class="mt-12">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <svg class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Notifications WhatsApp en échec
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">
+                    {{ failed_notifications_count }} message{{ failed_notifications_count|pluralize }} en attente de relance.
+                </p>
             </div>
+            {% if failed_notifications_count > 0 %}
+            <form action="{% url 'chine:retry_notifications' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Relancer toutes les notifications
+                </button>
+            </form>
+            {% else %}
+            <button type="button" disabled class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-400 cursor-not-allowed">
+                <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Aucune relance nécessaire
+            </button>
+            {% endif %}
         </div>
-        <!-- Processing -->
-        <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-blue-500">
-            <div class="p-5 text-center">
-                <div class="text-3xl font-bold text-blue-600">{{ stats.processing }}</div>
-                <div class="text-sm font-medium text-gray-500 uppercase tracking-wider">En cours</div>
-            </div>
-        </div>
-        <!-- Success -->
-        <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-green-500">
-            <div class="p-5 text-center">
-                <div class="text-3xl font-bold text-green-600">{{ stats.success }}</div>
-                <div class="text-sm font-medium text-gray-500 uppercase tracking-wider">Terminées</div>
-            </div>
-        </div>
-        <!-- Failure -->
-        <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-red-500">
-            <div class="p-5 text-center">
-                <div class="text-3xl font-bold text-red-600">{{ stats.failure }}</div>
-                <div class="text-sm font-medium text-gray-500 uppercase tracking-wider">Échouées</div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Tasks List as Cards -->
-    <div class="space-y-4">
-        {% if tasks %}
-        <div class="flex items-center space-x-2 pl-4 pb-2">
-            <input type="checkbox" id="select-all" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer" onclick="toggleAll(this)">
-            <label for="select-all" class="text-sm font-medium text-gray-700 cursor-pointer">Tout sélectionner</label>
-        </div>
-        {% endif %}
-
-        <form id="bulk-delete-form" action="{% url 'chine:task_bulk_delete' %}" method="post">
-            {% csrf_token %}
-            <div class="space-y-4">
-                {% for task in tasks %}
-        <div class="bg-white shadow rounded-lg hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-100">
-            <div class="p-6">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="flex-shrink-0 flex items-center">
-                            <input type="checkbox" name="task_ids" value="{{ task.id }}" class="task-checkbox h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer mr-3">
-                            {% if task.status == 'SUCCESS' %}
-                                <div class="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
-                                    <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </div>
-                            {% elif task.status == 'FAILURE' %}
-                                <div class="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                                    <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </div>
-                            {% else %}
-                                <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center animate-pulse">
-                                    <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">{{ task.name }}</h3>
-                            <p class="text-sm text-gray-500">ID: {{ task.reference|default:task.id|truncatechars:15 }}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            {% if task.status == 'SUCCESS' %}bg-green-100 text-green-800
-                            {% elif task.status == 'FAILURE' %}bg-red-100 text-red-800
-                            {% elif task.status == 'PROCESSING' %}bg-blue-100 text-blue-800
-                            {% else %}bg-gray-100 text-gray-800{% endif %}">
-                            {{ task.get_status_display }}
-                        </span>
-                        <div class="mt-1 text-xs text-gray-500">{{ task.created_at|date:"d/m H:i" }}</div>
-                    </div>
-                </div>
-
-                <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-gray-50 pt-4">
-                    <div class="text-sm">
-                        <span class="text-gray-500">Initiateur:</span>
-                        <span class="ml-1 font-medium text-gray-900">{{ task.created_by.get_full_name|default:task.created_by.username }}</span>
-                    </div>
-                    {% if task.completed_at and task.started_at %}
-                    <div class="text-sm">
-                        <span class="text-gray-500">Durée:</span>
-                        <span class="ml-1 font-medium text-gray-900">
-                            <!-- Simple duration placeholder, could use a filter for more accuracy -->
-                            {{ task.completed_at|timeuntil:task.started_at|default:"N/A" }}
-                        </span>
-                    </div>
-                    {% endif %}
-                    <div class="text-sm flex justify-end">
-                        <a href="{% url 'chine:task_detail' task.pk %}" class="text-indigo-600 hover:text-indigo-900 font-medium">Voir détails →</a>
+        <div class="flex flex-col">
+            <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+                    <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destinataire</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tentatives</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for notif in failed_notifications %}
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ notif.created_at|date:"d/m/Y H:i" }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">{{ notif.telephone_destinataire }}</div>
+                                        <div class="text-xs text-gray-500">{{ notif.user.get_full_name|default:notif.user.username }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500">
+                                        <div class="truncate max-w-xs" title="{{ notif.message }}">{{ notif.message }}</div>
+                                        {% if notif.erreur_details %}
+                                        <div class="text-xs text-red-500 mt-1 truncate max-w-xs" title="{{ notif.erreur_details }}">Erreur: {{ notif.erreur_details }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            {{ notif.nombre_tentatives }} / 5
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="px-6 py-12 text-center text-sm text-gray-500">
+                                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Aucune notification en échec.<br>
+                                        <span class="text-xs mt-1">Les messages en erreur de transmission apparaîtront ici.</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
-        {% empty %}
-        <div class="bg-white p-12 text-center rounded-lg shadow-sm border border-dashed border-gray-300">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">Aucune tâche</h3>
-            <p class="mt-1 text-sm text-gray-500">Commencez par ajouter un colis à un lot.</p>
-        </div>
-        {% endfor %}
-            </div>
-        </form>
     </div>
 
-    {% if is_paginated %}
-    <div class="mt-8 flex justify-center">
-        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Précédent</a>
-            {% endif %}
-            <span class="relative inline-flex items-center px-6 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-            </span>
-            {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Suivant</a>
-            {% endif %}
-        </nav>
     </div>
-    {% endif %}
 </div>
 
-{% if tasks %}
-<script>
-    function toggleAll(source) {
-        let checkboxes = document.getElementsByName('task_ids');
-        for(let i=0; i<checkboxes.length; i++) {
-            checkboxes[i].checked = source.checked;
-        }
-    }
-
-    {% if stats.processing > 0 or stats.pending > 0 %}
-    setTimeout(() => {
-        window.location.reload();
-    }, 5000);
-    {% endif %}
-</script>
-{% endif %}
 {% endblock %}

@@ -405,3 +405,27 @@ def send_daily_report_mali():
     except Exception as e:
         logger.error(f"[RapportJour] Exception: {e}", exc_info=True)
         return f"Erreur rapport journalier : {e}"
+
+
+@shared_task
+def cleanup_old_notifications_periodic():
+    """
+    Supprime de la base de données toutes les notifications avec statut 'envoye'
+    et 'echec_permanent' datant de plus de 7 jours, afin d'économiser de l'espace disque.
+    """
+    from .models import Notification
+
+    threshold_date = timezone.now() - timezone.timedelta(days=7)
+
+    try:
+        deleted_count, _ = Notification.objects.filter(
+            statut__in=["envoye", "echec_permanent"], created_at__lte=threshold_date
+        ).delete()
+
+        logger.info(
+            f"[Cleanup] Suppression de {deleted_count} anciennes notifications terminée."
+        )
+        return f"Nettoyage terminé : {deleted_count} entrées supprimées."
+    except Exception as e:
+        logger.error(f"[Cleanup] Erreur lors du nettoyage : {e}")
+        return f"Erreur nettoyage : {e}"

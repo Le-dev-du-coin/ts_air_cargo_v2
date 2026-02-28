@@ -14,6 +14,7 @@ from .views import (
     LotNoteUpdateView,
     LotReopenView,
     ColisCreateView,
+    ColisDeleteView,
     CountryCreateView,
     ClientExportView,
     ClientImportView,
@@ -37,6 +38,7 @@ from .views import (
     ChinaDepenseListView,
     ChinaDepenseCreateView,
     TransfertReceptionView,
+    RetryFailedNotificationsView,
 )
 
 app_name = "chine"
@@ -48,6 +50,11 @@ urlpatterns = [
     path("tasks/", TaskListView.as_view(), name="task_list"),
     path("tasks/<int:pk>/", TaskDetailView.as_view(), name="task_detail"),
     path("tasks/<int:pk>/retry/", TaskRetryView.as_view(), name="task_retry"),
+    path(
+        "tasks/retry-notifications/",
+        RetryFailedNotificationsView.as_view(),
+        name="retry_notifications",
+    ),
     path("tasks/bulk-delete/", TaskBulkDeleteView.as_view(), name="task_bulk_delete"),
     path("clients/", ClientListView.as_view(), name="client_list"),
     path("clients/add/", ClientCreateView.as_view(), name="client_add"),
@@ -80,6 +87,7 @@ urlpatterns = [
     path("lots/<int:pk>/delete/", LotDeleteView.as_view(), name="lot_delete"),
     # Colis (Nested under lot)
     path("lots/<int:lot_id>/colis/add/", ColisCreateView.as_view(), name="colis_add"),
+    path("colis/<int:pk>/delete/", ColisDeleteView.as_view(), name="colis_delete"),
     # Tarifs
     path("tarifs/", TarifListView.as_view(), name="tarif_list"),
     path("tarifs/add/", TarifCreateView.as_view(), name="tarif_add"),
