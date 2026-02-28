@@ -1223,11 +1223,19 @@ class TaskListView(LoginRequiredMixin, TaskMixin, ListView):
         )
         context["stats"] = stats
 
-        # Ajout des notifications en échec pour l'affichage
-        context["failed_notifications"] = Notification.objects.filter(
+        # Ajout des notifications en échec pour l'affichage (avec pagination)
+        failed_notifs_qs = Notification.objects.filter(
             statut__in=["echec", "echec_permanent"]
         ).order_by("-prochaine_tentative")
-        context["failed_notifications_count"] = context["failed_notifications"].count()
+
+        from django.core.paginator import Paginator
+
+        paginator = Paginator(failed_notifs_qs, 20)  # 20 notifications par page
+        page_number = self.request.GET.get("notif_page")
+        failed_notifications_page = paginator.get_page(page_number)
+
+        context["failed_notifications_page"] = failed_notifications_page
+        context["failed_notifications_count"] = failed_notifs_qs.count()
         return context
 
 
@@ -1235,8 +1243,8 @@ class RetryFailedNotificationsView(LoginRequiredMixin, TaskMixin, View):
     def post(self, request):
         from notification.tasks import retry_failed_notifications_periodic
 
-        # Déclenche la tâche celery immédiatement en arrière-plan
-        retry_failed_notifications_periodic.delay()
+        # Déclenche la tâche celery immédiatement en arrière-plan (force toutes les erreurs)
+        retry_failed_notifications_periodic.delay(force_retry_all=True)
         messages.success(
             request,
             "Les relances des notifications WhatsApp ont été déclenchées en arrière-plan.",

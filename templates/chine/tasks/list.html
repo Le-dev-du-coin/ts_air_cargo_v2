@@ -65,7 +65,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                {% for notif in failed_notifications %}
+                                {% for notif in failed_notifications_page %}
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ notif.created_at|date:"d/m/Y H:i" }}
@@ -108,6 +108,36 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Pagination Notifications -->
+            {% if failed_notifications_page.has_other_pages %}
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-4 rounded-lg shadow">
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Affichage de <span class="font-medium">{{ failed_notifications_page.start_index }}</span> à <span class="font-medium">{{ failed_notifications_page.end_index }}</span> sur <span class="font-medium">{{ failed_notifications_page.paginator.count }}</span> résultats
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination Notifications">
+                            {% if failed_notifications_page.has_previous %}
+                            <a href="?notif_page={{ failed_notifications_page.previous_page_number }}{% if request.GET.page %}&page={{ request.GET.page }}{% endif %}"
+                                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Précédent
+                            </a>
+                            {% endif %}
+                            {% if failed_notifications_page.has_next %}
+                            <a href="?notif_page={{ failed_notifications_page.next_page_number }}{% if request.GET.page %}&page={{ request.GET.page }}{% endif %}"
+                                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Suivant
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
         </div>
     </div>
 

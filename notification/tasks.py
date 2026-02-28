@@ -197,20 +197,26 @@ def send_parcel_reminders_periodic():
 
 
 @shared_task
-def retry_failed_notifications_periodic():
+def retry_failed_notifications_periodic(force_retry_all=False):
     """
     File d'attente WhatsApp : retente l'envoi des notifications en échec.
     - Récupère toutes les Notification avec statut='echec' et prochaine_tentative <= now()
     - Tente de les renvoyer via wachap_service
     - Met à jour le statut (envoye / echec avec backoff / echec_permanent si >= 5 tentatives)
     Appelée toutes les 5 minutes par le beat schedule, et sur reconnexion d'une instance.
+    Si force_retry_all=True, reprend aussi les echec_permanent peu importe le nb de tentatives.
     """
     from .services.wachap_service import wachap_service
 
-    notifications_to_retry = Notification.objects.filter(
-        statut="echec",
-        prochaine_tentative__lte=timezone.now(),
-    ).exclude(nombre_tentatives__gte=5)
+    if force_retry_all:
+        notifications_to_retry = Notification.objects.filter(
+            statut__in=["echec", "echec_permanent"]
+        )
+    else:
+        notifications_to_retry = Notification.objects.filter(
+            statut="echec",
+            prochaine_tentative__lte=timezone.now(),
+        ).exclude(nombre_tentatives__gte=5)
 
     count_success = 0
     count_fail = 0
@@ -226,8 +232,13 @@ def retry_failed_notifications_periodic():
         # Déterminer le type de message
         msg_type = "text"
 
-        # Incrémenter le compteur avant l'envoi
-        notification.nombre_tentatives += 1
+        # Remise à zéro puis incrément d'une relance forcée sur échec permanent
+        if force_retry_all and notification.statut == "echec_permanent":
+            notification.nombre_tentatives = 1
+        else:
+            # Incrémenter le compteur avant l'envoi normal
+            notification.nombre_tentatives += 1
+
         notification.save(update_fields=["nombre_tentatives"])
 
         try:
