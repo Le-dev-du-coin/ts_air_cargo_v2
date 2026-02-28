@@ -10,6 +10,14 @@ class ConfigurationNotification(models.Model):
     Gère les clés API WaChap pour les différentes instances
     """
 
+    # ---- Application globale ----
+    app_version = models.CharField(
+        "Version de l'application (Badge)",
+        max_length=20,
+        default="V2.0.1",
+        help_text="Numéro de version affiché sur les badges (ex: V2.0.1)",
+    )
+
     # ---- API WaChap V4 ----
     # 1 clé secrète globale + 1 accountId par région (remplace les instance_id/access_token V1)
 

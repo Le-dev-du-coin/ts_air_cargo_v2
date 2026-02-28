@@ -30,6 +30,15 @@ from .tasks import process_colis_creation
 from django.core.cache import cache
 
 from django.contrib.auth import get_user_model
+from django.db.models.deletion import ProtectedError
+
+import csv
+from django.http import HttpResponse
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.db import transaction
+from .forms import ClientImportForm
+from django.db.models import F
 
 User = get_user_model()
 
@@ -95,8 +104,6 @@ def get_country_stats(country_code, year=None, month=None):
         transferts = transferts.filter(date__year=year, date__month=month)
 
     # Calcul des montants avec déduction des jetons cédés (JC)
-    from django.db.models import F
-
     montant_brut = colis.aggregate(total=Sum("prix_final"))["total"] or 0
     total_jc = colis.aggregate(total=Sum("montant_jc"))["total"] or 0
     montant_net_colis = montant_brut - total_jc
@@ -354,14 +361,6 @@ class ClientListView(LoginRequiredMixin, ListView):
         return context
 
 
-import csv
-from django.http import HttpResponse
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.db import transaction
-from .forms import ClientImportForm
-
-
 class ClientExportView(LoginRequiredMixin, ListView):
     model = Client
 
@@ -539,11 +538,10 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
                 date_creation = timezone.now().strftime("%d/%m/%Y à %H:%M")
 
                 message = (
-                    f"👋 Bonjour *{nom_complet}*,\n\n"
-                    f"Bienvenue chez *TS AIR CARGO* !\n"
-                    f"Votre espace client a été créé le {date_creation}.\n\n"
-                    f"🔐 *Vos identifiants de connexion :*\n"
-                    f"   • Identifiant : *{client.user.username}*\n"
+                    "🎉 *Bienvenue chez TS Air Cargo !*\n\n"
+                    f"Votre compte client a été créé avec succès.\n"
+                    f"Voici vos informations de connexion pour suivre vos colis :\n\n"
+                    f"   • Identifiant : *{client.user.username}* ou *{client.telephone}*\n"
                     f"   • Mot de passe : *{raw_password}*\n\n"
                     f"⚠️ *Important :* Veuillez modifier votre mot de passe dès votre première connexion pour sécuriser votre compte.\n\n"
                     f"🌐 Connectez-vous ici :\n"
@@ -594,6 +592,18 @@ class ClientDeleteView(LoginRequiredMixin, UserPassesTestMixin, delete.DeleteVie
         )
         return redirect("chine:client_list")
 
+    def form_valid(self, form):
+        from django.db.models.deletion import ProtectedError
+
+        try:
+            return super().form_valid(form)
+        except ProtectedError:
+            messages.error(
+                self.request,
+                "Impossible de supprimer ce client car il possède encore des colis enregistrés.",
+            )
+            return redirect("chine:client_list")
+
 
 class ClientBulkDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
@@ -611,8 +621,15 @@ class ClientBulkDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
 
         # Security: Filter by tenant if needed, currently we assume admin trust
         # or implement checks. For now, delete found ids.
-        deleted_count, _ = Client.objects.filter(id__in=client_ids).delete()
-        messages.success(request, f"{deleted_count} clients supprimés.")
+
+        try:
+            deleted_count, _ = Client.objects.filter(id__in=client_ids).delete()
+            messages.success(request, f"{deleted_count} clients supprimés.")
+        except ProtectedError:
+            messages.error(
+                request,
+                "Impossible de supprimer les clients sélectionnés car certains possèdent des colis enregistrés.",
+            )
         return redirect("chine:client_list")
 
 
@@ -650,6 +667,20 @@ class ClientPasswordResetView(LoginRequiredMixin, View):
             )
             return redirect("chine:client_detail", pk=pk)
 
+        # Vérification du Cooldown (anti-spam 60s)
+        from django.core.cache import cache
+
+        cache_key = f"pwd_reset_cooldown_client_{client.id}"
+        if cache.get(cache_key):
+            messages.warning(
+                request,
+                "Veuillez patienter 60 secondes entre chaque demande de réinitialisation.",
+            )
+            return redirect("chine:client_detail", pk=pk)
+
+        # Définir le flag cooldown pour 60s
+        cache.set(cache_key, True, timeout=60)
+
         # Generate new password
         from chine.forms import ClientForm
 
@@ -665,12 +696,13 @@ class ClientPasswordResetView(LoginRequiredMixin, View):
             from notification.tasks import send_notification_async
 
             nom_complet = client.user.get_full_name() or client.user.username
+            phone = client.telephone  # Assuming client.telephone is the phone number
 
             message = (
-                f"🔄 Bonjour *{nom_complet}*,\n\n"
-                f"Votre mot de passe a été réinitialisé avec succès.\n\n"
-                f"🔐 *Vos nouveaux identifiants :*\n"
-                f"   • Identifiant : *{user.username}*\n"
+                f"Bonjour {user.get_full_name()},\n\n"
+                f"Votre mot de passe a été réinitialisé par un administrateur.\n"
+                f"Voici vos nouveaux identifiants de connexion :\n\n"
+                f"   • Identifiant : *{user.username}* ou *{phone}*\n"
                 f"   • Mot de passe : *{new_password}*\n\n"
                 f"⚠️ *Important :* Veuillez modifier votre mot de passe dès votre prochaine connexion.\n\n"
                 f"🌐 Connectez-vous ici :\n"

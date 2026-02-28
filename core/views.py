@@ -4,6 +4,7 @@ from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView
 from .forms import LoginForm
+from django.contrib.auth.decorators import user_passes_test
 
 
 class IndexView(TemplateView):
@@ -14,6 +15,17 @@ class CustomLoginView(LoginView):
     form_class = LoginForm
     template_name = "registration/login.html"
     redirect_authenticated_user = True
+
+    def form_valid(self, form):
+        # Se souvenir de moi (expiration de session)
+        remember_me = self.request.POST.get("remember_me", False)
+        if remember_me:
+            # Expire dans 30 jours
+            self.request.session.set_expiry(2592000)
+        else:
+            # Expire à la fermeture du navigateur
+            self.request.session.set_expiry(0)
+        return super().form_valid(form)
 
     def get_success_url(self):
         user = self.request.user
@@ -34,9 +46,6 @@ class CustomLoginView(LoginView):
 def logout_view(request):
     logout(request)
     return redirect("index")
-
-
-from django.contrib.auth.decorators import user_passes_test
 
 
 @user_passes_test(lambda u: u.is_superuser or u.role == "GLOBAL_ADMIN")

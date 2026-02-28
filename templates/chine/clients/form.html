@@ -4,7 +4,13 @@
 
 {% block chine_content %}
 <div class="max-w-3xl mx-auto">
-    <form method="post" class="space-y-8 divide-y divide-gray-200">
+    <form method="post" class="space-y-8 divide-y divide-gray-200" onsubmit="
+        let btn = this.querySelector('button[type=submit]');
+        if (btn.disabled) return false;
+        btn.disabled = true;
+        btn.innerHTML = 'Enregistrement...';
+        return true;
+    ">
         {% csrf_token %}
         <div class="space-y-8 divide-y divide-gray-200 sm:space-y-5">
             <div>
@@ -58,7 +64,11 @@
                         </label>
                         <div class="mt-1 sm:mt-0 sm:col-span-2">
                             {{ form.telephone }}
+                            {% if form.telephone.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.telephone.errors.0 }}</p>
+                            {% else %}
                             <p class="mt-2 text-sm text-gray-500">Indispensable pour les notifications WhatsApp.</p>
+                            {% endif %}
                         </div>
                     </div>
 

@@ -3,7 +3,7 @@
 {% block title %}Espace Client - TS Air Cargo{% endblock %}
 
 {% block content %}
-<div class="flex h-screen overflow-hidden bg-gray-50" x-data="{ sidebarOpen: false }">
+<div class="flex h-screen overflow-hidden bg-gray-50" x-data="{ sidebarOpen: false, desktopSidebarOpen: true }">
     
     <!-- Mobile Sidebar (Off-canvas) -->
     <div x-show="sidebarOpen" class="fixed inset-0 flex z-40 md:hidden" role="dialog" aria-modal="true" x-cloak>
@@ -24,7 +24,7 @@
                 <div class="flex-shrink-0 flex items-center px-4 gap-2">
                      <span class="text-2xl font-extrabold text-white tracking-tighter">TS Air Cargo</span>
                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500 text-white uppercase">
-                        V.2 Beta
+                        {{ APP_VERSION }}
                     </span>
                 </div>
                 <!-- Mobile Navigation Links -->
@@ -74,14 +74,14 @@
     </div>
 
     <!-- Desktop Sidebar -->
-    <div class="hidden md:flex md:flex-shrink-0">
+    <div class="hidden md:flex md:flex-shrink-0" x-show="desktopSidebarOpen" x-transition.opacity.duration.300ms>
         <div class="flex flex-col w-64 bg-indigo-900 border-r border-indigo-800">
             <!-- Header/Logo -->
             <div class="px-6 py-8 border-b border-indigo-800">
                  <div class="flex items-center gap-2">
                     <span class="text-2xl font-extrabold text-white tracking-tighter">TS Air Cargo</span>
                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500 text-white uppercase">
-                        V.2 Beta
+                        {{ APP_VERSION }}
                     </span>
                 </div>
                 <div class="mt-2">
@@ -156,20 +156,21 @@
 
     <!-- Main content -->
     <div class="flex flex-col w-0 flex-1 overflow-hidden">
-        <!-- Mobile Top bar -->
-        <div class="md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-gray-50 flex items-center justify-between border-b border-gray-200 px-4 py-3">
+        <!-- Top bar Mobile & Desktop Toggle -->
+        <div class="pl-1 pt-1 sm:pl-3 sm:pt-3 bg-gray-50 flex items-center justify-between border-b border-gray-200 px-4 py-3">
             <div class="flex items-center">
-                 <button type="button" class="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" @click="sidebarOpen = true">
+                 <button type="button" class="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" 
+                 @click="if(window.innerWidth < 768){ sidebarOpen = true } else { desktopSidebarOpen = !desktopSidebarOpen }">
                     <span class="sr-only">Ouvrir le menu</span>
                     <!-- Heroicon name: outline/menu -->
                     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
-                <span class="font-bold text-gray-900 ml-2">TS Air Cargo</span>
+                <span class="font-bold text-gray-900 ml-2 md:hidden">TS Air Cargo</span>
             </div>
-             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500 text-white uppercase">
-                 V.2 Beta
+             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500 text-white uppercase md:hidden">
+                 {{ APP_VERSION }}
             </span>
         </div>
 

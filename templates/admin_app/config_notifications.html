@@ -68,6 +68,23 @@
     <form method="post" class="space-y-6">
         {% csrf_token %}
 
+        <!-- APPLICATION GLOBALE -->
+        <div class="bg-white shadow-sm rounded-xl border border-gray-100">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h2 class="text-base font-semibold text-gray-800">🌐 Application Globale</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Paramètres généraux de l'application</p>
+                </div>
+            </div>
+            <div class="p-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Version de l'application (Badge)</label>
+                    {{ form.app_version }}
+                    <p class="text-xs text-gray-400 mt-1">Sera affiché sur la barre latérale sur toutes les interfaces (ex: V2.0.1)</p>
+                </div>
+            </div>
+        </div>
+
         <!-- CLÉ SECRÈTE GLOBALE -->
         <div class="bg-white shadow-sm rounded-xl border border-gray-100">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">

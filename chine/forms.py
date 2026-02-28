@@ -64,6 +64,19 @@ class ClientForm(forms.ModelForm):
         alphabet = string.ascii_letters + string.digits
         return "".join(secrets.choice(alphabet) for _ in range(length))
 
+    def clean_telephone(self):
+        telephone = self.cleaned_data.get("telephone")
+        if telephone:
+            telephone = telephone.strip().replace(" ", "")
+            qs = Client.objects.filter(telephone=telephone)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError(
+                    _("Un client avec ce numéro de téléphone existe déjà.")
+                )
+        return telephone
+
     def save(self, commit=True):
         client = super().save(commit=False)
 

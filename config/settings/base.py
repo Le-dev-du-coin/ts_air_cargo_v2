@@ -58,6 +58,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 
+APP_VERSION = "V2.0.1"
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -69,6 +71,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.app_config",
             ],
         },
     },
@@ -92,6 +95,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+AUTHENTICATION_BACKENDS = [
+    "core.backends.PhoneOrUsernameBackend",
+    "django.contrib.auth.backends.ModelBackend",
 ]
 
 # Internationalization

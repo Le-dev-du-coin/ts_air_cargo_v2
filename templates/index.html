@@ -14,7 +14,7 @@
                     <span class="text-2xl font-extrabold text-white tracking-tighter">TS Air Cargo</span>
                     <span
                         class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-800 text-indigo-400 border border-indigo-500/30">
-                        V.2 Beta
+                        {{ APP_VERSION }}
                     </span>
                 </div>
                 <div class="hidden md:flex space-x-8">
@@ -171,7 +171,7 @@
                         <div class="-mt-6">
                             <div
                                 class="inline-flex items-center justify-center p-3 bg-red-600 rounded-md shadow-lg transform translate-y-0 hover:-translate-y-1 transition duration-300">
-                                <span class="text-white font-bold text-lg">CN</span>
+                                <img src="https://flagcdn.com/w40/cn.png" width="30" alt="Chine" class="rounded-sm shadow-sm">
                             </div>
                             <h3 class="mt-8 text-lg font-medium text-white tracking-tight">Guichet Chine (Guangzhou)
                             </h3>
@@ -190,7 +190,7 @@
                         <div class="-mt-6">
                             <div
                                 class="inline-flex items-center justify-center p-3 bg-green-600 rounded-md shadow-lg transform translate-y-0 hover:-translate-y-1 transition duration-300">
-                                <span class="text-white font-bold text-lg">ML</span>
+                                <img src="https://flagcdn.com/w40/ml.png" width="30" alt="Mali" class="rounded-sm shadow-sm">
                             </div>
                             <h3 class="mt-8 text-lg font-medium text-white tracking-tight">Guichet Mali (Bamako)</h3>
                             <p class="mt-5 text-base text-gray-400">
@@ -208,7 +208,7 @@
                         <div class="-mt-6">
                             <div
                                 class="inline-flex items-center justify-center p-3 bg-orange-500 rounded-md shadow-lg transform translate-y-0 hover:-translate-y-1 transition duration-300">
-                                <span class="text-white font-bold text-lg">CI</span>
+                                <img src="https://flagcdn.com/w40/ci.png" width="30" alt="Côte d'Ivoire" class="rounded-sm shadow-sm">
                             </div>
                             <h3 class="mt-8 text-lg font-medium text-white tracking-tight">Guichet Côte d'Ivoire
                                 (Abidjan)</h3>
@@ -232,22 +232,22 @@
                     <span class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Agents</span>
                     <a href="{% url 'core:login_agent_chine' %}"
                         class="text-gray-400 hover:text-white transition-colors text-sm flex items-center">
-                        <span class="mr-2">🇨🇳</span> Chine
+                        <img src="https://flagcdn.com/w20/cn.png" width="16" alt="CN" class="inline-block mr-2"> Chine
                     </a>
                     <a href="{% url 'core:login_agent_mali' %}"
                         class="text-gray-400 hover:text-white transition-colors text-sm flex items-center">
-                        <span class="mr-2">🇲🇱</span> Mali
+                        <img src="https://flagcdn.com/w20/ml.png" width="16" alt="ML" class="inline-block mr-2"> Mali
                     </a>
                     <a href="{% url 'core:login_agent_rci' %}"
                         class="text-gray-400 hover:text-white transition-colors text-sm flex items-center">
-                        <span class="mr-2">🇨🇮</span> Côte d'Ivoire
+                        <img src="https://flagcdn.com/w20/ci.png" width="16" alt="CI" class="inline-block mr-2"> Côte d'Ivoire
                     </a>
                 </div>
                 <div class="flex flex-col space-y-2">
                     <span class="text-gray-500 text-sm font-semibold uppercase tracking-wider">Admin</span>
                     <a href="{% url 'core:login_admin_chine' %}"
                         class="text-gray-400 hover:text-white transition-colors text-sm flex items-center">
-                        <span class="mr-2">🇨🇳</span> Chine
+                        <img src="https://flagcdn.com/w20/cn.png" width="16" alt="CN" class="inline-block mr-2"> Chine
                     </a>
                 </div>
             </div>

@@ -20,7 +20,7 @@ urlpatterns = [
         CustomLoginView.as_view(
             extra_context={
                 "title": "Agent Chine",
-                "flag": "🇨🇳",
+                "flag": "cn",
                 "theme": "red",
                 "user_type": "agent",
             }
@@ -32,7 +32,7 @@ urlpatterns = [
         CustomLoginView.as_view(
             extra_context={
                 "title": "Admin Chine",
-                "flag": "🇨🇳",
+                "flag": "cn",
                 "theme": "red",
                 "user_type": "admin",
             }
@@ -45,7 +45,7 @@ urlpatterns = [
         CustomLoginView.as_view(
             extra_context={
                 "title": "Agent Mali",
-                "flag": "🇲🇱",
+                "flag": "ml",
                 "theme": "green",
                 "user_type": "agent",
             }
@@ -57,7 +57,7 @@ urlpatterns = [
         CustomLoginView.as_view(
             extra_context={
                 "title": "Admin Mali",
-                "flag": "🇲🇱",
+                "flag": "ml",
                 "theme": "green",
                 "user_type": "admin",
             }
@@ -70,7 +70,7 @@ urlpatterns = [
         CustomLoginView.as_view(
             extra_context={
                 "title": "Agent RCI",
-                "flag": "🇨🇮",
+                "flag": "ci",
                 "theme": "orange",
                 "user_type": "agent",
             }
@@ -82,7 +82,7 @@ urlpatterns = [
         CustomLoginView.as_view(
             extra_context={
                 "title": "Admin RCI",
-                "flag": "🇨🇮",
+                "flag": "ci",
                 "theme": "orange",
                 "user_type": "admin",
             }

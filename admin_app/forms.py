@@ -11,6 +11,8 @@ class NotificationConfigAdminForm(forms.ModelForm):
     class Meta:
         model = ConfigurationNotification
         fields = [
+            # Application globale
+            "app_version",
             # WaChap V4
             "wachap_v4_secret_key",
             "wachap_account_chine",
@@ -30,6 +32,12 @@ class NotificationConfigAdminForm(forms.ModelForm):
             "smtp_use_ssl",
         ]
         widgets = {
+            "app_version": forms.TextInput(
+                attrs={
+                    "class": "w-full border-gray-300 rounded-md",
+                    "placeholder": "V2.0.1",
+                }
+            ),
             "wachap_v4_secret_key": forms.PasswordInput(
                 attrs={
                     "class": "w-full border-gray-300 rounded-md",

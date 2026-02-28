@@ -63,7 +63,9 @@ class WaChapService:
             .replace("(", "")
             .replace(")", "")
         )
-        if not clean.startswith("+"):
+        if clean.startswith("00"):
+            clean = "+" + clean[2:]
+        elif not clean.startswith("+"):
             clean = "+" + clean
         return clean
 
