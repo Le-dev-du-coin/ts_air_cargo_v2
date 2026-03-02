@@ -22,9 +22,27 @@
     </div>
 
     <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-        <div class="px-4 py-5 sm:px-6">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Informations Colis</h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500">{{ colis.description }}</p>
+        <div class="px-4 py-5 sm:px-6 flex justify-between items-start">
+            <div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Informations Colis</h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">{{ colis.description }}</p>
+            </div>
+            {% if colis.photo %}
+            <div x-data="{ zoomOpen: false }" class="flex-shrink-0 ml-4">
+                <img @click="zoomOpen = true" src="{{ colis.photo.url }}" alt="Photo Colis" class="h-24 w-24 object-cover rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:opacity-80 transition-opacity">
+                <!-- Modal Zoom -->
+                <template x-teleport="body">
+                    <div x-show="zoomOpen" x-transition.opacity style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-90" @click="zoomOpen = false" @keydown.escape.window="zoomOpen = false">
+                        <div class="relative max-w-5xl w-full h-full flex justify-center items-center">
+                            <img src="{{ colis.photo.url }}" alt="Zoom Colis" class="max-h-full max-w-full rounded shadow-2xl object-contain" @click.stop>
+                            <button @click="zoomOpen = false" class="absolute top-4 right-4 sm:top-8 sm:right-8 text-white hover:text-gray-300 p-2 bg-black bg-opacity-50 rounded-full focus:outline-none">
+                                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            {% endif %}
         </div>
         <div class="border-t border-gray-200">
             <dl>
