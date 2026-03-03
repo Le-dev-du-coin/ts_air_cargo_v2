@@ -56,7 +56,6 @@ class ClientForm(forms.ModelForm):
         nfkd = unicodedata.normalize("NFKD", text or "")
         return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
 
-    @staticmethod
     def clean_telephone(self):
         telephone = self.cleaned_data.get("telephone")
         if telephone:
