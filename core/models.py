@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+import uuid
 
 
 class Country(models.Model):
@@ -380,3 +381,24 @@ class BackgroundTask(TenantAwareModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class ImageProxyToken(models.Model):
+    """
+    Token éphémère pour exposer une image protégée de façon temporaire (ex: API WhatsApp).
+    """
+
+    colis = models.ForeignKey(
+        "Colis", on_delete=models.CASCADE, related_name="proxy_tokens"
+    )
+    token = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True, db_index=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def is_valid(self):
+        return timezone.now() < self.expires_at
+
+    def __str__(self):
+        return f"Token API Image - Colis {self.colis.reference}"

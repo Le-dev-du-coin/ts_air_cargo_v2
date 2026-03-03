@@ -207,6 +207,52 @@ class WaChapService:
             logger.critical(f"[WaChap V4] Exception inattendue: {e}", exc_info=True)
             return False, str(e), None
 
+    def check_number_registered(self, phone: str, region: str = None) -> bool:
+        """
+        Vérifie si un numéro est inscrit sur WhatsApp.
+        Retourne True s'il est inscrit ou en cas d'erreur de vérification.
+        Retourne False uniquement si l'API confirme qu'il n'est PAS sur WhatsApp.
+        """
+        config = self._get_config()
+        secret_key = config.wachap_v4_secret_key
+        if not secret_key:
+            return True  # Par précaution, on autorise si pas de config
+
+        formatted_phone = self.format_phone(phone)
+        if not region:
+            region = self._determine_region(formatted_phone)
+
+        accounts = self._get_accounts()
+        account_id, _ = self._resolve_account(region, accounts)
+
+        if not account_id:
+            return True
+
+        headers = {
+            "Authorization": f"Bearer {secret_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {"accountId": account_id, "phones": [formatted_phone]}
+
+        try:
+            response = requests.post(
+                f"{self.BASE_URL}/whatsapp/contacts/check",
+                json=payload,
+                headers=headers,
+                timeout=10,
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success"):
+                    results = data.get("results", [])
+                    if results:
+                        return results[0].get("isOnWhatsApp", True)
+            return True
+        except Exception as e:
+            logger.error(f"[WaChap V4] Erreur check_number_registered: {e}")
+            return True
+
     def send_message_with_type(
         self,
         phone: str,

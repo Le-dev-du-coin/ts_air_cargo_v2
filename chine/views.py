@@ -24,7 +24,7 @@ from django.contrib import messages
 logger = logging.getLogger(__name__)
 from django.views.generic import edit as delete
 
-from core.models import Client, Lot, Colis, BackgroundTask, Country
+from core.models import Client, Lot, Colis, BackgroundTask, Country, ImageProxyToken
 from report.models import Depense, TransfertArgent, PaiementAgent
 from .forms import ClientForm, LotForm, ColisForm, CountryForm, AgentForm, LotNoteForm
 from .tasks import process_colis_creation
@@ -1251,7 +1251,91 @@ class ColisDeleteView(LoginRequiredMixin, AgentChineRequiredMixin, DeleteView):
             return redirect(self.get_success_url())
 
         messages.success(self.request, "Le colis a été retiré du lot avec succès.")
+        messages.success(self.request, "Le colis a été retiré du lot avec succès.")
         return super().form_valid(form)
+
+
+class SendWaPhotoView(LoginRequiredMixin, AgentChineRequiredMixin, View):
+    """
+    Déclenche manuellement l'envoi de la photo du colis via WhatsApp.
+    Utilise ImageProxyToken pour générer un lien temporaire public (2h).
+    """
+
+    def post(self, request, pk):
+        colis = get_object_or_404(Colis, pk=pk)
+
+        # 1. Vérifications de base
+        if not colis.image_colis:
+            messages.error(request, "Ce colis ne possède aucune image.")
+            return redirect(
+                reverse_lazy("chine:lot_detail", kwargs={"pk": colis.lot.pk})
+                + "#colis-calculator"
+            )
+
+        if not colis.client or not colis.client.user or not colis.client.phone:
+            messages.error(
+                request,
+                "Impossible d'envoyer l'image, le client n'a pas de numéro de téléphone enregistré.",
+            )
+            return redirect(
+                reverse_lazy("chine:lot_detail", kwargs={"pk": colis.lot.pk})
+                + "#colis-calculator"
+            )
+
+        phone = colis.client.phone
+
+        from notification.services.wachap_service import wachap_service
+
+        # 2. Vérifier si le numéro existe sur WhatsApp
+        is_on_wa = wachap_service.check_number_registered(phone)
+        if not is_on_wa:
+            messages.error(
+                request,
+                f"Le numéro {phone} ne semble pas être inscrit sur WhatsApp, envoi annulé.",
+            )
+            return redirect(
+                reverse_lazy("chine:lot_detail", kwargs={"pk": colis.lot.pk})
+                + "#colis-calculator"
+            )
+
+        # 3. Créer Token Temporaire (Valide 2 heures)
+        expiration = timezone.now() + timezone.timedelta(hours=2)
+        token = ImageProxyToken.objects.create(colis=colis, expires_at=expiration)
+
+        # 4. Construire l'URL publique absolue
+        from django.urls import reverse
+
+        relative_url = reverse(
+            "core:serve_proxy_image", kwargs={"token_uuid": token.token}
+        )
+        absolute_image_url = request.build_absolute_uri(relative_url)
+
+        # 5. Envoi via WaChap
+        message_text = f"📦 Voici la photo de votre colis {colis.reference} nouvellement réceptionné dans notre entrepôt ! (Valable 2 heures)"
+
+        success, error_msg, _ = wachap_service.send_message_with_type(
+            phone=phone,
+            message=message_text,
+            message_type="image",
+            media_url=absolute_image_url,
+            region="chine",  # Ou extraire dynamiquement
+        )
+
+        if success:
+            messages.success(
+                request,
+                f"La photo du colis {colis.reference} a été envoyée avec succès sur WhatsApp.",
+            )
+        else:
+            logger.error(
+                f"Erreur envoi image WaChap pour colis {colis.reference}: {error_msg}"
+            )
+            messages.error(request, f"Échec de l'envoi de la photo : {error_msg}")
+
+        return redirect(
+            reverse_lazy("chine:lot_detail", kwargs={"pk": colis.lot.pk})
+            + "#colis-calculator"
+        )
 
 
 class TaskMixin(AgentChineRequiredMixin):
@@ -1366,9 +1450,12 @@ class NotificationListView(LoginRequiredMixin, TaskMixin, ListView):
         if single_id and not selected_ids:
             selected_ids = [single_id]
 
+        next_url = request.POST.get("next")
+        base_url = reverse_lazy("chine:notification_list")
+
         if not selected_ids:
             messages.warning(request, "Aucune notification sélectionnée.")
-            return redirect("chine:notification_list")
+            return redirect(f"{base_url}?{next_url}" if next_url else base_url)
 
         if action == "delete":
             deleted_count, _ = Notification.objects.filter(id__in=selected_ids).delete()
@@ -1389,7 +1476,7 @@ class NotificationListView(LoginRequiredMixin, TaskMixin, ListView):
                 request, f"{updated} notification(s) relancée(s) en arrière-plan."
             )
 
-        return redirect("chine:notification_list")
+        return redirect(f"{base_url}?{next_url}" if next_url else base_url)
 
 
 class TaskDetailView(LoginRequiredMixin, TaskMixin, DetailView):

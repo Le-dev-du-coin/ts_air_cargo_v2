@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CustomLoginView, logout_view, flower_redirect
+from .views import CustomLoginView, logout_view, flower_redirect, serve_proxy_image
 
 app_name = "core"
 
@@ -103,6 +103,12 @@ urlpatterns = [
             extra_context={"title": "Administration", "user_type": "admin"}
         ),
         name="login_admin",
+    ),
+    # API Publique Temporaire (WaChap)
+    path(
+        "api/public/image/<uuid:token_uuid>/",
+        serve_proxy_image,
+        name="serve_proxy_image",
     ),
     # Redirection vers le panel Flower (Celery)
     path("flower/", flower_redirect, name="flower_admin"),

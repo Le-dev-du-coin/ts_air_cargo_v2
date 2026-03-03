@@ -236,7 +236,16 @@ def retry_failed_notifications_periodic(force_retry_all=False):
                     f"{notification.telephone_destinataire}"
                 )
             else:
-                notification.marquer_comme_echec(error_msg)
+                # Vérifier si le numéro est bien sur WhatsApp
+                is_on_wa = wachap_service.check_number_registered(
+                    notification.telephone_destinataire
+                )
+                if not is_on_wa:
+                    error_msg = "Numéro non inscrit sur WA"
+                    notification.marquer_comme_echec(error_msg, erreur_type="permanent")
+                else:
+                    notification.marquer_comme_echec(error_msg)
+
                 count_fail += 1
                 logger.warning(
                     f"[Retry] Notification {notification.id} - échec #{notification.nombre_tentatives}: {error_msg}"

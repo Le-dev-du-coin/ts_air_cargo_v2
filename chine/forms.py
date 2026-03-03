@@ -307,6 +307,13 @@ class ColisForm(forms.ModelForm):
         self.fields["description"].required = False
         # Ne pas marquer photo comme required car compressed_photo peut être utilisé
         self.fields["photo"].required = False
+        # Désactiver required HTML5 pour les champs gérés dynamiquement en JS (évite "invalid form control is not focusable")
+        self.fields["longueur"].required = False
+        self.fields["largeur"].required = False
+        self.fields["hauteur"].required = False
+        self.fields["cbm"].required = False
+        self.fields["poids"].required = False
+        self.fields["nombre_pieces"].required = False
 
     def clean(self):
         cleaned_data = super().clean()

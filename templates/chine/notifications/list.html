@@ -80,6 +80,7 @@
             <div class="flex gap-2">
                 <form method="post" action="{% url 'chine:notification_list' %}" class="inline">
                     {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.GET.urlencode }}">
                     <template x-for="id in selected" :key="id">
                         <input type="hidden" name="selected_ids" :value="id">
                     </template>
@@ -139,6 +140,7 @@
                         <div class="flex items-center justify-end space-x-2">
                             <form method="post" action="{% url 'chine:notification_list' %}" class="inline" @click.stop>
                                 {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.GET.urlencode }}">
                                 <input type="hidden" name="notification_id" value="{{ notif.id }}">
                                 {% if notif.statut != 'envoye' %}
                                 <button type="submit" name="action" value="retry" class="text-indigo-600 hover:text-indigo-900 focus:outline-none" title="Relancer">

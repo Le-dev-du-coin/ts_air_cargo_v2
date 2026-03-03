@@ -78,7 +78,14 @@ class NotificationService:
                 notification.marquer_comme_envoye(message_id)
                 logger.info(f"Notification {notification.id} envoyée à {phone}")
             else:
-                notification.marquer_comme_echec(error_msg)
+                # Vérifier si le numéro est bien sur WhatsApp
+                is_on_wa = wachap_service.check_number_registered(phone, region=region)
+                if not is_on_wa:
+                    error_msg = "Numéro non inscrit sur WA"
+                    notification.marquer_comme_echec(error_msg, erreur_type="permanent")
+                else:
+                    notification.marquer_comme_echec(error_msg)
+
                 logger.error(f"Échec notification {notification.id}: {error_msg}")
 
                 # Alerte si échec critique (optionnel, géré par AlertSystem périodique)

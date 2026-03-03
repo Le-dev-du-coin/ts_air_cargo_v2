@@ -54,162 +54,100 @@ class WaChapMonitor:
             },
         }
 
-    def check_instance_status(self, region: str) -> Dict:
-        """
-        Vérifie le statut d'un compte WaChap V4 via un appel API léger.
-        On utilise l'endpoint /whatsapp/messages/send avec un envoi réel (vers developer_phone).
-        """
+    def check_all_instances(self) -> Dict[str, Dict]:
+        """Vérifie le statut de toutes les instances en un seul appel API"""
+        results = {}
         instances = self._get_instances()
-        instance = instances.get(region)
-
-        if not instance:
-            return {
-                "region": region,
-                "connected": False,
-                "error": "Région inconnue",
-                "timestamp": timezone.now().isoformat(),
-            }
-
         config = self._get_config()
         secret_key = config.wachap_v4_secret_key
-        account_id = instance.get("account_id", "")
 
         if not secret_key:
-            return {
-                "region": region,
-                "connected": False,
-                "error": "Clé secrète V4 manquante",
-                "timestamp": timezone.now().isoformat(),
-            }
+            for region in instances.keys():
+                results[region] = {
+                    "region": region,
+                    "connected": False,
+                    "error": "Clé secrète V4 manquante",
+                    "timestamp": timezone.now().isoformat(),
+                }
+            return results
 
-        if not account_id:
-            return {
-                "region": region,
-                "connected": False,
-                "error": "Account ID non configuré",
-                "timestamp": timezone.now().isoformat(),
-            }
+        # Appel API général pour récupérer tous les comptes
+        headers = {
+            "Authorization": f"Bearer {secret_key}",
+        }
+        api_accounts = []
+        api_error = None
 
         try:
-            # Vérification légère : on tente un envoi vers le developer_phone
-            # (WaChap V4 n'expose pas d'endpoint /status standalone)
-            admin_phone = config.developer_phone or "+22300000000"
-            clean_phone = admin_phone.replace(" ", "")
-            if not clean_phone.startswith("+"):
-                clean_phone = "+" + clean_phone
-
-            headers = {
-                "Authorization": f"Bearer {secret_key}",
-                "Content-Type": "application/json",
-            }
-            payload = {
-                "data": {
-                    "accountId": account_id,
-                    "to": clean_phone,
-                    "type": "text",
-                    "content": f"[Monitor V4] Vérification {instance['name']}",
-                }
-            }
-
-            response = requests.post(
-                "https://api.wachap.com/v1/whatsapp/messages/send",
-                json=payload,
+            response = requests.get(
+                "https://api.wachap.com/v1/whatsapp/accounts",
                 headers=headers,
                 timeout=15,
             )
-
             if response.status_code == 200:
                 data = response.json()
                 if data.get("success"):
-                    return {
-                        "region": region,
-                        "connected": True,
-                        "message": "Connecté",
-                        "timestamp": timezone.now().isoformat(),
-                    }
-                return {
-                    "region": region,
-                    "connected": False,
-                    "error": data.get("message", "Erreur API"),
-                    "timestamp": timezone.now().isoformat(),
-                }
-
-            if response.status_code == 400:
-                # 400 = l'API répond → l'instance est joignable.
-                # "Numéro invalide" est normal pour un numéro de test fictif.
-                # Ce n'est PAS une déconnexion — seul le destinataire est inconnu.
-                try:
-                    data = response.json()
-                    err = data.get("error", {})
-                    err_code = err.get("code", "") if isinstance(err, dict) else ""
-                    err_msg = (
-                        err.get("message", "") if isinstance(err, dict) else str(err)
-                    )
-                    send_errors = ("SEND_ERROR", "INVALID_PHONE", "RECIPIENT_NOT_FOUND")
-                    if (
-                        err_code in send_errors
-                        or "numéro" in err_msg.lower()
-                        or "invalid" in err_msg.lower()
-                    ):
-                        return {
-                            "region": region,
-                            "connected": True,
-                            "message": "Connecté (compte actif)",
-                            "timestamp": timezone.now().isoformat(),
-                        }
-                    return {
-                        "region": region,
-                        "connected": False,
-                        "error": err_msg or "Erreur 400",
-                        "timestamp": timezone.now().isoformat(),
-                    }
-                except Exception:
-                    # Réponse 400 mais parsable → l'API répond = connecté
-                    return {
-                        "region": region,
-                        "connected": True,
-                        "message": "Connecté",
-                        "timestamp": timezone.now().isoformat(),
-                    }
-
-            if response.status_code in (401, 403):
-                return {
-                    "region": region,
-                    "connected": False,
-                    "error": "Clé secrète invalide ou expirée (401/403)",
-                    "timestamp": timezone.now().isoformat(),
-                }
-
-            return {
-                "region": region,
-                "connected": False,
-                "error": f"HTTP {response.status_code}",
-                "timestamp": timezone.now().isoformat(),
-            }
-
+                    api_accounts = data.get("accounts", [])
+                else:
+                    api_error = data.get("message", "Erreur API inconnue")
+            elif response.status_code in (401, 403):
+                api_error = "Clé secrète invalide ou expirée (401/403)"
+            else:
+                api_error = f"HTTP {response.status_code}"
         except requests.exceptions.Timeout:
-            return {
-                "region": region,
-                "connected": False,
-                "error": "Timeout de connexion",
-                "timestamp": timezone.now().isoformat(),
-            }
+            api_error = "Timeout de connexion (>15s)"
         except Exception as e:
-            return {
-                "region": region,
-                "connected": False,
-                "error": f"Erreur de connexion: {str(e)}",
-                "timestamp": timezone.now().isoformat(),
-            }
+            api_error = f"Erreur réseau: {str(e)}"
 
-    def check_all_instances(self) -> Dict[str, Dict]:
-        """Vérifie le statut de toutes les instances"""
-        results = {}
-        instances = self._get_instances()
+        for region, instance in instances.items():
+            account_id = instance.get("account_id", "")
+            if not account_id:
+                results[region] = {
+                    "region": region,
+                    "connected": False,
+                    "error": "Account ID non configuré",
+                    "timestamp": timezone.now().isoformat(),
+                }
+                continue
 
-        for region in instances.keys():
-            logger.info(f"Vérification instance {region}...")
-            results[region] = self.check_instance_status(region)
+            if api_error:
+                results[region] = {
+                    "region": region,
+                    "connected": False,
+                    "error": api_error,
+                    "timestamp": timezone.now().isoformat(),
+                }
+                continue
+
+            # Chercher le compte dans la liste renvoyée par l'API
+            account_data = next(
+                (acc for acc in api_accounts if acc.get("id") == account_id), None
+            )
+
+            if not account_data:
+                results[region] = {
+                    "region": region,
+                    "connected": False,
+                    "error": "Introuvable sur WaChap",
+                    "timestamp": timezone.now().isoformat(),
+                }
+                continue
+
+            status = account_data.get("status")
+            if status == "connected":
+                results[region] = {
+                    "region": region,
+                    "connected": True,
+                    "message": "Connecté",
+                    "timestamp": timezone.now().isoformat(),
+                }
+            else:
+                results[region] = {
+                    "region": region,
+                    "connected": False,
+                    "error": f"Déconnecté ({status})",
+                    "timestamp": timezone.now().isoformat(),
+                }
 
         return results
 
