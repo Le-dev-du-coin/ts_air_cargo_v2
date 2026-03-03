@@ -209,7 +209,8 @@ class Colis(TenantAwareModel):
         max_digits=10,
         decimal_places=2,
         help_text=_("Poids (kg) - utilisé pour Cargo/Express"),
-        default=0,
+        null=True,
+        blank=True,
     )
     longueur = models.DecimalField(
         max_digits=10, decimal_places=2, help_text=_("Longueur (cm)"), default=0

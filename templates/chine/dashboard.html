@@ -344,7 +344,9 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dt class="text-sm font-medium text-emerald-700 truncate">Montant Total Colis</dt>
-                        <dd class="text-2xl font-semibold text-gray-900">{{ montant_total_colis_agent|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                        <dd class="text-xl lg:text-lg xl:text-xl font-semibold text-gray-900 truncate" title="{{ montant_total_colis_agent|default:'0'|floatformat:0|intcomma }} FCFA">
+                            {{ montant_total_colis_agent|default:"0"|floatformat:0|intcomma }} FCFA
+                        </dd>
                     </div>
                 </div>
             </div>
@@ -362,7 +364,9 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dt class="text-sm font-medium text-purple-700 truncate">Montant Total Transport</dt>
-                        <dd class="text-2xl font-semibold text-gray-900">{{ montant_total_transport_agent|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                        <dd class="text-xl lg:text-lg xl:text-xl font-semibold text-gray-900 truncate" title="{{ montant_total_transport_agent|default:'0'|floatformat:0|intcomma }} FCFA">
+                            {{ montant_total_transport_agent|default:"0"|floatformat:0|intcomma }} FCFA
+                        </dd>
                     </div>
                 </div>
             </div>

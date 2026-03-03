@@ -38,6 +38,7 @@ from .views import (
     ChinaDepenseListView,
     ChinaDepenseCreateView,
     TransfertReceptionView,
+    NotificationListView,
     RetryFailedNotificationsView,
 )
 
@@ -48,6 +49,7 @@ urlpatterns = [
     path("archives/", MonthlyArchivesView.as_view(), name="monthly_archives"),
     # Background Tasks
     path("tasks/", TaskListView.as_view(), name="task_list"),
+    path("notifications/", NotificationListView.as_view(), name="notification_list"),
     path("tasks/<int:pk>/", TaskDetailView.as_view(), name="task_detail"),
     path("tasks/<int:pk>/retry/", TaskRetryView.as_view(), name="task_retry"),
     path(

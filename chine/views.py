@@ -104,9 +104,12 @@ def get_country_stats(country_code, year=None, month=None):
     transferts = TransfertArgent.objects.filter(pays_expediteur__code=country_code)
 
     if year and month:
-        # Filtrer par date de création pour lots/colis/dépenses
-        lots = lots.filter(created_at__year=year, created_at__month=month)
-        colis = colis.filter(created_at__year=year, created_at__month=month)
+        # Filtrer par date d'expédition pour lots/colis (Fait générateur = Départ du vol/bateau)
+        lots = lots.filter(date_expedition__year=year, date_expedition__month=month)
+        colis = colis.filter(
+            lot__date_expedition__year=year, lot__date_expedition__month=month
+        )
+        # Filtrer par date réelle de saisie pour les dépenses et transferts (Trésorerie)
         depenses = depenses.filter(date__year=year, date__month=month)
         transferts = transferts.filter(date__year=year, date__month=month)
 
@@ -750,9 +753,10 @@ class LotListView(LoginRequiredMixin, ListView):
     template_name = "chine/lots/list.html"
     context_object_name = "lots"
     paginate_by = 10
-    ordering = ["-created_at"]
 
     def get_queryset(self):
+        from django.db.models import Case, When, Value, IntegerField
+
         queryset = (
             super()
             .get_queryset()
@@ -768,14 +772,70 @@ class LotListView(LoginRequiredMixin, ListView):
         # Search
         search_query = self.request.GET.get("search")
         if search_query:
-            queryset = queryset.filter(Q(numero_lot__icontains=search_query))
+            queryset = queryset.filter(Q(numero__icontains=search_query))
+
+        # Filtre par Date (Mois / Année)
+        selected_year = self.request.GET.get("year")
+        selected_month = self.request.GET.get("month")
+
+        if selected_year and selected_month:
+            try:
+                # On filtre sur created_at qui englobe toute la vie du lot, ou date_expedition si on veut être strict sur la norme.
+                # Le client a dit "filtre par mois", de base created_at est plus rassurant pour retrouver ses lots créés en cours.
+                queryset = queryset.filter(
+                    created_at__year=int(selected_year),
+                    created_at__month=int(selected_month),
+                )
+            except ValueError:
+                pass
+
+        # Tri personnalisé : Toujours les OUVERT (0) en premier, puis FERME (1), puis le reste (2) trié par date décroissante
+        queryset = queryset.annotate(
+            status_order=Case(
+                When(status="OUVERT", then=Value(0)),
+                When(status="FERME", then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            )
+        ).order_by("status_order", "-created_at")
+
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
         context["countries"] = Country.objects.exclude(code="CN")
         context["selected_country"] = self.request.GET.get("country", "")
         context["search_query"] = self.request.GET.get("search", "")
+
+        # Contexte pour le filtre de dates
+        context["selected_year"] = (
+            int(self.request.GET.get("year", now.year))
+            if self.request.GET.get("year")
+            else ""
+        )
+        context["selected_month"] = (
+            int(self.request.GET.get("month", now.month))
+            if self.request.GET.get("month")
+            else ""
+        )
+        context["years"] = range(2025, now.year + 2)
+        context["months"] = [
+            (1, "Janvier"),
+            (2, "Février"),
+            (3, "Mars"),
+            (4, "Avril"),
+            (5, "Mai"),
+            (6, "Juin"),
+            (7, "Juillet"),
+            (8, "Août"),
+            (9, "Septembre"),
+            (10, "Octobre"),
+            (11, "Novembre"),
+            (12, "Décembre"),
+        ]
+
         return context
 
 
@@ -1226,19 +1286,8 @@ class TaskListView(LoginRequiredMixin, TaskMixin, ListView):
         )
         context["stats"] = stats
 
-        # Ajout des notifications en échec pour l'affichage (avec pagination)
-        failed_notifs_qs = Notification.objects.filter(
-            statut__in=["echec", "echec_permanent"]
-        ).order_by("-prochaine_tentative")
+        context["stats"] = stats
 
-        from django.core.paginator import Paginator
-
-        paginator = Paginator(failed_notifs_qs, 20)  # 20 notifications par page
-        page_number = self.request.GET.get("notif_page")
-        failed_notifications_page = paginator.get_page(page_number)
-
-        context["failed_notifications_page"] = failed_notifications_page
-        context["failed_notifications_count"] = failed_notifs_qs.count()
         return context
 
 
@@ -1252,7 +1301,83 @@ class RetryFailedNotificationsView(LoginRequiredMixin, TaskMixin, View):
             request,
             "Les relances des notifications WhatsApp ont été déclenchées en arrière-plan.",
         )
-        return redirect("chine:task_list")
+        return redirect("chine:notification_list")
+
+
+class NotificationListView(LoginRequiredMixin, TaskMixin, ListView):
+    model = Notification
+    template_name = "chine/notifications/list.html"
+    context_object_name = "notifications"
+    paginate_by = 50
+
+    def get_queryset(self):
+        queryset = Notification.objects.all().order_by("-date_creation")
+
+        # Filtres
+        status = self.request.GET.get("status")
+        date_start = self.request.GET.get("date_start")
+        date_end = self.request.GET.get("date_end")
+        q = self.request.GET.get("q")
+
+        if status:
+            queryset = queryset.filter(statut=status)
+        if date_start:
+            queryset = queryset.filter(date_creation__date__gte=date_start)
+        if date_end:
+            queryset = queryset.filter(date_creation__date__lte=date_end)
+        if q:
+            queryset = queryset.filter(
+                Q(telephone_destinataire__icontains=q)
+                | Q(message__icontains=q)
+                | Q(erreur_details__icontains=q)
+            )
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Statistiques pour les filtres rapides
+        context["stats_notif"] = Notification.objects.aggregate(
+            total=Count("id"),
+            envoye=Count("id", filter=Q(statut="envoye")),
+            echec=Count("id", filter=Q(statut="echec")),
+            echec_permanent=Count("id", filter=Q(statut="echec_permanent")),
+        )
+        return context
+
+    def post(self, request, *args, **kwargs):
+        action = request.POST.get("action")
+        selected_ids = request.POST.getlist("selected_ids")
+
+        # Action d'un ID unique passé via formulaire caché (bouton ligne)
+        single_id = request.POST.get("notification_id")
+        if single_id and not selected_ids:
+            selected_ids = [single_id]
+
+        if not selected_ids:
+            messages.warning(request, "Aucune notification sélectionnée.")
+            return redirect("chine:notification_list")
+
+        if action == "delete":
+            deleted_count, _ = Notification.objects.filter(id__in=selected_ids).delete()
+            messages.success(request, f"{deleted_count} notification(s) supprimée(s).")
+
+        elif action == "retry":
+            notifs_to_retry = Notification.objects.filter(id__in=selected_ids)
+            updated = notifs_to_retry.update(
+                statut="echec", nombre_tentatives=0, prochaine_tentative=timezone.now()
+            )
+
+            # Déclenchement du worker pour traiter les echecs modifiés
+            from notification.tasks import retry_failed_notifications_periodic
+
+            retry_failed_notifications_periodic.delay()
+
+            messages.success(
+                request, f"{updated} notification(s) relancée(s) en arrière-plan."
+            )
+
+        return redirect("chine:notification_list")
 
 
 class TaskDetailView(LoginRequiredMixin, TaskMixin, DetailView):

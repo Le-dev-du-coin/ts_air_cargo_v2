@@ -17,127 +17,21 @@
         </div>
     </div>
 
-    <!-- WhatsApp Failed Notifications Section -->
-    <div class="mt-12">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <svg class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    <!-- Lien vers le gestionnaire des notifications -->
+    <div class="mt-12 bg-white shadow sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Gestionnaire de Notifications WhatsApp</h3>
+            <div class="mt-2 max-w-xl text-sm text-gray-500">
+                <p>Consultez l'historique complet des messages WhatsApp (envoyés, échecs), filtrez par date ou numéro de téléphone, et relancez ou supprimez les notifications en attente ou en erreur.</p>
+            </div>
+            <div class="mt-5">
+                <a href="{% url 'chine:notification_list' %}" class="inline-flex items-center justify-center px-4 py-2 border border-transparent font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:text-sm">
+                    <svg class="-ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
-                    Notifications WhatsApp en échec
-                </h3>
-                <p class="text-sm text-gray-500 mt-1">
-                    {{ failed_notifications_count }} message{{ failed_notifications_count|pluralize }} en attente de relance.
-                </p>
+                    Ouvrir le gestionnaire WhatsApp
+                </a>
             </div>
-            {% if failed_notifications_count > 0 %}
-            <form action="{% url 'chine:retry_notifications' %}" method="post">
-                {% csrf_token %}
-                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Relancer toutes les notifications
-                </button>
-            </form>
-            {% else %}
-            <button type="button" disabled class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-400 cursor-not-allowed">
-                <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Aucune relance nécessaire
-            </button>
-            {% endif %}
-        </div>
-
-        <div class="flex flex-col">
-            <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-                    <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destinataire</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tentatives</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                {% for notif in failed_notifications_page %}
-                                <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ notif.created_at|date:"d/m/Y H:i" }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">{{ notif.telephone_destinataire }}</div>
-                                        <div class="text-xs text-gray-500">
-                                            {% if notif.user %}
-                                                {{ notif.user.get_full_name|default:notif.user.username }}
-                                            {% else %}
-                                                Non assigné
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500">
-                                        <div class="truncate max-w-xs" title="{{ notif.message }}">{{ notif.message }}</div>
-                                        {% if notif.erreur_details %}
-                                        <div class="text-xs text-red-500 mt-1 truncate max-w-xs" title="{{ notif.erreur_details }}">Erreur: {{ notif.erreur_details }}</div>
-                                        {% endif %}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                            {{ notif.nombre_tentatives }} / 5
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="4" class="px-6 py-12 text-center text-sm text-gray-500">
-                                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Aucune notification en échec.<br>
-                                        <span class="text-xs mt-1">Les messages en erreur de transmission apparaîtront ici.</span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Pagination Notifications -->
-            {% if failed_notifications_page.has_other_pages %}
-            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-4 rounded-lg shadow">
-                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-sm text-gray-700">
-                            Affichage de <span class="font-medium">{{ failed_notifications_page.start_index }}</span> à <span class="font-medium">{{ failed_notifications_page.end_index }}</span> sur <span class="font-medium">{{ failed_notifications_page.paginator.count }}</span> résultats
-                        </p>
-                    </div>
-                    <div>
-                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination Notifications">
-                            {% if failed_notifications_page.has_previous %}
-                            <a href="?notif_page={{ failed_notifications_page.previous_page_number }}{% if request.GET.page %}&page={{ request.GET.page }}{% endif %}"
-                                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                Précédent
-                            </a>
-                            {% endif %}
-                            {% if failed_notifications_page.has_next %}
-                            <a href="?notif_page={{ failed_notifications_page.next_page_number }}{% if request.GET.page %}&page={{ request.GET.page }}{% endif %}"
-                                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                Suivant
-                            </a>
-                            {% endif %}
-                        </nav>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
         </div>
     </div>
 

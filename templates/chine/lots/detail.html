@@ -418,12 +418,12 @@
 
                             Alpine.data('colisCalculator', (tarifs) => ({
                                 type_colis: 'STANDARD',
-                                poids: 0,
+                                poids: '',
                                 nombre_pieces: 1,
-                                longueur: 0,
-                                largeur: 0,
-                                hauteur: 0,
-                                cbm: 0,
+                                longueur: '',
+                                largeur: '',
+                                hauteur: '',
+                                cbm: '',
                                 transportType: '{{ lot.type_transport }}',
                                 tarifs: tarifs,
                                 lastClient: null,
@@ -462,12 +462,12 @@
                                 resetForm() {
                                     // Reset all form fields
                                     this.type_colis = 'STANDARD';
-                                    this.poids = 0;
+                                    this.poids = '';
                                     this.nombre_pieces = 1;
-                                    this.longueur = 0;
-                                    this.largeur = 0;
-                                    this.hauteur = 0;
-                                    this.cbm = 0;
+                                    this.longueur = '';
+                                    this.largeur = '';
+                                    this.hauteur = '';
+                                    this.cbm = '';
                                     
                                     // Reset photo via Alpine.store or direct access
                                     const photoHandler = Alpine.$data(document.querySelector('[x-data*="photoHandler"]'));
