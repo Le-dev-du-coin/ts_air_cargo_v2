@@ -244,6 +244,7 @@ def retry_failed_notifications_periodic(force_retry_all=False):
                     error_msg = "Numéro non inscrit sur WA"
                     notification.marquer_comme_echec(error_msg, erreur_type="permanent")
                 else:
+                    error_msg = f"{error_msg} (Inscrit sur WhatsApp)"
                     notification.marquer_comme_echec(error_msg)
 
                 count_fail += 1
