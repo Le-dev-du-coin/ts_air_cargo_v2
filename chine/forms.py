@@ -321,12 +321,19 @@ class ColisForm(forms.ModelForm):
         photo = cleaned_data.get("photo")
         compressed_photo = self.data.get("compressed_photo")
 
-        # Une photo est obligatoire : soit un fichier uploadé, soit une photo webcam compressée
         if not photo and not compressed_photo:
             self.add_error(
                 "photo",
                 "La photo du colis est obligatoire. Utilisez la webcam ou uploadez un fichier.",
             )
+
+        # Transformer None (champ vide) en 0 pour respecter NOT NULL en DB
+        for dec_field in ["longueur", "largeur", "hauteur", "cbm", "poids"]:
+            if cleaned_data.get(dec_field) is None:
+                cleaned_data[dec_field] = 0
+
+        if cleaned_data.get("nombre_pieces") is None:
+            cleaned_data["nombre_pieces"] = 1
 
         return cleaned_data
 
