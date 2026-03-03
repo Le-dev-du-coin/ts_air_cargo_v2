@@ -40,6 +40,8 @@ from .views import (
     TransfertReceptionView,
     NotificationListView,
     RetryFailedNotificationsView,
+    RemunerationListView,
+    PaiementAgentCreateView,
 )
 
 app_name = "chine"
@@ -107,5 +109,10 @@ urlpatterns = [
         "finance/transferts/reception/",
         TransfertReceptionView.as_view(),
         name="reception_transferts",
+    ),
+    # Remunerations
+    path("remunerations/", RemunerationListView.as_view(), name="remuneration_list"),
+    path(
+        "remunerations/pay/", PaiementAgentCreateView.as_view(), name="remuneration_pay"
     ),
 ]

@@ -81,3 +81,46 @@ class TransfertArgent(models.Model):
 
     def __str__(self):
         return f"Transfert {self.montant} FCFA ({self.get_statut_display()})"
+
+
+class PaiementAgent(models.Model):
+    class MethodePaiement(models.TextChoices):
+        ESPECES = "ESPECES", _("Espèces")
+        VIREMENT = "VIREMENT", _("Virement Bancaire")
+        MOBILE_MONEY = "MOBILE_MONEY", _("Mobile Money")
+        AUTRE = "AUTRE", _("Autre")
+
+    agent = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="paiements_recus"
+    )
+    montant = models.DecimalField(
+        max_digits=10, decimal_places=0, help_text=_("Montant payé en FCFA")
+    )
+    date_paiement = models.DateTimeField(default=timezone.now)
+
+    periode_mois = models.IntegerField(
+        help_text=_("Mois de référence (ex: 3 pour Mars)")
+    )
+    periode_annee = models.IntegerField(help_text=_("Année de référence (ex: 2026)"))
+
+    methode = models.CharField(
+        max_length=50, choices=MethodePaiement.choices, default=MethodePaiement.ESPECES
+    )
+    note = models.TextField(
+        blank=True, help_text=_("Référence de transfert, observation, etc.")
+    )
+
+    valide_par = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="paiements_valides"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date_paiement", "-created_at"]
+        verbose_name = _("Paiement Agent")
+        verbose_name_plural = _("Paiements Agents")
+
+    def __str__(self):
+        return f"Paiement de {self.montant} FCFA à {self.agent.username} ({self.periode_mois}/{self.periode_annee})"

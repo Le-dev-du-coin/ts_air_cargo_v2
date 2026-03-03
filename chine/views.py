@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 from django.views.generic import edit as delete
 
 from core.models import Client, Lot, Colis, BackgroundTask, Country
-from report.models import Depense, TransfertArgent
+from report.models import Depense, TransfertArgent, PaiementAgent
 from .forms import ClientForm, LotForm, ColisForm, CountryForm, AgentForm, LotNoteForm
 from .tasks import process_colis_creation
 from django.core.cache import cache
@@ -163,10 +163,22 @@ def get_country_stats(country_code, year=None, month=None):
             montant = (base_calcul * agent.remuneration_value) / 100
             total_commissions += montant
 
+        # Calcul du déjà payé sur la période
+        deja_paye = 0
+        if year and month:
+            paiements = PaiementAgent.objects.filter(
+                agent=agent, periode_annee=year, periode_mois=month
+            )
+            deja_paye = paiements.aggregate(total=Sum("montant"))["total"] or 0
+
+        reste_a_payer = max(0, float(montant) - float(deja_paye))
+
         agents_remuneration.append(
             {
                 "agent": agent,
                 "montant": montant,
+                "deja_paye": deja_paye,
+                "reste_a_payer": reste_a_payer,
                 "mode": agent.get_remuneration_mode_display(),
                 "valeur": agent.remuneration_value,
             }
@@ -1626,3 +1638,94 @@ class TransfertReceptionView(LoginRequiredMixin, AdminChineRequiredMixin, ListVi
                 messages.warning(request, "Ce transfert a déjà été traité.")
 
         return redirect("chine:reception_transferts")
+
+
+class RemunerationListView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateView):
+    template_name = "chine/remunerations/list.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
+        try:
+            selected_year = int(self.request.GET.get("year", now.year))
+            selected_month = int(self.request.GET.get("month", now.month))
+        except ValueError:
+            selected_year = now.year
+            selected_month = now.month
+
+        # Listes pour les sélecteurs
+        context["selected_year"] = selected_year
+        context["selected_month"] = selected_month
+        context["years"] = range(2025, now.year + 2)
+        context["months"] = [
+            (1, "Janvier"),
+            (2, "Février"),
+            (3, "Mars"),
+            (4, "Avril"),
+            (5, "Mai"),
+            (6, "Juin"),
+            (7, "Juillet"),
+            (8, "Août"),
+            (9, "Septembre"),
+            (10, "Octobre"),
+            (11, "Novembre"),
+            (12, "Décembre"),
+        ]
+
+        # Stats ML et CI pour choper agents_remuneration mis à jour avec reste_a_payer
+        stats_ml = get_country_stats("ML", selected_year, selected_month)
+        stats_ci = get_country_stats("CI", selected_year, selected_month)
+
+        agents_data = []
+        agents_data.extend(stats_ml.get("agents_remuneration", []))
+        agents_data.extend(stats_ci.get("agents_remuneration", []))
+
+        context["agents_data"] = agents_data
+
+        # Historique des paiements de ce mois-ci
+        context["paiements"] = PaiementAgent.objects.filter(
+            periode_annee=selected_year, periode_mois=selected_month
+        ).select_related("agent", "valide_par")
+
+        return context
+
+
+class PaiementAgentCreateView(LoginRequiredMixin, AdminChineRequiredMixin, View):
+    def post(self, request):
+        agent_id = request.POST.get("agent_id")
+        montant = request.POST.get("montant")
+        periode_mois = request.POST.get("periode_mois")
+        periode_annee = request.POST.get("periode_annee")
+        methode = request.POST.get("methode")
+        note = request.POST.get("note", "")
+
+        if not all([agent_id, montant, periode_mois, periode_annee, methode]):
+            messages.error(request, "Veuillez remplir tous les champs obligatoires.")
+            return redirect(
+                f"{reverse_lazy('chine:remuneration_list')}?year={periode_annee}&month={periode_mois}"
+            )
+
+        try:
+            agent = User.objects.get(id=agent_id)
+
+            PaiementAgent.objects.create(
+                agent=agent,
+                montant=montant,
+                periode_mois=int(periode_mois),
+                periode_annee=int(periode_annee),
+                methode=methode,
+                note=note,
+                valide_par=request.user,
+            )
+            messages.success(
+                request,
+                f"Paiement de {montant} FCFA enregistré pour l'agent {agent.username}.",
+            )
+        except Exception as e:
+            logger.error(f"Erreur enregistrement paiement: {e}")
+            messages.error(request, "Erreur lors de l'enregistrement du paiement.")
+
+        return redirect(
+            f"{reverse_lazy('chine:remuneration_list')}?year={periode_annee}&month={periode_mois}"
+        )
