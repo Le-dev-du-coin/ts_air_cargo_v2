@@ -264,9 +264,70 @@ class WaChapService:
         media_file=None,
     ) -> Tuple[bool, str, Optional[str]]:
         """
-        Compatibilité avec l'ancien code (le type text est le seul supporté en V4 pour l'instant).
+        Envoie un message texte ou image via l'API WaChap V4.
         """
-        return self.send_message(phone, message, sender_role=sender_role, region=region)
+        if message_type != "image" or not media_url:
+            # Fallback direct vers le texte
+            return self.send_message(
+                phone, message, sender_role=sender_role, region=region
+            )
+
+        # Si c'est une image, on structure le payload selon WaChap V4
+        # Format attendu : {"to": "...", "type": "image", "image": {"link": "...", "caption": "..."}}
+        phone = str(phone).replace("+", "").strip()
+
+        # Récupération API et Account ID selon config
+        config = self._get_config()
+        api_key = config.wachap_v4_secret_key
+
+        if not api_key:
+            logger.error("[WaChap V4] Clé secrète non configurée.")
+            return False, "Clé secrète WaChap V4 non configurée.", None
+
+        if not region:
+            region = self._determine_region(phone, sender_role)
+
+        accounts = self._get_accounts()
+        account_id, used_region = self._resolve_account(region, accounts)
+
+        if not account_id:
+            logger.error(f"[WaChap V4] AccountId introuvable pour région='{region}'")
+            return False, f"Configuration WaChap absente pour région '{region}'.", None
+
+        url = f"{self.BASE_URL}/whatsapp/messages/send"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "data": {
+                "accountId": account_id,
+                "to": f"+{phone}" if not phone.startswith("+") else phone,
+                "type": "image",
+                "content": media_url,
+                "caption": message,
+            }
+        }
+
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            # Accepte 200 et potentiellement 201/202 selon l'API
+            if response.status_code in (200, 201, 202):
+                data = response.json()
+                if getattr(data, "get", lambda name: None)("success", False) is True:
+                    return True, "Envoi image WhatsApp réussi.", data.get("uuid")
+
+                # Succès parfois formaté différemment sans "success: true"
+                return True, "Envoi image WhatsApp réussi (succès implicite).", None
+
+            error_msg = f"HTTP {response.status_code}: {response.text}"
+            logger.error(f"[WaChap V4] Erreur: {error_msg}")
+            return False, error_msg, None
+
+        except requests.RequestException as e:
+            logger.error(f"[WaChap V4] Timeout ou Exception: {e}")
+            return False, f"Erreur de réseau : {str(e)}", None
 
 
 # Instance globale

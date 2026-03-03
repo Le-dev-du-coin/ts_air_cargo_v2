@@ -605,20 +605,7 @@
                                 </div>
                                 {% if lot.status == 'OUVERT' and user.role != 'CLIENT' %}
                                 <div class="mt-2 flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
-                                    {% if colis.image_colis %}
-                                    <form action="{% url 'chine:colis_send_wa_photo' colis.pk %}" method="POST" class="inline">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                            class="text-xs text-green-700 hover:text-green-900 font-medium flex items-center bg-green-50 px-2 py-1 rounded hover:bg-green-100 transition-colors"
-                                            title="Envoyer la photo par WhatsApp">
-                                            <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                              <!-- Simple WhatsApp Icon -->
-                                              <path d="M12.031 0C5.385 0 .041 5.385 .041 12.031c0 2.217.575 4.375 1.666 6.276L0 24l5.908-1.545a11.956 11.956 0 0 0 6.123 1.65h.005c6.643 0 11.986-5.388 11.986-12.08S18.675 0 12.031 0zm0 22.106h-.005a9.982 9.982 0 0 1-5.062-1.373l-.364-.216-3.763.985 .998-3.666-.237-.377a9.981 9.981 0 0 1-1.527-5.382c0-5.503 4.478-9.983 9.988-9.983 2.668 0 5.176 1.042 7.062 2.932 1.886 1.892 2.924 4.402 2.924 7.078 0 5.503-4.477 9.98-9.974 9.98z"/>
-                                            </svg>
-                                            WA
-                                        </button>
-                                    </form>
-                                    {% endif %}
+
                                     <form id="form-delete-colis-{{ colis.pk }}" action="{% url 'chine:colis_delete' colis.pk %}" method="POST" class="inline">
                                         {% csrf_token %}
                                         <button type="button"

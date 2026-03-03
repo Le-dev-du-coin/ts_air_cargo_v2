@@ -42,7 +42,6 @@ from .views import (
     RetryFailedNotificationsView,
     RemunerationListView,
     PaiementAgentCreateView,
-    SendWaPhotoView,
 )
 
 app_name = "chine"
@@ -93,11 +92,6 @@ urlpatterns = [
     # Colis (Nested under lot)
     path("lots/<int:lot_id>/colis/add/", ColisCreateView.as_view(), name="colis_add"),
     path("colis/<int:pk>/delete/", ColisDeleteView.as_view(), name="colis_delete"),
-    path(
-        "colis/<int:pk>/send-wa-photo/",
-        SendWaPhotoView.as_view(),
-        name="colis_send_wa_photo",
-    ),
     # Tarifs
     path("tarifs/", TarifListView.as_view(), name="tarif_list"),
     path("tarifs/add/", TarifCreateView.as_view(), name="tarif_add"),
