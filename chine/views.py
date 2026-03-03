@@ -1385,7 +1385,10 @@ class NotificationListView(LoginRequiredMixin, TaskMixin, ListView):
             # Déclenchement du worker pour traiter les echecs modifiés
             from notification.tasks import retry_failed_notifications_periodic
 
-            retry_failed_notifications_periodic.delay()
+            logger.info(
+                f"[ChineView] Relance manuelle de {len(selected_ids)} IDs: {selected_ids}. {updated} modifiés en BDD."
+            )
+            retry_failed_notifications_periodic.delay(force_retry_all=True)
 
             messages.success(
                 request, f"{updated} notification(s) relancée(s) en arrière-plan."
