@@ -37,6 +37,7 @@ from .views import (
     AgentDeleteView,
     ChinaDepenseListView,
     ChinaDepenseCreateView,
+    ChinaDepenseDeleteView,
     TransfertReceptionView,
     NotificationListView,
     RetryFailedNotificationsView,
@@ -105,6 +106,11 @@ urlpatterns = [
     # Finance
     path("finance/depenses/", ChinaDepenseListView.as_view(), name="depenses_list"),
     path("finance/depenses/add/", ChinaDepenseCreateView.as_view(), name="depense_add"),
+    path(
+        "finance/depenses/<int:pk>/delete/",
+        ChinaDepenseDeleteView.as_view(),
+        name="depense_delete",
+    ),
     path(
         "finance/transferts/reception/",
         TransfertReceptionView.as_view(),

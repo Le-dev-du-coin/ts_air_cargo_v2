@@ -1177,11 +1177,19 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
                 )
                 date_reception = timezone.now().strftime("%d/%m/%Y à %H:%M")
 
-                # Téléphone → pièces, autres → poids
-                if colis.type_colis == "TELEPHONE":
+                # Détermination des infos de quantité et transport
+                if lot.type_transport == "BATEAU":
+                    quantite_info = f"📦 Volume : *{colis.cbm} CBM*"
+                    delai_info = "⚡ Délai estimé : *3 à 4 mois*"
+                    transport_info = "🚢 Transport : *BATEAU*"
+                elif colis.type_colis == "TELEPHONE":
                     quantite_info = f"📱 Quantité : *{colis.nombre_pieces} pièce(s)*"
+                    delai_info = ""
+                    transport_info = "✈️ Transport : *AVION*"
                 else:
                     quantite_info = f"⚖️ Poids : *{colis.poids} kg*"
+                    delai_info = ""
+                    transport_info = "✈️ Transport : *AVION*"
 
                 prix_info = (
                     f"💰 Prix : *{colis.prix_final:,.0f} FCFA*".replace(",", " ")
@@ -1196,8 +1204,11 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
                     f"🔖 Référence : *{colis.reference}*\n"
                     f"📋 Type : *{colis.get_type_colis_display()}*\n"
                     f"{quantite_info}\n"
+                    f"{transport_info}\n"
+                    + (f"{delai_info}\n" if delai_info else "")
                     + (f"{prix_info}\n" if prix_info else "")
                     + f"📍 Statut : *Réceptionné — en attente d'expédition*\n\n"
+                    f"🔔 *Note :* Dès l'arrivée de votre colis, vous serez automatiquement notifié.\n\n"
                     f"🌐 Suivez votre colis : https://ts-aircargo.com/login\n"
                     f"——\n"
                     f"*Équipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
@@ -1601,6 +1612,21 @@ class ChinaDepenseCreateView(
 
     def get_success_url(self):
         return reverse_lazy("chine:depenses_list")
+
+
+class ChinaDepenseDeleteView(
+    LoginRequiredMixin, StrictAgentChineRequiredMixin, DeleteView
+):
+    model = Depense
+    success_url = reverse_lazy("chine:depenses_list")
+
+    def get_queryset(self):
+        # Un agent ne peut supprimer que ses propres dépenses
+        return super().get_queryset().filter(enregistre_par=self.request.user)
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Dépense supprimée avec succès.")
+        return super().delete(request, *args, **kwargs)
 
 
 class TransfertReceptionView(LoginRequiredMixin, AdminChineRequiredMixin, ListView):

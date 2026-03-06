@@ -7,17 +7,26 @@
 {% block header %}Rapport Journalier & Caisse{% endblock %}
 
 {% block actions %}
-<div class="flex flex-wrap gap-2">
-    <a href="{% url 'mali:rapport_jour_pdf' %}?type=global" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+<div class="flex flex-wrap items-center gap-4">
+    <form method="get" class="flex items-center gap-2">
+        <label for="date" class="sr-only">Date</label>
+        <input type="date" name="date" id="date" value="{{ target_date|date:'Y-m-d' }}" 
+               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+            Filtrer
+        </button>
+    </form>
+    <div class="h-8 w-px bg-gray-200 hidden sm:block"></div>
+    <a href="{% url 'mali:rapport_jour_pdf' %}?type=global&date={{ target_date|date:'Y-m-d' }}" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
         📄 Global
     </a>
-    <a href="{% url 'mali:rapport_jour_pdf' %}?type=cargo" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+    <a href="{% url 'mali:rapport_jour_pdf' %}?type=cargo&date={{ target_date|date:'Y-m-d' }}" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
         ✈️ Cargo
     </a>
-    <a href="{% url 'mali:rapport_jour_pdf' %}?type=express" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+    <a href="{% url 'mali:rapport_jour_pdf' %}?type=express&date={{ target_date|date:'Y-m-d' }}" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
         🚀 Express
     </a>
-    <a href="{% url 'mali:rapport_jour_pdf' %}?type=bateau" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+    <a href="{% url 'mali:rapport_jour_pdf' %}?type=bateau&date={{ target_date|date:'Y-m-d' }}" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
         🚢 Bateau
     </a>
 </div>
@@ -98,7 +107,7 @@
     <!-- 1. Cargo -->
     <div x-show="activeTab === 'cargo'" class="p-4" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Livraisons Cargo (Aujourd'hui)</h3>
+            <h3 class="text-lg font-medium text-gray-900">Livraisons Cargo ({{ target_date|date:"d/m/Y" }})</h3>
              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 Total: {{ recette_cargo_jour|fcfa }}
             </span>
@@ -109,7 +118,7 @@
     <!-- 2. Express -->
     <div x-show="activeTab === 'express'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Livraisons Express (Aujourd'hui)</h3>
+            <h3 class="text-lg font-medium text-gray-900">Livraisons Express ({{ target_date|date:"d/m/Y" }})</h3>
              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 Total: {{ recette_express_jour|fcfa }}
             </span>
@@ -120,7 +129,7 @@
     <!-- 3. Bateau -->
     <div x-show="activeTab === 'bateau'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Livraisons Bateau (Aujourd'hui)</h3>
+            <h3 class="text-lg font-medium text-gray-900">Livraisons Bateau ({{ target_date|date:"d/m/Y" }})</h3>
              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 Total: {{ recette_bateau_jour|fcfa }}
             </span>
@@ -147,7 +156,7 @@
                         <span class="font-bold text-gray-900">-{{ depense.montant|fcfa }}</span>
                     </li>
                     {% empty %}
-                    <li class="px-4 py-3 text-sm text-gray-500 italic text-center">Aucune dépense aujourd'hui.</li>
+                    <li class="px-4 py-3 text-sm text-gray-500 italic text-center">Aucune dépense enregistrée à cette date.</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -168,7 +177,7 @@
                         <span class="font-bold text-blue-600">-{{ transfert.montant|fcfa }}</span>
                     </li>
                      {% empty %}
-                    <li class="px-4 py-3 text-sm text-gray-500 italic text-center">Aucun transfert aujourd'hui.</li>
+                    <li class="px-4 py-3 text-sm text-gray-500 italic text-center">Aucun transfert enregistré à cette date.</li>
                     {% endfor %}
                 </ul>
             </div>

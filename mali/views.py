@@ -161,7 +161,20 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             context["error"] = "Destination non configurée"
             return context
 
-        today = timezone.now().date()
+        # Date du rapport (aujourd'hui par défaut)
+        date_str = self.request.GET.get("date")
+        if date_str:
+            try:
+                from datetime import datetime
+
+                target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                target_date = timezone.now().date()
+        else:
+            target_date = timezone.now().date()
+
+        context["target_date"] = target_date
+        today = target_date
         from report.models import TransfertArgent
 
         # --- 1. SOLDE VEILLE (Report) ---
@@ -1176,7 +1189,19 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
     """Génération du rapport journalier en PDF (xhtml2pdf)"""
 
     def get(self, request):
-        today = timezone.now().date()
+        # Date du rapport
+        date_str = request.GET.get("date")
+        if date_str:
+            try:
+                from datetime import datetime
+
+                target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                target_date = timezone.now().date()
+        else:
+            target_date = timezone.now().date()
+
+        today = target_date
         report_type = request.GET.get(
             "type", "global"
         )  # global, cargo, express, bateau

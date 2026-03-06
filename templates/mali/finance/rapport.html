@@ -81,7 +81,7 @@
                             </div>
                         </div>
                         <div class="text-2xl font-bold text-green-700">
-                            + {{ total_recettes|intcomma }} FCFA
+                            + {{ total_recettes|floatformat:0|intcomma }} FCFA
                         </div>
                     </div>
 
@@ -99,7 +99,7 @@
                             </div>
                         </div>
                         <div class="text-2xl font-bold text-red-700">
-                            - {{ total_depenses|intcomma }} FCFA
+                            - {{ total_depenses|floatformat:0|intcomma }} FCFA
                         </div>
                     </div>
 
@@ -117,7 +117,7 @@
                             </div>
                         </div>
                         <div class="text-2xl font-bold text-blue-700">
-                            - {{ total_transferts|intcomma }} FCFA
+                            - {{ total_transferts|floatformat:0|intcomma }} FCFA
                         </div>
                     </div>
 
@@ -128,7 +128,7 @@
                             <p class="text-sm text-gray-500">Recettes - (Dépenses + Transferts)</p>
                         </div>
                         <div class="text-3xl font-black {% if solde >= 0 %}text-gray-800{% else %}text-red-600{% endif %}">
-                            {{ solde|intcomma }} FCFA
+                            {{ solde|floatformat:0|intcomma }} FCFA
                         </div>
                     </div>
                 </div>
