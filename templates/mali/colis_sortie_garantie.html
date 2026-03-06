@@ -7,52 +7,6 @@
 {% block header %}Sorties sous Garantie{% endblock %}
 
 {% block extra_head %}
-<style>
-  .lightbox-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.9);
-    backdrop-filter: blur(5px);
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
-  }
-  .lightbox-overlay.active { display: flex; }
-  .lightbox-img-container {
-    position: relative;
-    max-width: 90vw;
-    max-height: 90vh;
-  }
-  .lightbox-overlay img {
-    max-width: 100%;
-    max-height: 90vh;
-    object-fit: contain;
-    border-radius: 0.75rem;
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-    border: 3px solid rgba(255,255,255,0.1);
-  }
-  .lightbox-close {
-    position: absolute;
-    top: -1.5rem;
-    right: -1.5rem;
-    background: white;
-    border-radius: 50%;
-    width: 2.5rem;
-    height: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-    transition: transform 0.2s;
-    z-index: 10000;
-  }
-  .lightbox-close:hover {
-    transform: scale(1.1);
-    background: #f3f4f6;
-  }
-</style>
 {% endblock %}
 
 {% block mali_content %}
@@ -172,9 +126,7 @@
                                         {% if colis.photo %}
                                         <img src="{{ colis.photo.url }}"
                                              alt="Photo colis"
-                                             class="h-12 w-12 object-cover rounded-md cursor-pointer border border-gray-200 hover:opacity-80 transition shadow-sm"
-                                             onclick="openLightbox('{{ colis.photo.url }}')"
-                                             title="Cliquer pour agrandir">
+                                             class="h-12 w-12 object-cover rounded-md border border-gray-200 shadow-sm">
                                         {% else %}
                                         <div class="h-12 w-12 rounded-md bg-gray-100 flex items-center justify-center text-gray-300">
                                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -279,38 +231,4 @@
         {% endif %}
     </div>
 </div>
-
-<!-- Lightbox Modal -->
-<div id="lightbox-overlay" class="lightbox-overlay" onclick="closeLightbox(event)">
-    <div class="lightbox-img-container" onclick="event.stopPropagation()">
-        <div class="lightbox-close" onclick="closeLightbox(event)" title="Fermer (Echap)">
-            <svg class="h-8 w-8 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        </div>
-        <img id="lightbox-img" src="" alt="Agrandissement colis" style="display: none;">
-    </div>
-</div>
-
-<script>
-function openLightbox(url) {
-    const overlay = document.getElementById('lightbox-overlay');
-    const img = document.getElementById('lightbox-img');
-    img.src = url;
-    img.style.display = 'block';
-    overlay.classList.add('active');
-    document.body.style.overflow = 'hidden'; // Prevent scroll
-}
-function closeLightbox(event) {
-    const overlay = document.getElementById('lightbox-overlay');
-    const img = document.getElementById('lightbox-img');
-    overlay.classList.remove('active');
-    img.style.display = 'none';
-    img.src = '';
-    document.body.style.overflow = ''; // Restore scroll
-}
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeLightbox();
-});
-</script>
 {% endblock %}
