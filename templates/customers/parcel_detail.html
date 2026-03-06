@@ -52,12 +52,13 @@
                 </div>
                 <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt class="text-sm font-medium text-gray-500">Poids / Volume</dt>
-                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ colis.poids }} kg / {{ colis.cbm }} m³</dd>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        {% if colis.poids %}{{ colis.poids }} kg{% endif %}
+                        {% if colis.poids and colis.cbm %} / {% endif %}
+                        {% if colis.cbm %}{{ colis.cbm }} m³{% endif %}
+                    </dd>
                 </div>
-                <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                    <dt class="text-sm font-medium text-gray-500">Dimensions</dt>
-                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ colis.longueur }} x {{ colis.largeur }} x {{ colis.hauteur }} cm</dd>
-                </div>
+
                 <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt class="text-sm font-medium text-gray-500">Montant à Payer</dt>
                     <dd class="mt-1 text-sm font-bold text-gray-900 sm:mt-0 sm:col-span-2">{{ colis.prix_final|floatformat:0 }} FCFA</dd>

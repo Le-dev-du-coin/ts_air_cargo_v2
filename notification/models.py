@@ -95,6 +95,20 @@ class ConfigurationNotification(models.Model):
         help_text="Si rempli, reçoit le rapport journalier WhatsApp à 23h50 (Cargo, Express, Bateau, Dépenses, Solde)",
     )
 
+    admin_mali_phone_2 = models.CharField(
+        "Téléphone Admin Mali 2 (Rapports journaliers)",
+        max_length=20,
+        blank=True,
+        help_text="Numéro supplémentaire pour la réception du rapport journalier WhatsApp",
+    )
+
+    admin_mali_phone_3 = models.CharField(
+        "Téléphone Admin Mali 3 (Rapports journaliers)",
+        max_length=20,
+        blank=True,
+        help_text="Numéro supplémentaire pour la réception du rapport journalier WhatsApp",
+    )
+
     test_phone_number = models.CharField(
         "Téléphone de Test (Override)",
         max_length=20,

@@ -13,6 +13,7 @@ from .views import (
     ColisLivreView,
     ColisPerduView,
     ColisAttentePaiementView,
+    ColisSortieGarantieView,
     ColisEncaissementView,
     RapportJourPDFView,
     LotTransitPDFView,
@@ -70,6 +71,11 @@ urlpatterns = [
         "colis/attente-paiement/",
         ColisAttentePaiementView.as_view(),
         name="colis_attente_paiement",
+    ),
+    path(
+        "colis/sortie-garantie/",
+        ColisSortieGarantieView.as_view(),
+        name="colis_sortie_garantie",
     ),
     path(
         "colis/<int:pk>/encaisser/",

@@ -1,0 +1,316 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block title %}Colis Sortis Sous Garantie - Mali - TS Air Cargo{% endblock %}
+
+{% block header %}Sorties sous Garantie{% endblock %}
+
+{% block extra_head %}
+<style>
+  .lightbox-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    backdrop-filter: blur(5px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+  }
+  .lightbox-overlay.active { display: flex; }
+  .lightbox-img-container {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+  }
+  .lightbox-overlay img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 0.75rem;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    border: 3px solid rgba(255,255,255,0.1);
+  }
+  .lightbox-close {
+    position: absolute;
+    top: -1.5rem;
+    right: -1.5rem;
+    background: white;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+    z-index: 10000;
+  }
+  .lightbox-close:hover {
+    transform: scale(1.1);
+    background: #f3f4f6;
+  }
+</style>
+{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-6">
+
+    <!-- Stats Résumé -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white shadow rounded-lg p-4 border-l-4 border-indigo-500">
+            <p class="text-xs text-gray-500 uppercase font-semibold">Ce mois-ci</p>
+            <p class="text-2xl font-bold text-indigo-700 mt-1">{{ stats_month.count }}</p>
+            <p class="text-xs text-gray-400 mt-1">{{ stats_month.montant|default:0|intcomma }} FCFA</p>
+        </div>
+        <div class="bg-white shadow rounded-lg p-4 border-l-4 border-blue-500">
+            <p class="text-xs text-gray-500 uppercase font-semibold">Cette année ({{ current_year }})</p>
+            <p class="text-2xl font-bold text-blue-700 mt-1">{{ stats_year.count }}</p>
+            <p class="text-xs text-gray-400 mt-1">{{ stats_year.montant|default:0|intcomma }} FCFA</p>
+        </div>
+        <div class="bg-white shadow rounded-lg p-4 border-l-4 border-gray-400">
+            <p class="text-xs text-gray-500 uppercase font-semibold">Total historique</p>
+            <p class="text-2xl font-bold text-gray-700 mt-1">{{ stats_total.count }}</p>
+            <p class="text-xs text-gray-400 mt-1">{{ stats_total.montant|default:0|intcomma }} FCFA</p>
+        </div>
+    </div>
+
+    <!-- Filtres + Search -->
+    <div class="bg-white shadow rounded-lg p-4">
+        <form method="GET" class="flex flex-col sm:flex-row gap-3 flex-wrap">
+            <!-- Recherche texte -->
+            <div class="flex-1 relative min-w-[200px]">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input type="text" name="q" value="{{ request.GET.q|default:'' }}"
+                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="Référence, Client, Autorisateur...">
+            </div>
+            <!-- Mois -->
+            <select name="month"
+                class="border border-gray-300 rounded-md py-2 px-3 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Tous les mois</option>
+
+                <option value="1" {% if filter_month == "1" %}selected{% endif %}>Janvier</option>
+                <option value="2" {% if filter_month == "2" %}selected{% endif %}>Février</option>
+                <option value="3" {% if filter_month == "3" %}selected{% endif %}>Mars</option>
+                <option value="4" {% if filter_month == "4" %}selected{% endif %}>Avril</option>
+                <option value="5" {% if filter_month == "5" %}selected{% endif %}>Mai</option>
+                <option value="6" {% if filter_month == "6" %}selected{% endif %}>Juin</option>
+                <option value="7" {% if filter_month == "7" %}selected{% endif %}>Juillet</option>
+                <option value="8" {% if filter_month == "8" %}selected{% endif %}>Août</option>
+                <option value="9" {% if filter_month == "9" %}selected{% endif %}>Septembre</option>
+                <option value="10" {% if filter_month == "10" %}selected{% endif %}>Octobre</option>
+                <option value="11" {% if filter_month == "11" %}selected{% endif %}>Novembre</option>
+                <option value="12" {% if filter_month == "12" %}selected{% endif %}>Décembre</option>
+            </select>
+            <!-- Année -->
+            <select name="year"
+                class="border border-gray-300 rounded-md py-2 px-3 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Toutes les années</option>
+                {% for y in years_range %}
+                <option value="{{ y }}" {% if filter_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                Filtrer
+            </button>
+            {% if request.GET.q or filter_month or filter_year %}
+            <a href="{% url 'mali:colis_sortie_garantie' %}"
+                class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+                Réinitialiser
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
+        <div class="px-6 py-5 border-b border-gray-200 bg-gray-50">
+            <h3 class="text-lg leading-6 font-bold text-gray-900">Historique des Sorties Garanties</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                Liste des colis livrés avec autorisation spéciale ("Sortie sous garantie").
+            </p>
+        </div>
+
+        <div class="flex flex-col">
+            <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+                    <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Photo
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Date Livraison
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Colis / Lot
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Client
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Finances
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider font-bold bg-indigo-50">
+                                        Autorisé par
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for colis in colis_list %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        {% if colis.photo %}
+                                        <img src="{{ colis.photo.url }}"
+                                             alt="Photo colis"
+                                             class="h-12 w-12 object-cover rounded-md cursor-pointer border border-gray-200 hover:opacity-80 transition shadow-sm"
+                                             onclick="openLightbox('{{ colis.photo.url }}')"
+                                             title="Cliquer pour agrandir">
+                                        {% else %}
+                                        <div class="h-12 w-12 rounded-md bg-gray-100 flex items-center justify-center text-gray-300">
+                                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ colis.updated_at|date:"d M Y H:i" }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-bold text-indigo-600 uppercase">{{ colis.reference }}</div>
+                                        <div class="text-xs text-gray-400">Lot: <a href="{% url 'mali:lot_livre_detail' colis.lot.pk %}" class="hover:underline">{{ colis.lot.numero }}</a></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
+                                        <div class="text-sm text-gray-500">{{ colis.client.telephone }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-gray-900">Total: {{ colis.prix_final|default:0|fcfa }}</span>
+                                            <span class="text-xs text-gray-400">JC: -{{ colis.montant_jc|default:0|fcfa }}</span>
+                                            <span class="text-xs {% if colis.est_paye %}text-green-600 font-bold{% else %}text-red-500{% endif %}">
+                                                {% if colis.est_paye %}Payé complètement{% else %}Non payé{% endif %}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap bg-indigo-50/30">
+                                        <div class="flex items-center text-sm font-bold text-indigo-700">
+                                            <svg class="mr-1.5 h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            {{ colis.sortie_autorisee_par|default:"Non spécifié" }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">
+                                        Aucun colis n'a été sorti sous garantie.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+            <div class="flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Précédent</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Suivant</a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Affichage <span class="font-medium">{{ page_obj.start_index }}</span> à <span class="font-medium">{{ page_obj.end_index }}</span> sur <span class="font-medium">{{ page_obj.paginator.count }}</span> résultats
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Précédent</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" />
+                                </svg>
+                            </a>
+                            {% endif %}
+                            
+                            {% for i in paginator.page_range %}
+                                {% if page_obj.number == i %}
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-indigo-50 text-sm font-medium text-indigo-600">{{ i }}</span>
+                                {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                                    <a href="?page={{ i }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ i }}</a>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Suivant</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" />
+                                </svg>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div id="lightbox-overlay" class="lightbox-overlay" onclick="closeLightbox(event)">
+    <div class="lightbox-img-container" onclick="event.stopPropagation()">
+        <div class="lightbox-close" onclick="closeLightbox(event)" title="Fermer (Echap)">
+            <svg class="h-8 w-8 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </div>
+        <img id="lightbox-img" src="" alt="Agrandissement colis" style="display: none;">
+    </div>
+</div>
+
+<script>
+function openLightbox(url) {
+    const overlay = document.getElementById('lightbox-overlay');
+    const img = document.getElementById('lightbox-img');
+    img.src = url;
+    img.style.display = 'block';
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Prevent scroll
+}
+function closeLightbox(event) {
+    const overlay = document.getElementById('lightbox-overlay');
+    const img = document.getElementById('lightbox-img');
+    overlay.classList.remove('active');
+    img.style.display = 'none';
+    img.src = '';
+    document.body.style.overflow = ''; // Restore scroll
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
+{% endblock %}

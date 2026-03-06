@@ -202,6 +202,24 @@ def retry_failed_notifications_periodic(force_retry_all=False):
     count_fail = 0
 
     for notification in notifications_to_retry:
+        # --- MISE À JOUR DU NUMÉRO SI RÉPARÉ DANS LE PROFIL ---
+        if notification.destinataire:
+            user = notification.destinataire
+            # Priorité au profil client s'il existe
+            new_phone = ""
+            if hasattr(user, "client_profile") and user.client_profile:
+                new_phone = user.client_profile.telephone
+            elif user.phone:
+                new_phone = user.phone
+
+            if new_phone and new_phone != notification.telephone_destinataire:
+                logger.info(
+                    f"[Retry] Mise à jour du numéro pour Notification {notification.id}: "
+                    f"{notification.telephone_destinataire} -> {new_phone}"
+                )
+                notification.telephone_destinataire = new_phone
+                notification.save(update_fields=["telephone_destinataire"])
+
         if not notification.telephone_destinataire:
             notification.marquer_comme_echec(
                 "Pas de numéro de téléphone", erreur_type="permanent"
@@ -271,11 +289,17 @@ def send_daily_report_mali():
     from .services.wachap_service import wachap_service
 
     config = ConfigurationNotification.get_solo()
-    admin_phone = config.admin_mali_phone
+    admin_phones = [
+        config.admin_mali_phone,
+        config.admin_mali_phone_2,
+        config.admin_mali_phone_3,
+    ]
+    # Filtrer les numéros vides ou None
+    valid_phones = [p for p in admin_phones if p]
 
-    if not admin_phone:
+    if not valid_phones:
         logger.info(
-            "[RapportJour] admin_mali_phone non configuré — rapport non envoyé."
+            "[RapportJour] Aucun admin_mali_phone configuré — rapport non envoyé."
         )
         return "Rapport non envoyé : aucun numéro d'admin Mali configuré."
 
@@ -388,20 +412,24 @@ def send_daily_report_mali():
         )
 
         # --- Envoi WhatsApp ---
-        success, error, message_id = wachap_service.send_message(
-            phone=admin_phone,
-            message=message,
-            region="mali",
-        )
-
-        if success:
-            logger.info(
-                f"[RapportJour] Rapport envoyé à {admin_phone} (ID: {message_id})"
+        results = []
+        for phone in valid_phones:
+            success, error, message_id = wachap_service.send_message(
+                phone=phone,
+                message=message,
+                region="mali",
             )
-            return f"Rapport journalier envoyé à {admin_phone}."
-        else:
-            logger.error(f"[RapportJour] Échec envoi à {admin_phone}: {error}")
-            return f"Échec envoi rapport : {error}"
+
+            if success:
+                logger.info(
+                    f"[RapportJour] Rapport envoyé à {phone} (ID: {message_id})"
+                )
+                results.append(f"Succès ({phone})")
+            else:
+                logger.error(f"[RapportJour] Échec envoi à {phone}: {error}")
+                results.append(f"Échec ({phone}: {error})")
+
+        return " | ".join(results)
 
     except Exception as e:
         logger.error(f"[RapportJour] Exception: {e}", exc_info=True)

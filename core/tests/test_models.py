@@ -41,8 +41,8 @@ class TestCalculsTransport:
             destination=self.mali,
         )
 
-    def test_calcul_cbm_automatique(self):
-        """Vérifie que le CBM est bien calculé lors de la sauvegarde (L*l*h / 1M)"""
+    def test_saisie_cbm_manuelle(self):
+        """Vérifie que le CBM est bien enregistré tel quel"""
         lot = Lot.objects.create(
             destination=self.mali,
             type_transport=Lot.TypeTransport.BATEAU,
@@ -52,16 +52,13 @@ class TestCalculsTransport:
         colis = Colis(
             lot=lot,
             client=self.client,
-            longueur=Decimal("100"),
-            largeur=Decimal("50"),
-            hauteur=Decimal("40"),
+            cbm=Decimal("0.5432"),
             poids=Decimal("10"),
             country=self.chine,
         )
         colis.save()
 
-        # 100 * 50 * 40 = 200,000 / 1,000,000 = 0.2 CBM
-        assert colis.cbm == Decimal("0.2000")
+        assert colis.cbm == Decimal("0.5432")
 
     def test_lot_peut_fermer_sans_colis(self):
         """Vérifie qu'un lot vide ne peut pas être fermé"""

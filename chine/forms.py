@@ -212,14 +212,13 @@ class ColisForm(forms.ModelForm):
         fields = [
             "client",
             "type_colis",
+            "prix_kilo_manuel",
             "nombre_pieces",
             "description",
             "poids",
-            "longueur",
-            "largeur",
-            "hauteur",
             "cbm",
             "prix_final",
+            "prix_kilo_manuel",
             "est_paye",
             "photo",
         ]
@@ -233,6 +232,14 @@ class ColisForm(forms.ModelForm):
                 attrs={
                     "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md",
                     "x-model": "type_colis",
+                }
+            ),
+            "prix_kilo_manuel": forms.NumberInput(
+                attrs={
+                    "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
+                    "placeholder": "8500",
+                    "x-show": "type_colis == 'MANUEL'",
+                    "x-model": "prix_kilo_manuel",
                 }
             ),
             "nombre_pieces": forms.NumberInput(
@@ -255,31 +262,10 @@ class ColisForm(forms.ModelForm):
                     "x-model": "poids",
                 }
             ),
-            "longueur": forms.NumberInput(
-                attrs={
-                    "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
-                    "placeholder": "cm",
-                    "x-model": "longueur",
-                }
-            ),
-            "largeur": forms.NumberInput(
-                attrs={
-                    "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
-                    "placeholder": "cm",
-                    "x-model": "largeur",
-                }
-            ),
-            "hauteur": forms.NumberInput(
-                attrs={
-                    "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
-                    "placeholder": "cm",
-                    "x-model": "hauteur",
-                }
-            ),
             "cbm": forms.NumberInput(
                 attrs={
-                    "class": "shadow-sm bg-gray-100 focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
-                    "readonly": True,
+                    "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
+                    "step": "0.0001",
                     "x-model": "cbm",
                 }
             ),
@@ -287,6 +273,13 @@ class ColisForm(forms.ModelForm):
                 attrs={
                     "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
                     "placeholder": "Calculé auto (modifiable)",
+                }
+            ),
+            "prix_kilo_manuel": forms.NumberInput(
+                attrs={
+                    "class": "block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm",
+                    "placeholder": "Ex: 8500",
+                    "x-model": "prix_kilo_manuel",
                 }
             ),
             "est_paye": forms.CheckboxInput(
@@ -307,12 +300,10 @@ class ColisForm(forms.ModelForm):
         # Ne pas marquer photo comme required car compressed_photo peut être utilisé
         self.fields["photo"].required = False
         # Désactiver required HTML5 pour les champs gérés dynamiquement en JS (évite "invalid form control is not focusable")
-        self.fields["longueur"].required = False
-        self.fields["largeur"].required = False
-        self.fields["hauteur"].required = False
         self.fields["cbm"].required = False
         self.fields["poids"].required = False
         self.fields["nombre_pieces"].required = False
+        self.fields["prix_kilo_manuel"].required = False
 
     def clean(self):
         cleaned_data = super().clean()
@@ -327,7 +318,7 @@ class ColisForm(forms.ModelForm):
             )
 
         # Transformer None (champ vide) en 0 pour respecter NOT NULL en DB
-        for dec_field in ["longueur", "largeur", "hauteur", "cbm", "poids"]:
+        for dec_field in ["cbm", "poids"]:
             if cleaned_data.get(dec_field) is None:
                 cleaned_data[dec_field] = 0
 

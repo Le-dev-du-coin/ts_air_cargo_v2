@@ -21,10 +21,10 @@
 {% block mali_content %}
 <div class="space-y-6" x-data="{ 
     showDeliveryModal: false, 
-    colisId: null, 
     colisRef: '', 
     colisClient: '', 
     colisMontant: 0,
+    sortieSousGarantie: false,
     async submitDelivery() {
         const form = document.getElementById('deliveryForm');
         const formData = new FormData(form);
@@ -38,10 +38,10 @@
                 },
                 body: formData
             });
-            
             if (response.ok) {
                 // Close Modal
                 this.showDeliveryModal = false;
+                this.sortieSousGarantie = false;
 
                 // Success Message
                 Swal.fire({
@@ -76,6 +76,7 @@
         this.colisClient = client;
         this.colisMontant = montant;
         this.showDeliveryModal = true;
+        this.sortieSousGarantie = false;
         
         // Update form action dynamically
         const form = document.getElementById('deliveryForm');
@@ -320,6 +321,26 @@
                                         </select>
                                     </div>
 
+                                    <!-- Sortie sous Garantie -->
+                                    <div class="border-t border-gray-200 mt-4 pt-4">
+                                        <div class="flex items-start mb-3">
+                                            <div class="flex items-center h-5">
+                                                <input id="sortie_sous_garantie" name="sortie_sous_garantie" type="checkbox" x-model="sortieSousGarantie"
+                                                       class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <label for="sortie_sous_garantie" class="font-bold text-gray-700">Sortie sous garantie (Chef/Collègue)</label>
+                                                <p class="text-gray-500 text-xs text-wrap">Cocher si le colis sort sans tout payer suite à une autorisation.</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div x-show="sortieSousGarantie" x-cloak class="mt-2 pl-7">
+                                            <label class="block text-gray-700 font-bold mb-1 text-xs">Autorisée par (Nom) *</label>
+                                            <input type="text" name="sortie_autorisee_par" placeholder="Qui a autorisé ?" :required="sortieSousGarantie"
+                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm">
+                                        </div>
+                                    </div>
+
                                     <!-- Jeton Cédé -->
                                     <div>
                                         <label class="block text-gray-700 font-bold mb-1" title="Montant remis au client ou écart de caisse">JC (Jeton Cédé)</label>
@@ -333,17 +354,7 @@
                                         <p class="text-xs text-gray-400 mt-1">Ex: Si total 2200, payé 2000 => JC = 200</p>
                                     </div>
 
-                                    <!-- WhatsApp API -->
-                                    <div class="flex items-start">
-                                        <div class="flex items-center h-5">
-                                            <input id="whatsapp_notified" name="whatsapp_notified" type="checkbox" 
-                                                   class="focus:ring-green-500 h-4 w-4 text-green-600 border-gray-300 rounded">
-                                        </div>
-                                        <div class="ml-3 text-sm">
-                                            <label for="whatsapp_notified" class="font-medium text-gray-700">Envoyer notification WhatsApp</label>
-                                            <p class="text-gray-500 text-xs">Sera traité par l'API (à venir)</p>
-                                        </div>
-                                    </div>
+
                                 </div>
                             </div>
                         </div>

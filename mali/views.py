@@ -16,6 +16,8 @@ from notification.models import ConfigurationNotification
 from .forms import NotificationConfigForm
 
 import logging
+from django.db.models import Sum, Count, F
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -459,6 +461,117 @@ class LotsLivresView(LotsEnTransitView):
         return queryset.order_by("-updated_at")
 
 
+class ColisSortieGarantieView(
+    LoginRequiredMixin, DestinationAgentRequiredMixin, ListView
+):
+    """Liste des colis sortis sous garantie avec filtres de période et stats"""
+
+    template_name = "mali/colis_sortie_garantie.html"
+    context_object_name = "colis_list"
+    paginate_by = 20
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        if not mali:
+            return Colis.objects.none()
+
+        queryset = Colis.objects.filter(
+            lot__destination=mali,
+            status="LIVRE",
+            sortie_sous_garantie=True,
+        ).select_related("client", "lot")
+
+        now = timezone.now()
+        self.filter_month = self.request.GET.get("month", "")
+        self.filter_year = self.request.GET.get("year", "")
+
+        if self.filter_year:
+            try:
+                queryset = queryset.filter(updated_at__year=int(self.filter_year))
+            except (ValueError, TypeError):
+                pass
+        if self.filter_month:
+            try:
+                queryset = queryset.filter(updated_at__month=int(self.filter_month))
+            except (ValueError, TypeError):
+                pass
+
+        # Filtre textuel
+        query = self.request.GET.get("q")
+        if query:
+            queryset = queryset.annotate(
+                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
+            ).filter(
+                Q(reference__icontains=query)
+                | Q(client__nom__icontains=query)
+                | Q(nom_complet__icontains=query)
+                | Q(sortie_autorisee_par__icontains=query)
+            )
+
+        return queryset.order_by("-updated_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        now = timezone.now()
+
+        mali = self.get_current_country()
+
+        # Queryset non paginé pour stats
+        base_qs = (
+            Colis.objects.filter(
+                lot__destination=mali,
+                status="LIVRE",
+                sortie_sous_garantie=True,
+            )
+            if mali
+            else Colis.objects.none()
+        )
+
+        # Stats globales
+        total_stats = base_qs.aggregate(
+            total_count=Count("id"),
+            total_montant=Sum(F("prix_final") - F("montant_jc")),
+        )
+
+        # Stats mois en cours
+        stats_month = base_qs.filter(
+            updated_at__year=now.year, updated_at__month=now.month
+        ).aggregate(
+            count=Count("id"),
+            montant=Sum(F("prix_final") - F("montant_jc")),
+        )
+
+        # Stats année en cours
+        stats_year = base_qs.filter(updated_at__year=now.year).aggregate(
+            count=Count("id"),
+            montant=Sum(F("prix_final") - F("montant_jc")),
+        )
+
+        context.update(
+            {
+                "filter_month": self.filter_month,
+                "filter_year": self.filter_year,
+                "current_year": now.year,
+                "current_month": now.month,
+                "years_range": range(now.year - 2, now.year + 1),
+                "stats_total": {
+                    "count": total_stats["total_count"] or 0,
+                    "montant": total_stats["total_montant"] or 0,
+                },
+                "stats_month": {
+                    "count": stats_month["count"] or 0,
+                    "montant": stats_month["montant"] or 0,
+                },
+                "stats_year": {
+                    "count": stats_year["count"] or 0,
+                    "montant": stats_year["montant"] or 0,
+                },
+            }
+        )
+        return context
+
+
 class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailView):
     """Vue détaillée d'un lot pour l'agent Mali (avec pointage des colis)"""
 
@@ -898,6 +1011,14 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
         colis.mode_livraison = request.POST.get("mode_livraison", "AGENCE")
         colis.infos_recepteur = request.POST.get("infos_recepteur", "")
         colis.commentaire_livraison = request.POST.get("commentaire", "")
+
+        # Gestion Sortie sous Garantie
+        if request.POST.get("sortie_sous_garantie") == "on":
+            colis.sortie_sous_garantie = True
+            colis.sortie_autorisee_par = request.POST.get("sortie_autorisee_par", "")
+        else:
+            colis.sortie_sous_garantie = False
+            colis.sortie_autorisee_par = ""
 
         # Gestion Jeton Cédé
         try:

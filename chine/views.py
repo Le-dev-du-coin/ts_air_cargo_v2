@@ -1340,7 +1340,7 @@ class NotificationListView(LoginRequiredMixin, TaskMixin, ListView):
             queryset = queryset.filter(
                 Q(telephone_destinataire__icontains=q)
                 | Q(message__icontains=q)
-                | Q(erreur_details__icontains=q)
+                | Q(erreur_envoi__icontains=q)
             )
 
         return queryset
@@ -1570,6 +1570,8 @@ class ChinaDepenseListView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Li
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        from core.models import Country
+
         today = timezone.now()
         try:
             context["current_year"] = int(self.request.GET.get("year", today.year))
@@ -1581,6 +1583,7 @@ class ChinaDepenseListView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Li
         context["total_depenses"] = (
             self.object_list.aggregate(Sum("montant"))["montant__sum"] or 0
         )
+        context["countries"] = Country.objects.all()
         return context
 
 
@@ -1588,24 +1591,11 @@ class ChinaDepenseCreateView(
     LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateView
 ):
     model = Depense
-    fields = ["date", "categorie", "description", "montant", "piece_jointe"]
-    template_name = (
-        "chine/finance/depenses.html"  # Réutilise le template liste (modal) ou séparé
-    )
+    fields = ["date", "pays", "categorie", "description", "montant", "piece_jointe"]
+    template_name = "chine/finance/depenses.html"
 
     def form_valid(self, form):
         form.instance.enregistre_par = self.request.user
-        # Associer au pays de l'user (Chine normalement)
-        if self.request.user.country:
-            form.instance.pays = self.request.user.country
-        else:
-            # Fallback chercher Chine
-            try:
-                chine = Country.objects.get(code="CN")
-                form.instance.pays = chine
-            except Country.DoesNotExist:
-                pass  # Gérer l'erreur si besoin
-
         messages.success(self.request, "Dépense ajoutée avec succès.")
         return super().form_valid(form)
 

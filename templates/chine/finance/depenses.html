@@ -83,6 +83,7 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pays</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
@@ -93,6 +94,9 @@
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ depense.date|date:"d/m/Y" }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span class="font-bold text-indigo-600">{{ depense.pays.name }}</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
@@ -113,7 +117,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
+                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
                                     Aucune dépense trouvée pour cette période.
                                 </td>
                             </tr>
@@ -140,6 +144,14 @@
                         <div>
                             <label for="date" class="block text-sm font-medium text-gray-700">Date</label>
                             <input type="date" name="date" id="date" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="{% now 'Y-m-d' %}">
+                        </div>
+                        <div>
+                            <label for="pays" class="block text-sm font-medium text-gray-700">Pays (Payer pour)</label>
+                            <select id="pays" name="pays" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                {% for country in countries %}
+                                    <option value="{{ country.id }}" {% if user.country == country %}selected{% endif %}>{{ country.name }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div>
                             <label for="categorie" class="block text-sm font-medium text-gray-700">Catégorie</label>

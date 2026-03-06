@@ -194,6 +194,7 @@ class Colis(TenantAwareModel):
         STANDARD = "STANDARD", "Standard"
         TELEPHONE = "TELEPHONE", "Téléphone"
         ELECTRONIQUE = "ELECTRONIQUE", "Électronique"
+        MANUEL = "MANUEL", "Manuel"
 
     lot = models.ForeignKey(Lot, on_delete=models.CASCADE, related_name="colis")
     client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name="colis")
@@ -213,20 +214,22 @@ class Colis(TenantAwareModel):
         null=True,
         blank=True,
     )
-    longueur = models.DecimalField(
-        max_digits=10, decimal_places=2, help_text=_("Longueur (cm)"), default=0
-    )
-    largeur = models.DecimalField(
-        max_digits=10, decimal_places=2, help_text=_("Largeur (cm)"), default=0
-    )
-    hauteur = models.DecimalField(
-        max_digits=10, decimal_places=2, help_text=_("Hauteur (cm)"), default=0
-    )
     cbm = models.DecimalField(
         max_digits=10,
         decimal_places=4,
-        help_text=_("Volume en m3 (Calculé auto: L*l*h/1000000)"),
+        help_text=_("Volume en m3 (Saisie manuelle pour Bateau)"),
         default=0,
+    )
+
+    # Paramètres de tarification spéciale
+    prix_kilo_manuel = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_(
+            "Prix au kilo défini manuellement par l'agent (pour TypeColis=Manuel)"
+        ),
     )
 
     # Finance
@@ -274,6 +277,17 @@ class Colis(TenantAwareModel):
         max_length=20, choices=Status.choices, default=Status.RECU
     )
 
+    # Sortie sous garantie (Agent Mali)
+    sortie_sous_garantie = models.BooleanField(
+        default=False,
+        help_text=_("Indique si le colis a été sorti avec l'autorisation d'un garant"),
+    )
+    sortie_autorisee_par = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text=_("Nom du supérieur ou collègue ayant autorisé la sortie"),
+    )
+
     reference = models.CharField(max_length=50, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -285,19 +299,6 @@ class Colis(TenantAwareModel):
             # Génère une réf courte avec préfixe TS
             uid = str(uuid.uuid4()).split("-")[0].upper()
             self.reference = f"TS-{uid}"
-
-        # Calcul auto du CBM si dimensions présentes
-        if (
-            getattr(self, "longueur", 0)
-            and getattr(self, "largeur", 0)
-            and getattr(self, "hauteur", 0)
-        ):
-            from decimal import Decimal
-
-            vol_cm3 = (
-                Decimal(self.longueur) * Decimal(self.largeur) * Decimal(self.hauteur)
-            )
-            self.cbm = vol_cm3 / Decimal("1000000")
 
         super().save(*args, **kwargs)
 

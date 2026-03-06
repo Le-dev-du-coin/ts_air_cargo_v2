@@ -15,6 +15,8 @@ class NotificationConfigForm(forms.ModelForm):
             "delai_rappel_jours",
             "template_rappel",
             "admin_mali_phone",
+            "admin_mali_phone_2",
+            "admin_mali_phone_3",
         ]
         widgets = {
             "template_rappel": forms.Textarea(
@@ -24,6 +26,18 @@ class NotificationConfigForm(forms.ModelForm):
                 attrs={"class": "w-full border-gray-300 rounded-md"}
             ),
             "admin_mali_phone": forms.TextInput(
+                attrs={
+                    "class": "w-full border-gray-300 rounded-md",
+                    "placeholder": "+223XXXXXXXX",
+                }
+            ),
+            "admin_mali_phone_2": forms.TextInput(
+                attrs={
+                    "class": "w-full border-gray-300 rounded-md",
+                    "placeholder": "+223XXXXXXXX",
+                }
+            ),
+            "admin_mali_phone_3": forms.TextInput(
                 attrs={
                     "class": "w-full border-gray-300 rounded-md",
                     "placeholder": "+223XXXXXXXX",

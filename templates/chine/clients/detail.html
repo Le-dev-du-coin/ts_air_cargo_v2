@@ -168,8 +168,7 @@
                             {% if colis.type_colis == 'TELEPHONE' %}
                                 <span class="font-semibold text-gray-700">{{ colis.nombre_pieces|default:"0" }} pièce{{ colis.nombre_pieces|pluralize }}</span>
                             {% elif colis.lot and colis.lot.type_transport == 'BATEAU' %}
-                                {{ colis.longueur|default:"0" }}x{{ colis.largeur|default:"0" }}x{{ colis.hauteur|default:"0" }} cm 
-                                <span class="font-semibold ml-1 text-gray-700">({{ colis.cbm|default:"-" }} CBM)</span>
+                                <span class="font-semibold text-gray-700">{{ colis.cbm|default:"0" }} CBM</span>
                             {% else %}
                                 <span class="font-semibold text-gray-700">{{ colis.poids|default:"-" }} kg</span>
                             {% endif %}

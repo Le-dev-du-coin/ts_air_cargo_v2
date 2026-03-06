@@ -1,6 +1,15 @@
 {% extends "chine/base.html" %}
 {% load currency_tags humanize %}
-{% block header %}Détail du Lot : {{ lot.numero }}{% endblock %}
+{% block header %}
+<div class="flex items-center gap-4">
+    <a href="{% url 'chine:lot_list' %}" class="inline-flex items-center p-1.5 border border-gray-300 rounded-full shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all" title="Retour à la liste">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+    </a>
+    Détail du Lot : {{ lot.numero }}
+</div>
+{% endblock %}
 
 {% block chine_content %}
 <div class="space-y-10">
@@ -161,7 +170,7 @@
                              </div>
 
                             <!-- Type & Poids -->
-                            <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                            <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6" x-show="transportType !== 'BATEAU'">
                                 <div class="sm:col-span-3">
                                     <label for="{{ colis_form.type_colis.id_for_label }}" class="block text-sm font-medium text-gray-700">Type de Colis</label>
                                     {{ colis_form.type_colis }}
@@ -183,22 +192,19 @@
                                 </div>
                             </div>
 
-                            <!-- Dimensions (Required/Auto-calc for Boat) -->
+                            <!-- Prix Manuel (Visible if type is MANUEL) -->
+                            <div class="border-t border-gray-100 pt-4" x-show="type_colis === 'MANUEL'">
+                                <div class="sm:col-span-6">
+                                    <label for="{{ colis_form.prix_kilo_manuel.id_for_label }}" class="block text-sm font-medium text-gray-700">Prix Kilo Manuel (FCFA)</label>
+                                    {{ colis_form.prix_kilo_manuel }}
+                                    <p class="mt-1 text-xs text-orange-600 font-medium">Ce prix sera multiplié par le poids pour le calcul final.</p>
+                                </div>
+                            </div>
+
+                            <!-- Volume (Manual for Boat) -->
                             <div class="border-t border-gray-100 pt-4" x-show="transportType === 'BATEAU'">
-                                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Dimensions & Volume</h4>
-                                <div class="grid grid-cols-4 gap-4">
-                                    <div>
-                                        <label for="{{ colis_form.longueur.id_for_label }}" class="block text-xs font-medium text-gray-700">Long. (cm)</label>
-                                        {{ colis_form.longueur }}
-                                    </div>
-                                    <div>
-                                        <label for="{{ colis_form.largeur.id_for_label }}" class="block text-xs font-medium text-gray-700">Larg. (cm)</label>
-                                        {{ colis_form.largeur }}
-                                    </div>
-                                    <div>
-                                        <label for="{{ colis_form.hauteur.id_for_label }}" class="block text-xs font-medium text-gray-700">Haut. (cm)</label>
-                                        {{ colis_form.hauteur }}
-                                    </div>
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Volume (CBM)</h4>
+                                <div class="grid grid-cols-1 gap-4">
                                     <div>
                                         <label for="{{ colis_form.cbm.id_for_label }}" class="block text-xs font-medium text-gray-700">CBM (m³)</label>
                                         {{ colis_form.cbm }}
@@ -419,21 +425,18 @@
                             Alpine.data('colisCalculator', (tarifs) => ({
                                 type_colis: 'STANDARD',
                                 poids: '',
+                                prix_kilo_manuel: '',
                                 nombre_pieces: 1,
-                                longueur: '',
-                                largeur: '',
-                                hauteur: '',
                                 cbm: '',
                                 transportType: '{{ lot.type_transport }}',
                                 tarifs: tarifs,
                                 lastClient: null,
                                 
                                 init() {
-                                    this.$watch('longueur', () => this.calculate());
-                                    this.$watch('largeur', () => this.calculate());
-                                    this.$watch('hauteur', () => this.calculate());
+                                    this.$watch('cbm', () => this.calculate());
                                     this.$watch('poids', () => this.calculate());
                                     this.$watch('type_colis', () => this.calculate());
+                                    this.$watch('prix_kilo_manuel', () => this.calculate());
                                     this.$watch('nombre_pieces', () => this.calculate());
                                 },
 
@@ -463,10 +466,8 @@
                                     // Reset all form fields
                                     this.type_colis = 'STANDARD';
                                     this.poids = '';
-                                    this.nombre_pieces = 1;
-                                    this.longueur = '';
-                                    this.largeur = '';
-                                    this.hauteur = '';
+                                    this.prix_kilo_manuel = '';
+                                    this.nombre_pieces = 1,
                                     this.cbm = '';
                                     
                                     // Reset photo via Alpine.store or direct access
@@ -495,43 +496,30 @@
                                 },
 
                                 calculate() {
-                                    const l = parseFloat(this.longueur) || 0;
-                                    const w = parseFloat(this.largeur) || 0;
-                                    const h = parseFloat(this.hauteur) || 0;
-                                    
-                                    if (l > 0 && w > 0 && h > 0) {
-                                        this.cbm = (l * w * h) / 1000000;
-                                        document.getElementById('id_cbm').value = this.cbm.toFixed(4);
-                                    } else {
-                                        this.cbm = 0;
-                                    }
+                                    const cbmVal = parseFloat(this.cbm) || 0;
 
                                     if (this.type_colis === 'ELECTRONIQUE') return;
 
                                     if (!this.tarifs) return; 
                                     let prix = 0;
                                     
-                                    if (this.type_colis === 'TELEPHONE') {
+                                    if (this.transportType === 'BATEAU') {
+                                        if (this.tarifs.BATEAU) {
+                                            prix = cbmVal * this.tarifs.BATEAU.prix_cbm;
+                                        }
+                                    } else if (this.type_colis === 'MANUEL') {
+                                        const p = parseFloat(this.poids) || 0;
+                                        const prixKiloManuel = parseFloat(this.prix_kilo_manuel) || 0;
+                                        prix = p * prixKiloManuel;
+                                    } else if (this.type_colis === 'TELEPHONE') {
                                         const pieces = parseInt(this.nombre_pieces) || 0;
                                         if (this.tarifs.TELEPHONE) {
                                             prix = pieces * this.tarifs.TELEPHONE.prix_piece;
                                         }
                                     } else {
-                                        if (this.transportType === 'BATEAU') {
-                                            if (this.tarifs.BATEAU) {
-                                                prix = this.cbm * this.tarifs.BATEAU.prix_cbm;
-                                            }
-                                        } else if (this.transportType === 'CARGO') {
-                                            const p = parseFloat(this.poids) || 0;
-                                            if (this.tarifs.CARGO) {
-                                                prix = p * this.tarifs.CARGO.prix_kilo;
-                                            }
-                                        } else if (this.transportType === 'EXPRESS') {
-                                            const p = parseFloat(this.poids) || 0;
-                                            if (this.tarifs.EXPRESS) {
-                                                prix = p * this.tarifs.EXPRESS.prix_kilo;
-                                            }
-                                        }
+                                        const p = parseFloat(this.poids) || 0;
+                                        const prixKilo = (this.tarifs && this.tarifs[this.transportType]) ? this.tarifs[this.transportType].prix_kilo : 0;
+                                        prix = p * prixKilo;
                                     }
                                     
                                     document.getElementById('id_prix_final').value = Math.ceil(prix);
@@ -548,11 +536,28 @@
         <!-- Colis List -->
         <div class="{% if lot.status == 'OUVERT' %}lg:col-span-2{% else %}lg:col-span-3{% endif %}">
             <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div class="px-4 py-5 sm:px-6 flex justify-between">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Colis dans ce lot</h3>
-                    <span class="text-sm text-gray-500">{{ lot.colis.count }} colis</span>
+                <div class="px-4 py-5 sm:px-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Colis dans ce lot</h3>
+                            <span class="text-sm text-gray-500">{{ lot.colis.count }} colis</span>
+                        </div>
+                        <!-- Barre de recherche colis -->
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                            <input type="text" id="colis-search-input"
+                                   placeholder="Rechercher un colis..."
+                                   class="pl-10 pr-4 py-2 border-2 border-indigo-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 w-full sm:w-64 bg-indigo-50 placeholder-indigo-300 text-indigo-900 font-medium"
+                                   oninput="filterColisList(this.value)">
+                        </div>
+                    </div>
                 </div>
-                <div id="colis-list-container" 
+                <div id="colis-list-container"
+ 
                      hx-get="{% url 'chine:lot_detail' lot.pk %}" 
                      hx-select="#colis-list-items" 
                      hx-trigger="colisAdded from:body">
@@ -701,7 +706,36 @@
                 </form>
             </div>
         </div>
-    </div>
+</div>
     {% endif %}
 </div>
+
+<script>
+function filterColisList(query) {
+    const q = query.toLowerCase().trim();
+    const items = document.querySelectorAll('#colis-list-items li');
+    let visibleCount = 0;
+
+    items.forEach(function(li) {
+        const text = li.innerText.toLowerCase();
+        if (!q || text.includes(q)) {
+            li.style.display = '';
+            visibleCount++;
+        } else {
+            li.style.display = 'none';
+        }
+    });
+
+    // Indicate no results
+    let noResultsEl = document.getElementById('colis-no-results');
+    if (!noResultsEl) {
+        noResultsEl = document.createElement('li');
+        noResultsEl.id = 'colis-no-results';
+        noResultsEl.className = 'px-4 py-8 text-center text-sm text-gray-400 italic';
+        noResultsEl.textContent = 'Aucun colis correspondant à votre recherche.';
+        document.getElementById('colis-list-items').appendChild(noResultsEl);
+    }
+    noResultsEl.style.display = (visibleCount === 0 && q) ? '' : 'none';
+}
+</script>
 {% endblock %}
