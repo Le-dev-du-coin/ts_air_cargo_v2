@@ -289,17 +289,9 @@ class RapportExportView(LoginRequiredMixin, View):
             return response
 
         else:  # PDF by default
-            from django.template.loader import render_to_string
-            from xhtml2pdf import pisa
+            from core.utils_pdf import render_to_pdf_playwright
 
-            html_string = render_to_string("mali/pdf/rapport_financier.html", context)
-
-            response = HttpResponse(content_type="application/pdf")
-            response["Content-Disposition"] = (
-                f'inline; filename="rapport_financier_{month}_{year}.pdf"'
+            filename = f"rapport_financier_{month}_{year}.pdf"
+            return render_to_pdf_playwright(
+                "mali/pdf/rapport_financier.html", context, request, filename=filename
             )
-
-            pisa_status = pisa.CreatePDF(html_string, dest=response)
-            if pisa_status.err:
-                return HttpResponse("Erreur lors de la génération du PDF", status=500)
-            return response

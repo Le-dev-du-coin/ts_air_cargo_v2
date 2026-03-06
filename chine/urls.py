@@ -43,6 +43,7 @@ from .views import (
     RetryFailedNotificationsView,
     RemunerationListView,
     PaiementAgentCreateView,
+    ColisEtiquettePDFView,
 )
 
 app_name = "chine"
@@ -93,6 +94,7 @@ urlpatterns = [
     # Colis (Nested under lot)
     path("lots/<int:lot_id>/colis/add/", ColisCreateView.as_view(), name="colis_add"),
     path("colis/<int:pk>/delete/", ColisDeleteView.as_view(), name="colis_delete"),
+    path("colis/print/", ColisEtiquettePDFView.as_view(), name="colis_print_pdf"),
     # Tarifs
     path("tarifs/", TarifListView.as_view(), name="tarif_list"),
     path("tarifs/add/", TarifCreateView.as_view(), name="tarif_add"),

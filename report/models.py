@@ -10,6 +10,7 @@ class Depense(models.Model):
         ELECTRICITE = "ELECTRICITE", _("Électricité")
         EAU = "EAU", _("Eau")
         SALAIRE = "SALAIRE", _("Salaire")
+        MATERIELS = "MATERIELS", _("Matériels (Imprimante, Scotch, etc.)")
         TRANSPORT = "TRANSPORT", _("Transport")
         NOURRITURE = "NOURRITURE", _("Nourriture")
         COMMUNICATION = "COMMUNICATION", _("Communication (Internet/Tel)")

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Étiquettes Logistiques TS AIR CARGO</title>
+    <style>
+        :root {
+            --brand-blue: #1E3A8A;
+            --brand-gold: #B45309;
+            --border-color: #374151;
+            --bg-header: #FFFBEB;
+        }
+
+        @page {
+            size: A4;
+            margin: 0mm;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 8mm; /* Marge de sécurité pour l'impression */
+            background-color: white;
+            box-sizing: border-box;
+        }
+
+        /* Grille A4 : 2 colonnes x 3 lignes = 6 étiquettes */
+        .page-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10mm; /* Lignes de découpe */
+            width: 100%;
+            height: 280mm; /* Hauteur A4 moins marges */
+        }
+
+        /* Lignes de découpe (subtiles) */
+        .etiquette-cell {
+            position: relative;
+            border: 2pt dashed #000; /* Ligne de coupe plus visible */
+            padding: 3mm;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Structure de l'étiquette type image fournie */
+        .label-box {
+            border: 1.5pt solid var(--border-color);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* En-tête plus compact */
+        .header-box {
+            border: 2pt solid var(--brand-gold);
+            background-color: var(--bg-header);
+            margin: 1mm;
+            padding: 2mm 1mm;
+            text-align: center;
+        }
+
+        .header-text {
+            font-size: 12pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #000;
+        }
+
+        /* Tableau d'infos optimisé */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .info-table td {
+            border-top: 1pt solid var(--border-color);
+            padding: 1.5mm 2mm;
+            vertical-align: middle;
+            line-height: 1.1;
+            word-wrap: break-word;
+        }
+
+        .label-cell {
+            width: 30%;
+            font-size: 9pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-right: 1pt solid var(--border-color);
+        }
+
+        .value-cell {
+            width: 70%;
+            font-size: 11pt;
+            font-weight: 800;
+            color: #000;
+        }
+
+        /* Zone QR Code compacte */
+        .footer-box {
+            border-top: 1pt solid var(--border-color);
+            padding: 2mm;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            background-color: #fff;
+            margin-top: auto;
+        }
+
+        .qr-placeholder {
+            width: 22mm;
+            height: 22mm;
+            border: 1.5pt solid #000;
+        }
+
+        .footer-note {
+            font-size: 7pt;
+            font-weight: 700;
+            text-align: right;
+            max-width: 60%;
+        }
+
+        /* Saut de page si plus de 6 étiquettes */
+        .page-break {
+            page-break-after: always;
+        }
+
+        @media print {
+            .etiquette-cell {
+                border-color: #eee;
+            }
+        }
+    </style>
+</head>
+<body>
+
+{% for items in colis_batches %}
+    <div class="page-grid {% if not forloop.last %}page-break{% endif %}">
+        {% for colis in items %}
+        <div class="etiquette-cell">
+            <div class="label-box">
+                <!-- En-tête style image -->
+                <div class="header-box">
+                    <div class="header-text">TS AIR CARGO — {{ colis.lot.destination.name|upper }}</div>
+                </div>
+
+                <!-- Corps de l'étiquette -->
+                <table class="info-table">
+                    <tr>
+                        <td class="label-cell">Référence</td>
+                        <td class="value-cell">{{ colis.reference }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Lot</td>
+                        <td class="value-cell">{{ colis.lot.numero }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Client</td>
+                        <td class="value-cell">{{ colis.client.nom|upper}} {{ colis.client.prenom|upper }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Info</td>
+                        <td class="value-cell">
+                            {% if colis.type_colis == 'TELEPHONE' %}
+                            {{ colis.nombre_pieces }} PCS
+                            {% elif colis.lot.type_transport == 'BATEAU' %}
+                                {{ colis.cbm }} CBM
+                            {% else %}
+                                {{ colis.poids }} KG
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Type</td>
+                        <td class="value-cell">{{ colis.get_type_colis_display|upper }}</td>
+                    </tr>
+                </table>
+
+                <!-- QR Code Restauré et Compact -->
+                <div class="footer-box">
+                    <div class="footer-note">LOGISTIQUE TS AIR CARGO<br>EXPÉDITION INTERNATIONALE</div>
+                    <div class="qr-placeholder">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ colis.reference }}" style="width: 100%; height: 100%;">
+                    </div>
+                </div>
+            </div>
+        </div>
+{% endfor %}
+    </div>
+{% endfor %}
+
+</body>
+</html>

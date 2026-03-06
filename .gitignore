@@ -40,3 +40,10 @@ celerybeat-schedule*
 
 # Ubuntu
 setup_ubuntu.sh
+
+# Agent & Gemini
+.agent/
+.agents/
+_agent/
+_agents/
+.gemini/

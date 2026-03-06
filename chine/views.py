@@ -1750,3 +1750,44 @@ class PaiementAgentCreateView(LoginRequiredMixin, AdminChineRequiredMixin, View)
         return redirect(
             f"{reverse_lazy('chine:remuneration_list')}?year={periode_annee}&month={periode_mois}"
         )
+
+
+class ColisEtiquettePDFView(LoginRequiredMixin, StrictAgentChineRequiredMixin, View):
+    """Génération d'étiquettes de colis A4 (6 par page) avec Playwright"""
+
+    def get(self, request):
+        from core.utils_pdf import render_to_pdf_playwright
+
+        colis_ids_raw = request.GET.get("colis_ids", "")
+        colis_ids = [cid.strip() for cid in colis_ids_raw.split(",") if cid.strip()]
+        lot_id = request.GET.get("lot_id")
+
+        if lot_id:
+            colis_qs = Colis.objects.filter(lot_id=lot_id).select_related(
+                "client", "lot__destination"
+            )
+        else:
+            colis_qs = Colis.objects.filter(id__in=colis_ids).select_related(
+                "client", "lot__destination"
+            )
+
+        if not colis_qs.exists():
+            messages.error(request, "Aucun colis sélectionné pour l'impression.")
+            return redirect(request.META.get("HTTP_REFERER", "chine:dashboard"))
+
+        # Découpage par lots de 6 pour la mise en page A4
+        colis_list = list(colis_qs)
+        colis_batches = [colis_list[i : i + 6] for i in range(0, len(colis_list), 6)]
+
+        context = {
+            "colis_batches": colis_batches,
+            "date": timezone.now(),
+        }
+
+        filename = (
+            f"etiquettes_lot_{lot_id}.pdf"
+            if lot_id
+            else f"etiquette_colis_{colis_qs.first().reference}.pdf"
+        )
+
+        return render_to_pdf_playwright("chine/etiquette_pdf.html", context, request)

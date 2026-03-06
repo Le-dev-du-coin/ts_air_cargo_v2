@@ -539,8 +539,16 @@
                 <div class="px-4 py-5 sm:px-6">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
-                            <h3 class="text-lg leading-6 font-medium text-gray-900">Colis dans ce lot</h3>
-                            <span class="text-sm text-gray-500">{{ lot.colis.count }} colis</span>
+                             <h3 class="text-lg leading-6 font-medium text-gray-900">Colis dans ce lot</h3>
+                             <div class="flex items-center gap-2">
+                                <span class="text-sm text-gray-500">{{ lot.colis.count }} colis</span>
+                                <a href="{% url 'chine:colis_print_pdf' %}?lot_id={{ lot.pk }}" target="_blank" class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <svg class="-ml-0.5 mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Imprimer toutes les étiquettes
+                                </a>
+                             </div>
                         </div>
                         <!-- Barre de recherche colis -->
                         <div class="relative">
@@ -578,8 +586,17 @@
                                     {% endif %}
                                 </div>
                                 <div class="ml-4">
-                                    <div class="text-sm font-medium text-indigo-600 truncate">
-                                        {{ colis.reference }}
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-sm font-medium text-indigo-600 truncate">
+                                            {{ colis.reference }}
+                                        </div>
+                                        <a href="{% url 'chine:colis_print_pdf' %}?colis_ids={{ colis.id }}" target="_blank" 
+                                           class="inline-flex items-center p-1 border border-indigo-200 rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                           title="Imprimer l'étiquette">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                            </svg>
+                                        </a>
                                     </div>
                                     <div class="text-sm text-gray-900">
                                         {{ colis.client.nom }} {{ colis.client.prenom }}
@@ -610,6 +627,13 @@
                                 </div>
                                 {% if lot.status == 'OUVERT' and user.role != 'CLIENT' %}
                                 <div class="mt-2 flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
+                                    <a href="{% url 'chine:colis_print_pdf' %}?colis_ids={{ colis.id }}" target="_blank" 
+                                       class="text-xs text-indigo-600 hover:text-indigo-900 font-medium flex items-center bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition-colors">
+                                        <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                        Étiquette
+                                    </a>
 
                                     <form id="form-delete-colis-{{ colis.pk }}" action="{% url 'chine:colis_delete' colis.pk %}" method="POST" class="inline">
                                         {% csrf_token %}

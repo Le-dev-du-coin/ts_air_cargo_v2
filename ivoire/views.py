@@ -1169,28 +1169,16 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             "user": request.user,
         }
 
-        # Génération du HTML
-        from django.template.loader import render_to_string
-        from xhtml2pdf import pisa
+        # Génération du PDF avec Playwright
+        from core.utils_pdf import render_to_pdf_playwright
 
         # Vérifier si le template attend 'colis_livres' ou 'colis_list'
-        # Je vais utiliser 'colis_livres' comme avant pour minimiser les changements template si possible,
-        # mais 'colis_list' est plus standard. Je vais passer les deux pour être sûr ou vérifier le template.
         context["colis_livres"] = colis_qs
 
-        html_string = render_to_string("ivoire/pdf/rapport_jour.html", context)
-
-        # Création du PDF
-        response = HttpResponse(content_type="application/pdf")
         filename = f"rapport_jour_{report_type}_{today}.pdf"
-        response["Content-Disposition"] = f'inline; filename="{filename}"'
-
-        pisa_status = pisa.CreatePDF(html_string, dest=response)
-
-        if pisa_status.err:
-            return HttpResponse("Erreur lors de la génération du PDF", status=500)
-
-        return response
+        return render_to_pdf_playwright(
+            "ivoire/pdf/rapport_jour.html", context, request, filename=filename
+        )
 
 
 class LotTransitPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
@@ -1212,22 +1200,12 @@ class LotTransitPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View)
             "date_impression": timezone.now(),
         }
 
-        from xhtml2pdf import pisa
-        from django.template.loader import render_to_string
+        from core.utils_pdf import render_to_pdf_playwright
 
-        html_string = render_to_string("ivoire/pdf/manifeste_lot.html", context)
-
-        response = HttpResponse(content_type="application/pdf")
-        response["Content-Disposition"] = (
-            f'inline; filename="manifeste_lot_{lot.numero}.pdf"'
+        filename = f"manifeste_lot_{lot.numero}.pdf"
+        return render_to_pdf_playwright(
+            "ivoire/pdf/manifeste_lot.html", context, request, filename=filename
         )
-
-        pisa_status = pisa.CreatePDF(html_string, dest=response)
-
-        if pisa_status.err:
-            return HttpResponse("Erreur lors de la génération du PDF", status=500)
-
-        return response
 
 
 class NotificationConfigView(
