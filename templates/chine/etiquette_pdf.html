@@ -20,7 +20,7 @@
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
-            padding: 5mm;
+            padding: 3mm; /* Réduit de 5mm à 3mm */
             background-color: white;
             box-sizing: border-box;
         }
@@ -29,19 +29,22 @@
         .page-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: auto auto; /* S'adapte au contenu */
-            gap: 10mm; /* Plus d'espace pour le découpage */
+            grid-template-rows: repeat(2, 1fr); /* Retour à 2 lignes fixes */
+            gap: 3mm; /* Réduit de 10mm à 3mm */
             width: 100%;
+            height: calc(100vh - 10mm); /* Utilise la hauteur disponible */
+            max-height: 285mm; /* Sécurité pour A4 (297mm) */
         }
 
         .etiquette-cell {
             position: relative;
-            border: 2pt dashed #000; /* Ligne de coupe originale */
-            padding: 3mm;
+            border: 1pt dashed #000; /* Plus fin pour gagner de la place */
+            padding: 2mm; /* Réduit de 3mm */
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            height: 100%; /* Force la cellule à prendre sa place dans la grille */
         }
 
         .label-box {
@@ -92,6 +95,16 @@
             font-size: 12pt;
             font-weight: 800;
             color: #000;
+        }
+
+        .status-paid {
+            color: #059669; /* Vert */
+            font-size: 11pt;
+        }
+
+        .status-unpaid {
+            color: #DC2626; /* Rouge */
+            font-size: 11pt;
         }
 
         .price-text {
@@ -172,6 +185,16 @@
                     <tr>
                         <td class="label-cell">Transport</td>
                         <td class="value-cell">{{ colis.lot.get_type_transport_display|upper }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Type</td>
+                        <td class="value-cell">{{ colis.get_type_colis_display|upper }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Statut</td>
+                        <td class="value-cell {% if colis.est_paye %}status-paid{% else %}status-unpaid{% endif %}">
+                            {% if colis.est_paye %}PAYÉ EN CHINE{% else %}NON PAYÉ{% endif %}
+                        </td>
                     </tr>
                     <tr>
                         <td class="label-cell">Réception</td>

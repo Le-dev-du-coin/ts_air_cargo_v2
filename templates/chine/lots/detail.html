@@ -87,10 +87,12 @@
                     <dt class="text-sm font-medium text-gray-500">Date de Création</dt>
                     <dd class="mt-1 text-sm text-gray-900">{{ lot.created_at|date:"d F Y H:i" }}</dd>
                 </div>
+                {% if lot.type_transport != 'BATEAU' %}
                 <div class="sm:col-span-1">
                     <dt class="text-sm font-medium text-gray-500">Poids Total</dt>
                     <dd class="mt-1 text-sm font-bold text-gray-900">{{ total_poids|default:"0"|floatformat:1 }} kg</dd>
                 </div>
+                {% endif %}
                 <div class="sm:col-span-1">
                     <dt class="text-sm font-medium text-gray-500">Volume Total</dt>
                     <dd class="mt-1 text-sm font-bold text-gray-900">{{ total_cbm|default:"0" }} m³</dd>
@@ -603,13 +605,6 @@
                                         <div class="text-sm font-medium text-indigo-600 truncate">
                                             {{ colis.reference }}
                                         </div>
-                                        <a href="{% url 'chine:colis_print_pdf' %}?colis_ids={{ colis.id }}" target="_blank" 
-                                           class="inline-flex items-center p-1 border border-indigo-200 rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                                           title="Imprimer l'étiquette">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                            </svg>
-                                        </a>
                                     </div>
                                     <div class="text-sm text-gray-900">
                                         {{ colis.client.nom }} {{ colis.client.prenom }}
