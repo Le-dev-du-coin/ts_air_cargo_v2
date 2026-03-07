@@ -46,8 +46,19 @@ def render_to_pdf_playwright(
     html_content = render_to_string(template_src, context_dict, request=request)
 
     # Exécute la boucle asynchrone pour Playwright
-    # asyncio.run() crée une nouvelle boucle, ce qui est sûr dans une vue Django synchrone
-    pdf_bytes = asyncio.run(
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    if loop.is_running():
+        # Cas rare en Django synchrone mais possible avec certains serveurs
+        import nest_asyncio
+
+        nest_asyncio.apply()
+
+    pdf_bytes = loop.run_until_complete(
         generate_pdf_playwright(html_content, format=format, landscape=landscape)
     )
 
