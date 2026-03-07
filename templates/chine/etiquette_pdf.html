@@ -1,3 +1,4 @@
+{% load currency_tags %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -19,25 +20,23 @@
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
-            padding: 8mm; /* Marge de sécurité pour l'impression */
+            padding: 5mm;
             background-color: white;
             box-sizing: border-box;
         }
 
-        /* Grille A4 : 2 colonnes x 3 lignes = 6 étiquettes */
+        /* Grille A4 : 2 colonnes x 2 lignes = 4 étiquettes (tel que demandé pour l'espace) */
         .page-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 10mm; /* Lignes de découpe */
+            grid-template-rows: auto auto; /* S'adapte au contenu */
+            gap: 10mm; /* Plus d'espace pour le découpage */
             width: 100%;
-            height: 280mm; /* Hauteur A4 moins marges */
         }
 
-        /* Lignes de découpe (subtiles) */
         .etiquette-cell {
             position: relative;
-            border: 2pt dashed #000; /* Ligne de coupe plus visible */
+            border: 2pt dashed #000; /* Ligne de coupe originale */
             padding: 3mm;
             box-sizing: border-box;
             display: flex;
@@ -45,31 +44,27 @@
             overflow: hidden;
         }
 
-        /* Structure de l'étiquette type image fournie */
         .label-box {
             border: 1.5pt solid var(--border-color);
-            height: 100%;
             display: flex;
             flex-direction: column;
         }
 
-        /* En-tête plus compact */
         .header-box {
             border: 2pt solid var(--brand-gold);
             background-color: var(--bg-header);
-            margin: 1mm;
-            padding: 2mm 1mm;
+            margin: 1.5mm;
+            padding: 3mm 1mm;
             text-align: center;
         }
 
         .header-text {
-            font-size: 12pt;
+            font-size: 14pt;
             font-weight: 800;
             text-transform: uppercase;
             color: #000;
         }
 
-        /* Tableau d'infos optimisé */
         .info-table {
             width: 100%;
             border-collapse: collapse;
@@ -78,60 +73,59 @@
 
         .info-table td {
             border-top: 1pt solid var(--border-color);
-            padding: 1.5mm 2mm;
+            padding: 2mm 3mm;
             vertical-align: middle;
-            line-height: 1.1;
-            word-wrap: break-word;
+            line-height: 1.2;
         }
 
         .label-cell {
-            width: 30%;
-            font-size: 9pt;
+            width: 35%;
+            font-size: 10pt;
             font-weight: 700;
             text-transform: uppercase;
             border-right: 1pt solid var(--border-color);
+            background-color: #f9fafb;
         }
 
         .value-cell {
-            width: 70%;
-            font-size: 11pt;
+            width: 65%;
+            font-size: 12pt;
             font-weight: 800;
             color: #000;
         }
 
-        /* Zone QR Code compacte */
+        .price-text {
+            color: #b45309;
+            font-size: 13pt;
+        }
+
         .footer-box {
-            border-top: 1pt solid var(--border-color);
+            border-top: 1.5pt solid var(--border-color);
             padding: 2mm;
             display: flex;
             align-items: center;
-            justify-content: space-around;
+            justify-content: space-between;
             background-color: #fff;
-            margin-top: auto;
+            margin-top: 2mm; /* Changé de auto à 2mm pour réduire l'espace */
         }
 
         .qr-placeholder {
-            width: 22mm;
-            height: 22mm;
-            border: 1.5pt solid #000;
+            width: 28mm;
+            height: 28mm;
+            border: 1pt solid #000;
+        }
+
+        .footer-info {
+            flex: 1;
         }
 
         .footer-note {
-            font-size: 7pt;
+            font-size: 8pt;
             font-weight: 700;
-            text-align: right;
-            max-width: 60%;
         }
 
-        /* Saut de page si plus de 6 étiquettes */
         .page-break {
             page-break-after: always;
-        }
-
-        @media print {
-            .etiquette-cell {
-                border-color: #eee;
-            }
         }
     </style>
 </head>
@@ -142,53 +136,61 @@
         {% for colis in items %}
         <div class="etiquette-cell">
             <div class="label-box">
-                <!-- En-tête style image -->
                 <div class="header-box">
                     <div class="header-text">TS AIR CARGO — {{ colis.lot.destination.name|upper }}</div>
                 </div>
 
-                <!-- Corps de l'étiquette -->
                 <table class="info-table">
                     <tr>
                         <td class="label-cell">Référence</td>
                         <td class="value-cell">{{ colis.reference }}</td>
                     </tr>
                     <tr>
-                        <td class="label-cell">Lot</td>
-                        <td class="value-cell">{{ colis.lot.numero }}</td>
-                    </tr>
-                    <tr>
                         <td class="label-cell">Client</td>
-                        <td class="value-cell">{{ colis.client.nom|upper}} {{ colis.client.prenom|upper }}</td>
+                        <td class="value-cell">{{ colis.client.nom|upper }} {{ colis.client.prenom|upper }}</td>
                     </tr>
                     <tr>
-                        <td class="label-cell">Info</td>
+                        <td class="label-cell">Téléphone</td>
+                        <td class="value-cell">{{ colis.client.telephone }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Poids/Qté</td>
                         <td class="value-cell">
                             {% if colis.type_colis == 'TELEPHONE' %}
-                            {{ colis.nombre_pieces }} PCS
+                                {{ colis.nombre_pieces }} PCS
                             {% elif colis.lot.type_transport == 'BATEAU' %}
-                                {{ colis.cbm }} CBM
+                                {{ colis.cbm|default:"0" }} CBM
                             {% else %}
-                                {{ colis.poids }} KG
+                                {{ colis.poids|default:"0" }} KG
                             {% endif %}
                         </td>
                     </tr>
                     <tr>
-                        <td class="label-cell">Type</td>
-                        <td class="value-cell">{{ colis.get_type_colis_display|upper }}</td>
+                        <td class="label-cell">Prix Total</td>
+                        <td class="value-cell price-text">{{ colis.prix_final|default:"0"|currency_no_symbol }} FCFA</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Transport</td>
+                        <td class="value-cell">{{ colis.lot.get_type_transport_display|upper }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Réception</td>
+                        <td class="value-cell">{{ colis.created_at|date:"d/m/Y" }}</td>
                     </tr>
                 </table>
 
-                <!-- QR Code Restauré et Compact -->
                 <div class="footer-box">
-                    <div class="footer-note">LOGISTIQUE TS AIR CARGO<br>EXPÉDITION INTERNATIONALE</div>
+                    <div class="footer-info">
+                        <div class="footer-note">LOGISTIQUE TS AIR CARGO<br>CHINE - MALI - CÔTE D'IVOIRE</div>
+                        <div style="font-size: 7pt; margin-top: 5px;">Suivi : https://ts-aircargo.com</div>
+                    </div>
                     <div class="qr-placeholder">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ colis.reference }}" style="width: 100%; height: 100%;">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://ts-aircargo.com/login" style="width: 100%; height: 100%;">
                     </div>
                 </div>
             </div>
         </div>
-{% endfor %}
+        {% endfor %}
     </div>
 {% endfor %}
 

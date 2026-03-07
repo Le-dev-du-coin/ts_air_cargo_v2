@@ -542,12 +542,20 @@
                              <h3 class="text-lg leading-6 font-medium text-gray-900">Colis dans ce lot</h3>
                              <div class="flex items-center gap-2">
                                 <span class="text-sm text-gray-500">{{ lot.colis.count }} colis</span>
-                                <a href="{% url 'chine:colis_print_pdf' %}?lot_id={{ lot.pk }}" target="_blank" class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                    <svg class="-ml-0.5 mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Imprimer toutes les étiquettes
-                                </a>
+                                <div class="flex flex-wrap gap-2">
+                                    <a href="{% url 'chine:colis_print_pdf' %}?lot_id={{ lot.pk }}" target="_blank" class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">
+                                        <svg class="-ml-0.5 mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                        Imprimer tout
+                                    </a>
+                                    <button type="button" onclick="printSelectedColis()" id="btn-print-selection" class="hidden inline-flex items-center px-2.5 py-1.5 border border-indigo-300 shadow-sm text-xs font-bold rounded text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">
+                                        <svg class="-ml-0.5 mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                        </svg>
+                                        Imprimer Sélection (<span id="selected-count">0</span>)
+                                    </button>
+                                </div>
                              </div>
                         </div>
                         <!-- Barre de recherche colis -->
@@ -571,10 +579,15 @@
                      hx-trigger="colisAdded from:body">
                     <ul id="colis-list-items" class="divide-y divide-gray-200">
                     {% for colis in colis_list %}
-                    <li class="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                    <li class="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
-                                <div class="flex-shrink-0 h-12 w-12 bg-gray-100 rounded-lg overflow-hidden">
+                                <div class="mr-4">
+                                    <input type="checkbox" name="selected_colis" value="{{ colis.id }}" 
+                                           onchange="updateSelectionCount()"
+                                           class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer">
+                                </div>
+                                <div class="flex-shrink-0 h-12 w-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                                     {% if colis.photo %}
                                     <img src="{{ colis.photo.url }}" alt="Colis" class="h-12 w-12 object-cover">
                                     {% else %}
@@ -760,6 +773,37 @@ function filterColisList(query) {
         document.getElementById('colis-list-items').appendChild(noResultsEl);
     }
     noResultsEl.style.display = (visibleCount === 0 && q) ? '' : 'none';
+}
+
+function updateSelectionCount() {
+    const selected = document.querySelectorAll('input[name="selected_colis"]:checked');
+    const count = selected.length;
+    const btn = document.getElementById('btn-print-selection');
+    const countEl = document.getElementById('selected-count');
+    
+    if (count > 0) {
+        btn.classList.remove('hidden');
+        countEl.textContent = count;
+        // Hint for batch of 4
+        if (count % 4 === 0) {
+            btn.classList.add('ring-4', 'ring-indigo-200');
+        } else {
+            btn.classList.remove('ring-4', 'ring-indigo-200');
+        }
+    } else {
+        btn.classList.add('hidden');
+    }
+}
+
+function printSelectedColis() {
+    const selected = document.querySelectorAll('input[name="selected_colis"]:checked');
+    if (selected.length === 0) {
+        alert("⚠️ Veuillez sélectionner au moins un colis à imprimer.");
+        return;
+    }
+    const ids = Array.from(selected).map(cb => cb.value).join(',');
+    const url = "{% url 'chine:colis_print_pdf' %}?colis_ids=" + ids;
+    window.open(url, '_blank');
 }
 </script>
 {% endblock %}

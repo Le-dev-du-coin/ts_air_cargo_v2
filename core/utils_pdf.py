@@ -15,7 +15,7 @@ async def generate_pdf_playwright(html_content, format="A4", landscape=False):
 
         # Définit le contenu HTML
         # wait_until="networkidle" est crucial pour s'assurer que les polices et images sont chargées
-        await page.set_content(html_content, wait_until="networkidle")
+        await page.set_content(html_content, wait_until="networkidle", timeout=30000)
 
         # Génère le PDF
         pdf_bytes = await page.pdf(

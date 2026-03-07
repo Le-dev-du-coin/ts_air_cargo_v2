@@ -1775,9 +1775,9 @@ class ColisEtiquettePDFView(LoginRequiredMixin, StrictAgentChineRequiredMixin, V
             messages.error(request, "Aucun colis sélectionné pour l'impression.")
             return redirect(request.META.get("HTTP_REFERER", "chine:dashboard"))
 
-        # Découpage par lots de 6 pour la mise en page A4
+        # Découpage par lots de 4 pour la mise en page A4 (Grille 2x2)
         colis_list = list(colis_qs)
-        colis_batches = [colis_list[i : i + 6] for i in range(0, len(colis_list), 6)]
+        colis_batches = [colis_list[i : i + 4] for i in range(0, len(colis_list), 4)]
 
         context = {
             "colis_batches": colis_batches,
