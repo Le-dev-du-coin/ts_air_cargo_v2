@@ -29,11 +29,12 @@
         .page-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(2, 1fr); /* Retour à 2 lignes fixes */
-            gap: 3mm; /* Réduit de 10mm à 3mm */
+            grid-template-rows: repeat(2, 1fr);
+            column-gap: 3mm;
+            row-gap: 20mm; /* Réduit de 25mm à 20mm pour plus de sécurité contre le débordement */
             width: 100%;
-            height: calc(100vh - 10mm); /* Utilise la hauteur disponible */
-            max-height: 285mm; /* Sécurité pour A4 (297mm) */
+            height: auto;
+            max-height: 280mm; /* Réduit de 290mm à 280mm pour bien tenir sur A4 (297mm) */
         }
 
         .etiquette-cell {
@@ -57,7 +58,7 @@
             border: 2pt solid var(--brand-gold);
             background-color: var(--bg-header);
             margin: 1.5mm;
-            padding: 3mm 1mm;
+            padding: 2mm 1mm; /* Réduit de 3mm à 2mm */
             text-align: center;
         }
 
@@ -76,7 +77,7 @@
 
         .info-table td {
             border-top: 1pt solid var(--border-color);
-            padding: 2mm 3mm;
+            padding: 1.5mm 3mm; /* Réduit de 2mm à 1.5mm pour gagner de l'espace vertical */
             vertical-align: middle;
             line-height: 1.2;
         }
@@ -119,13 +120,15 @@
             align-items: center;
             justify-content: space-between;
             background-color: #fff;
-            margin-top: 2mm; /* Changé de auto à 2mm pour réduire l'espace */
+            margin-top: 1mm; /* Réduit de 2mm à 1mm comme demandé */
         }
 
         .qr-placeholder {
-            width: 28mm;
-            height: 28mm;
-            border: 1pt solid #000;
+            width: 30mm; /* Légèrement augmenté pour la Quiet Zone */
+            height: 30mm;
+            background-color: white;
+            padding: 2mm; /* QUIET ZONE : Indispensable pour le scan */
+            box-sizing: border-box;
         }
 
         .footer-info {

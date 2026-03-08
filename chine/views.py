@@ -44,6 +44,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, UpdateView, DeleteView
 from core.models import Tarif
 from .forms import TarifForm
+from django.core.paginator import Paginator
+from django.db.models import Q
 
 User = get_user_model()
 
@@ -1118,13 +1120,23 @@ class LotDetailView(LoginRequiredMixin, AgentChineRequiredMixin, DetailView):
 
         context["colis_form"] = ColisForm()
 
-        # Pagination for colis_list
-        from django.core.paginator import Paginator
-
         colis_queryset = self.object.colis.all().order_by("-created_at")
+
+        # Filtrage par recherche
+        q = self.request.GET.get("q")
+        if q:
+            colis_queryset = colis_queryset.filter(
+                Q(reference__icontains=q)
+                | Q(client__nom__icontains=q)
+                | Q(client__prenom__icontains=q)
+                | Q(client__telephone__icontains=q)
+                | Q(description__icontains=q)
+            )
+
         paginator = Paginator(colis_queryset, 10)  # 10 colis per page
         page_number = self.request.GET.get("page")
         context["colis_list"] = paginator.get_page(page_number)
+        context["q"] = q or ""  # Passer la recherche au contexte pour la pagination
 
         return context
 

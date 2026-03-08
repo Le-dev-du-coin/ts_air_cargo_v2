@@ -560,23 +560,26 @@
                                 </div>
                              </div>
                         </div>
-                        <!-- Barre de recherche colis -->
+                        <!-- Barre de recherche colis (HTMX) -->
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                 </svg>
                             </div>
-                            <input type="text" id="colis-search-input"
-                                   placeholder="Rechercher un colis..."
+                            <input type="text" name="q" value="{{ q }}"
+                                   placeholder="Rechercher (Nom, Réf, Tel...)"
                                    class="pl-10 pr-4 py-2 border-2 border-indigo-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 w-full sm:w-64 bg-indigo-50 placeholder-indigo-300 text-indigo-900 font-medium"
-                                   oninput="filterColisList(this.value)">
+                                   hx-get="{% url 'chine:lot_detail' lot.pk %}"
+                                   hx-trigger="keyup changed delay:500ms"
+                                   hx-target="#colis-list-container"
+                                   hx-select="#colis-list-container"
+                                   hx-push-url="true">
                         </div>
                     </div>
                 </div>
                 <div id="colis-list-container"
- 
-                     hx-get="{% url 'chine:lot_detail' lot.pk %}" 
+                     hx-get="{% url 'chine:lot_detail' lot.pk %}?q={{ q }}" 
                      hx-select="#colis-list-items" 
                      hx-trigger="colisAdded from:body">
                     <ul id="colis-list-items" class="divide-y divide-gray-200">
@@ -606,8 +609,11 @@
                                             {{ colis.reference }}
                                         </div>
                                     </div>
-                                    <div class="text-sm text-gray-900">
+                                    <div class="text-sm text-gray-900 font-medium">
                                         {{ colis.client.nom }} {{ colis.client.prenom }}
+                                    </div>
+                                    <div class="text-xs text-indigo-600 font-bold">
+                                        {{ colis.client.telephone }}
                                     </div>
                                     <div class="text-sm text-gray-500">
                                         {{ colis.description }}
@@ -687,7 +693,12 @@
                         <div>
                             <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                                 {% if colis_list.has_previous %}
-                                <a href="?page={{ colis_list.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <a href="?page={{ colis_list.previous_page_number }}&q={{ q }}" 
+                                   hx-get="?page={{ colis_list.previous_page_number }}&q={{ q }}"
+                                   hx-target="#colis-list-container"
+                                   hx-select="#colis-list-container"
+                                   hx-push-url="true"
+                                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                     <span class="sr-only">Précédent</span>
                                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -695,7 +706,12 @@
                                 </a>
                                 {% endif %}
                                 {% if colis_list.has_next %}
-                                <a href="?page={{ colis_list.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <a href="?page={{ colis_list.next_page_number }}&q={{ q }}" 
+                                   hx-get="?page={{ colis_list.next_page_number }}&q={{ q }}"
+                                   hx-target="#colis-list-container"
+                                   hx-select="#colis-list-container"
+                                   hx-push-url="true"
+                                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                     <span class="sr-only">Suivant</span>
                                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
@@ -743,32 +759,7 @@
 </div>
 
 <script>
-function filterColisList(query) {
-    const q = query.toLowerCase().trim();
-    const items = document.querySelectorAll('#colis-list-items li');
-    let visibleCount = 0;
 
-    items.forEach(function(li) {
-        const text = li.innerText.toLowerCase();
-        if (!q || text.includes(q)) {
-            li.style.display = '';
-            visibleCount++;
-        } else {
-            li.style.display = 'none';
-        }
-    });
-
-    // Indicate no results
-    let noResultsEl = document.getElementById('colis-no-results');
-    if (!noResultsEl) {
-        noResultsEl = document.createElement('li');
-        noResultsEl.id = 'colis-no-results';
-        noResultsEl.className = 'px-4 py-8 text-center text-sm text-gray-400 italic';
-        noResultsEl.textContent = 'Aucun colis correspondant à votre recherche.';
-        document.getElementById('colis-list-items').appendChild(noResultsEl);
-    }
-    noResultsEl.style.display = (visibleCount === 0 && q) ? '' : 'none';
-}
 
 function updateSelectionCount() {
     const selected = document.querySelectorAll('input[name="selected_colis"]:checked');
