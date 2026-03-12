@@ -1,0 +1,132 @@
+{% extends "chine/base.html" %}
+{% load humanize %}
+
+{% block title %}Statistiques Transport — TS Air Cargo{% endblock %}
+{% block header %}Statistiques Transport{% endblock %}
+
+{% block chine_content %}
+<div class="space-y-6">
+
+    <!-- Filtre Mois / Année -->
+    <div class="bg-white shadow rounded-xl p-5 flex flex-wrap items-end gap-4">
+        <form method="GET" class="flex flex-wrap items-end gap-4 w-full">
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Année</label>
+                <select name="year" class="block border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold">
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Mois</label>
+                <select name="month" class="block border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if num == selected_month %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all">
+                Filtrer
+            </button>
+            <a href="{% url 'chine:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all">
+                ← Dashboard
+            </a>
+        </form>
+    </div>
+
+    <!-- Grille : Mali + CI côte à côte -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {% for stats, code, label, accent in stats_list %}
+        <!-- Carte Pays -->
+        <div class="bg-white shadow-lg rounded-xl overflow-hidden border-t-4 border-{{ accent }}-500">
+            <div class="px-6 py-4 bg-{{ accent }}-50/40 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                    {% if code == "ML" %}🇲🇱{% else %}🇨🇮{% endif %}
+                    <span class="ml-2">{{ label }}</span>
+                </h2>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-{{ accent }}-100 text-{{ accent }}-800">
+                    {{ stats.nb_lots }} lots
+                </span>
+            </div>
+
+            <div class="px-6 py-4 space-y-6">
+
+                <!-- ✈️ AVION -->
+                <div class="rounded-lg bg-blue-50/60 border border-blue-100 p-4">
+                    <h3 class="text-sm font-black text-blue-800 uppercase tracking-wider mb-3 flex items-center">
+                        <span class="text-xl mr-2">✈️</span> Avion (Cargo & Express)
+                    </h3>
+                    <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-white rounded-lg p-3 shadow-sm text-center">
+                            <dt class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Expédiés</dt>
+                            <dd class="mt-1 text-xl font-black text-blue-700">{{ stats.nb_colis_expedies_avion|default:"0" }}</dd>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 shadow-sm text-center">
+                            <dt class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Livrés</dt>
+                            <dd class="mt-1 text-xl font-black text-indigo-700">{{ stats.nb_colis_livres_avion|default:"0" }}</dd>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 shadow-sm text-center">
+                            <dt class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Chiffre d'Affaires</dt>
+                            <dd class="mt-1 text-sm font-black text-gray-800">{{ stats.ca_avion|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-3 shadow-sm text-center border border-green-100">
+                            <dt class="text-[10px] font-semibold text-green-700 uppercase tracking-wider">Bénéfice Brut</dt>
+                            <dd class="mt-1 text-sm font-black text-green-800">{{ stats.benefice_brut_avion|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <!-- 🚢 BATEAU -->
+                <div class="rounded-lg bg-teal-50/60 border border-teal-100 p-4">
+                    <h3 class="text-sm font-black text-teal-800 uppercase tracking-wider mb-3 flex items-center">
+                        <span class="text-xl mr-2">🚢</span> Bateau
+                    </h3>
+                    <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-white rounded-lg p-3 shadow-sm text-center">
+                            <dt class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Expédiés</dt>
+                            <dd class="mt-1 text-xl font-black text-teal-700">{{ stats.nb_colis_expedies_bateau|default:"0" }}</dd>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 shadow-sm text-center">
+                            <dt class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Livrés</dt>
+                            <dd class="mt-1 text-xl font-black text-cyan-700">{{ stats.nb_colis_livres_bateau|default:"0" }}</dd>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 shadow-sm text-center">
+                            <dt class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Chiffre d'Affaires</dt>
+                            <dd class="mt-1 text-sm font-black text-gray-800">{{ stats.ca_bateau|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-3 shadow-sm text-center border border-green-100">
+                            <dt class="text-[10px] font-semibold text-green-700 uppercase tracking-wider">Bénéfice Brut</dt>
+                            <dd class="mt-1 text-sm font-black text-green-800">{{ stats.benefice_brut_bateau|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <!-- Comparaison Rapide -->
+                <div class="rounded-lg bg-gray-50 border border-gray-100 p-4">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Total Consolidé</h3>
+                    <dl class="grid grid-cols-3 gap-3">
+                        <div class="text-center">
+                            <dt class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Total Colis</dt>
+                            <dd class="text-lg font-black text-gray-800">{{ stats.nb_colis|default:"0" }}</dd>
+                        </div>
+                        <div class="text-center">
+                            <dt class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Total CA</dt>
+                            <dd class="text-lg font-black text-gray-800">{{ stats.montant_colis|default:"0"|floatformat:0|intcomma }}</dd>
+                        </div>
+                        <div class="text-center">
+                            <dt class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Bénéfice Net</dt>
+                            <dd class="text-lg font-black {% if stats.benefice >= 0 %}text-green-700{% else %}text-red-600{% endif %}">{{ stats.benefice|default:"0"|floatformat:0|intcomma }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+
+</div>
+{% endblock %}

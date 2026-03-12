@@ -116,13 +116,22 @@
         <!-- Pagination -->
         {% if colis_list.has_other_pages %}
         <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-between items-center">
-            <span class="text-xs font-bold text-gray-500">Lot {{ lot.numero }} - Page {{ colis_list.number }}</span>
+            <span class="text-xs font-bold text-gray-500">Lot {{ lot.numero }} - Page {{ colis_list.number }} sur {{ colis_list.paginator.num_pages }}</span>
             <div class="flex space-x-1">
                 {% if colis_list.has_previous %}
-                    <a href="?page={{ colis_list.previous_page_number }}" class="px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-50">Précédent</a>
+                    <a href="?page={{ colis_list.previous_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-50">Précédent</a>
                 {% endif %}
+                
+                {% for i in colis_list.paginator.page_range %}
+                    {% if colis_list.number == i %}
+                        <span class="px-3 py-1 bg-indigo-50 border border-gray-300 rounded text-xs font-bold text-indigo-700">{{ i }}</span>
+                    {% elif i > colis_list.number|add:'-3' and i < colis_list.number|add:'3' %}
+                        <a href="?page={{ i }}{% if qc %}&qc={{ qc }}{% endif %}" class="px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-50">{{ i }}</a>
+                    {% endif %}
+                {% endfor %}
+
                 {% if colis_list.has_next %}
-                    <a href="?page={{ colis_list.next_page_number }}" class="px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-50">Suivant</a>
+                    <a href="?page={{ colis_list.next_page_number }}{% if qc %}&qc={{ qc }}{% endif %}" class="px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-50">Suivant</a>
                 {% endif %}
             </div>
         </div>

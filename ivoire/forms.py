@@ -4,7 +4,7 @@ from notification.models import ConfigurationNotification
 
 class NotificationConfigForm(forms.ModelForm):
     """
-    Formulaire agent Mali : rappels automatiques + numéro de rapport journalier.
+    Formulaire agent Côte d'Ivoire : rappels automatiques + numéro de rapport journalier.
     Les credentials API WaChap sont gérés par l'administrateur.
     """
 

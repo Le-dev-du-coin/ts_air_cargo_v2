@@ -75,6 +75,9 @@
                         <a href="{% url 'chine:monthly_archives' %}" class="{% if 'archives' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Archives Mensuelles
                         </a>
+                        <a href="{% url 'chine:transport_stats' %}" class="{% if 'transport_stats' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                            ✈️ Stats Transport
+                        </a>
 
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gestion Personnel</h3></div>
                         <a href="{% url 'chine:agent_list' %}" class="{% if 'agent' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
@@ -107,7 +110,7 @@
                             </div>
                         </div>
                         <div class="ml-3 min-w-0 flex-1">
-                            <p class="text-sm font-medium text-white truncate">{{ user.username }}</p>
+                            <p class="text-sm font-medium text-white truncate">{{ user.get_full_name|default:user.username }}</p>
                             <p class="text-xs text-slate-400 truncate">{{ user.get_role_display }}</p>
                         </div>
                         <a href="{% url 'core:logout' %}" class="ml-2 text-slate-400 hover:text-white transition-colors" title="Déconnexion">
@@ -220,6 +223,14 @@
                         </svg>
                         Archives Mensuelles
                     </a>
+                    <a href="{% url 'chine:transport_stats' %}"
+                        class="{% if 'transport_stats' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
+                        <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'transport_stats' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Stats Transport
+                    </a>
                     {% endif %}
 
                     <!-- Admin Sections -->
@@ -305,7 +316,7 @@
                         </div>
                     </div>
                     <div class="ml-3 min-w-0 flex-1">
-                        <p class="text-sm font-medium text-white truncate">{{ user.username }}</p>
+                        <p class="text-sm font-medium text-white truncate">{{ user.get_full_name|default:user.username }}</p>
                         <p class="text-xs text-slate-400 truncate">{{ user.get_role_display }}</p>
                     </div>
                     <a href="{% url 'core:logout' %}" class="ml-2 text-slate-400 hover:text-white transition-colors"

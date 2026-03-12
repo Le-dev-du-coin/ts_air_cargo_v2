@@ -574,13 +574,15 @@
                                    hx-trigger="keyup changed delay:500ms"
                                    hx-target="#colis-list-container"
                                    hx-select="#colis-list-container"
+                                   hx-swap="outerHTML"
                                    hx-push-url="true">
                         </div>
                     </div>
                 </div>
                 <div id="colis-list-container"
                      hx-get="{% url 'chine:lot_detail' lot.pk %}?q={{ q }}" 
-                     hx-select="#colis-list-items" 
+                     hx-select="#colis-list-container"
+                     hx-swap="outerHTML"
                      hx-trigger="colisAdded from:body">
                     <ul id="colis-list-items" class="divide-y divide-gray-200">
                     {% for colis in colis_list %}
@@ -671,17 +673,17 @@
                     </li>
                     {% endfor %}
                 </ul>
-                </div>
+                </ul>
                 
                 <!-- Colis Pagination -->
                 {% if colis_list.has_other_pages %}
                 <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-b-lg">
                     <div class="flex-1 flex justify-between sm:hidden">
                         {% if colis_list.has_previous %}
-                        <a href="?page={{ colis_list.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Précédent</a>
+                        <a href="?page={{ colis_list.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Précédent</a>
                         {% endif %}
                         {% if colis_list.has_next %}
-                        <a href="?page={{ colis_list.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Suivant</a>
+                        <a href="?page={{ colis_list.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Suivant</a>
                         {% endif %}
                     </div>
                     <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
@@ -693,10 +695,11 @@
                         <div>
                             <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                                 {% if colis_list.has_previous %}
-                                <a href="?page={{ colis_list.previous_page_number }}&q={{ q }}" 
-                                   hx-get="?page={{ colis_list.previous_page_number }}&q={{ q }}"
+                                <a href="?page={{ colis_list.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" 
+                                   hx-get="?page={{ colis_list.previous_page_number }}{% if q %}&q={{ q }}{% endif %}"
                                    hx-target="#colis-list-container"
                                    hx-select="#colis-list-container"
+                                   hx-swap="outerHTML"
                                    hx-push-url="true"
                                    class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                     <span class="sr-only">Précédent</span>
@@ -705,11 +708,27 @@
                                     </svg>
                                 </a>
                                 {% endif %}
+                                
+                                {% for i in colis_list.paginator.page_range %}
+                                    {% if colis_list.number == i %}
+                                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-indigo-50 text-sm font-medium text-indigo-600">{{ i }}</span>
+                                    {% elif i > colis_list.number|add:'-3' and i < colis_list.number|add:'3' %}
+                                        <a href="?page={{ i }}{% if q %}&q={{ q }}{% endif %}" 
+                                           hx-get="?page={{ i }}{% if q %}&q={{ q }}{% endif %}"
+                                           hx-target="#colis-list-container"
+                                           hx-select="#colis-list-container"
+                                           hx-swap="outerHTML"
+                                           hx-push-url="true"
+                                           class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ i }}</a>
+                                    {% endif %}
+                                {% endfor %}
+
                                 {% if colis_list.has_next %}
-                                <a href="?page={{ colis_list.next_page_number }}&q={{ q }}" 
-                                   hx-get="?page={{ colis_list.next_page_number }}&q={{ q }}"
+                                <a href="?page={{ colis_list.next_page_number }}{% if q %}&q={{ q }}{% endif %}" 
+                                   hx-get="?page={{ colis_list.next_page_number }}{% if q %}&q={{ q }}{% endif %}"
                                    hx-target="#colis-list-container"
                                    hx-select="#colis-list-container"
+                                   hx-swap="outerHTML"
                                    hx-push-url="true"
                                    class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                     <span class="sr-only">Suivant</span>
@@ -721,8 +740,8 @@
                             </nav>
                         </div>
                     </div>
-                </div>
                 {% endif %}
+                </div>
             </div>
         </div>
     </div>

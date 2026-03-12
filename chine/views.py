@@ -142,6 +142,43 @@ def get_country_stats(country_code, year=None, month=None):
         - stats["cout_douane"]
         - stats["total_depenses_global"]
     )
+
+    # ------------------ SEPARATION AVION / BATEAU ------------------
+    # Définition des querysets Avion et Bateau (avant tout usage)
+    colis_avion = colis.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
+    colis_bateau = colis.filter(lot__type_transport="BATEAU")
+    lots_avion = lots.filter(type_transport__in=["CARGO", "EXPRESS"])
+    lots_bateau = lots.filter(type_transport="BATEAU")
+
+    # CA Avion
+    montant_brut_avion = colis_avion.aggregate(total=Sum("prix_final"))["total"] or 0
+    total_jc_avion = colis_avion.aggregate(total=Sum("montant_jc"))["total"] or 0
+    stats["ca_avion"] = montant_brut_avion - total_jc_avion
+
+    # CA Bateau
+    montant_brut_bateau = colis_bateau.aggregate(total=Sum("prix_final"))["total"] or 0
+    total_jc_bateau = colis_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0
+    stats["ca_bateau"] = montant_brut_bateau - total_jc_bateau
+
+    # Coûts Avion
+    cout_transport_avion = lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0
+    cout_douane_avion = lots_avion.aggregate(total=Sum("frais_douane"))["total"] or 0
+
+    # Coûts Bateau
+    cout_transport_bateau = lots_bateau.aggregate(total=Sum("frais_transport"))["total"] or 0
+    cout_douane_bateau = lots_bateau.aggregate(total=Sum("frais_douane"))["total"] or 0
+
+    # Bénéfice brut Avion et Bateau
+    stats["benefice_brut_avion"] = stats["ca_avion"] - cout_transport_avion - cout_douane_avion
+    stats["benefice_brut_bateau"] = stats["ca_bateau"] - cout_transport_bateau - cout_douane_bateau
+
+    # Compteurs Expédiés / Livrés
+    stats["nb_colis_expedies_avion"] = colis_avion.count()
+    stats["nb_colis_expedies_bateau"] = colis_bateau.count()
+
+    stats["nb_colis_livres_avion"] = colis_avion.filter(status="LIVRE").count()
+    stats["nb_colis_livres_bateau"] = colis_bateau.filter(status="LIVRE").count()
+
     stats["nb_lots"] = lots.count()
     stats["nb_colis"] = colis.count()
 
@@ -229,6 +266,7 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
 
         # Stats avancées pour l'Admin Chine
         if self.request.user.role == "ADMIN_CHINE":
+
             # Récupération des stats séparées (MOIS EN COURS)
             now = timezone.now()
             context["stats_ml"] = get_country_stats("ML", now.year, now.month)
@@ -291,7 +329,50 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         return context
 
 
+
+class TransportStatsDetailView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateView):
+    """
+    Page de détails des statistiques Avion vs Bateau par pays (Mali & CI).
+    Accessible uniquement par les ADMIN_CHINE.
+    """
+    template_name = "chine/transport_stats.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
+        try:
+            selected_year = int(self.request.GET.get("year", now.year))
+            selected_month = int(self.request.GET.get("month", now.month))
+        except (ValueError, TypeError):
+            selected_year = now.year
+            selected_month = now.month
+
+        context["selected_year"] = selected_year
+        context["selected_month"] = selected_month
+        context["current_year"] = now.year
+        context["years"] = list(range(now.year, now.year - 4, -1))
+        context["months"] = [
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
+        ]
+
+        context["stats_ml"] = get_country_stats("ML", selected_year, selected_month)
+        context["stats_ci"] = get_country_stats("CI", selected_year, selected_month)
+        context["stats_ml_global"] = get_country_stats("ML")
+        context["stats_ci_global"] = get_country_stats("CI")
+
+        context["stats_list"] = [
+            (context["stats_ml"], "ML", "Mali 🇲🇱", "green"),
+            (context["stats_ci"], "CI", "Côte d'Ivoire 🇨🇮", "orange"),
+        ]
+
+        return context
+
+
 class MonthlyArchivesView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateView):
+
     template_name = "chine/archives.html"
 
     def get_context_data(self, **kwargs):
@@ -1037,15 +1118,16 @@ class LotStatusUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Vie
                         if lot.date_expedition
                         else "date non renseign\u00e9e"
                     )
+                    transport_icon = "🚢" if lot.type_transport == "BATEAU" else "✈️"
                     msg = (
                         f"Bonjour *{nom_complet}*,\n\n"
-                        f"✈️ *{'Colis exp\u00e9di\u00e9' if nb == 1 else f'{nb} colis exp\u00e9di\u00e9s'} \u2014 En transit !*\n\n"
-                        f"Votre {'colis est' if nb == 1 else 'commande est'} en route vers le Mali 🇲🇱 :\n"
+                        f"{transport_icon} *{'Colis expédié' if nb == 1 else f'{nb} colis expédiés'} — En transit !*\n\n"
+                        f"Votre {'colis est' if nb == 1 else 'commande est'} en route vers {lot.destination.name} :\n"
                         f"{lines}\n\n"
                         f"📋 Lot : *{lot.numero}*\n"
                         f"📅 Date d'exp\u00e9dition : *{date_exp}*\n"
                         f"📡 Transport : *{lot.get_type_transport_display()}*\n\n"
-                        f"🔔 Vous recevrez une notification d\u00e8s l'arriv\u00e9e au Mali.\n\n"
+                        f"🔔 Vous recevrez une notification dès l'arrivée à destination.\n\n"
                         f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
                         f"\u2014\u2014\n"
                         f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"

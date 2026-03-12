@@ -127,7 +127,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         ).aggregate(total=Sum("prix_final"))
         context["encaissements_jour"] = encaissements["total"] or 0
 
-        # 9. Total Clients Mali
+        # 9. Total Clients Côte d'Ivoire
         context["total_clients_mali"] = Client.objects.filter(country=mali).count()
 
         # Activité récente (derniers colis pointés/livrés aujourd'hui)
@@ -284,7 +284,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
 
 
 class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
-    """Liste des lots en transit vers le Mali"""
+    """Liste des lots en transit vers la Côte d'Ivoire"""
 
     template_name = "ivoire/lots_transit.html"
     context_object_name = "lots"
@@ -347,7 +347,7 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
 
 
 class LotsArrivesView(LotsEnTransitView):
-    """Vue historique des lots arrivés au Mali (statut ARRIVE ou LIVRE)"""
+    """Vue historique des lots arrivés en Côte d'Ivoire (statut ARRIVE ou LIVRE)"""
 
     template_name = "ivoire/lots_arrives.html"
 
@@ -460,7 +460,7 @@ class LotsLivresView(LotsEnTransitView):
 
 
 class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailView):
-    """Vue détaillée d'un lot pour l'agent Mali (avec pointage des colis)"""
+    """Vue détaillée d'un lot pour l'agent Côte d'Ivoire (avec pointage des colis)"""
 
     model = Lot
     template_name = "ivoire/lot_detail.html"
@@ -671,7 +671,7 @@ class ColisArriveView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
                     f"Bonjour *{nom_pointage}*,\n\n"
                     f"📍 *Bonne nouvelle ! Votre colis est arriv\u00e9 !*\n\n"
                     f"Nous venons de r\u00e9ceptionner votre colis *{colis.reference}* "
-                    f"dans notre agence au Mali 🇲🇱 le *{date_arrive}*.\n\n"
+                    f"dans notre agence en Côte d'Ivoire 🇨🇮 le *{date_arrive}*.\n\n"
                     f"💰 *Montant \u00e0 r\u00e9gler : {fmt_prix} FCFA*\n\n"
                     f"Merci de passer le r\u00e9cup\u00e9rer \u00e0 votre convenance.\n\n"
                     f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
@@ -856,7 +856,7 @@ class NotifyArrivalsView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             message = (
                 f"Bonjour *{nom_notify}*,\n\n"
                 f"📍 *{'Bonne nouvelle ! Votre colis est arriv\u00e9 !' if nb == 1 else f'Bonne nouvelle ! Vos {nb} colis sont arriv\u00e9s !'}*\n\n"
-                f"Nous venons de r\u00e9ceptionner {'votre colis' if nb == 1 else 'vos colis'} \u00e0 l'agence au Mali 🇲🇱 :\n"
+                f"Nous venons de réceptionner {'votre colis' if nb == 1 else 'vos colis'} à l'agence en Côte d'Ivoire 🇨🇮 :\n"
                 f"{liste_str}\n\n"
                 f"💰 *Total \u00e0 r\u00e9gler : {fmt_total} FCFA*\n\n"
                 f"Merci de passer {'le' if nb == 1 else 'les'} r\u00e9cup\u00e9rer \u00e0 votre convenance.\n\n"
@@ -1212,7 +1212,7 @@ class NotificationConfigView(
     LoginRequiredMixin, DestinationAgentRequiredMixin, UpdateView
 ):
     """
-    Permet à l'agent Mali de configurer les rappels automatiques.
+    Permet à l'agent Côte d'Ivoire de configurer les rappels automatiques.
     NB : La configuration des credentials API WaChap est gestion de l'admin_app.
     """
 

@@ -72,7 +72,7 @@
                             </div>
                         </div>
                         <div class="ml-3 min-w-0 flex-1">
-                            <p class="text-sm font-medium text-white truncate">{{ user.username }}</p>
+                            <p class="text-sm font-medium text-white truncate">{{ user.get_full_name|default:user.username }}</p>
                             <p class="text-xs text-green-300 truncate">{{ user.get_role_display }}</p>
                         </div>
                         <a href="{% url 'core:logout' %}" class="ml-2 text-green-300 hover:text-white transition-colors" title="Déconnexion">

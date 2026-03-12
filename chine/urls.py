@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     DashboardView,
+    TransportStatsDetailView,
     MonthlyArchivesView,
     ClientListView,
     ClientCreateView,
@@ -51,6 +52,7 @@ app_name = "chine"
 urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("archives/", MonthlyArchivesView.as_view(), name="monthly_archives"),
+    path("stats/transport/", TransportStatsDetailView.as_view(), name="transport_stats"),
     # Background Tasks
     path("tasks/", TaskListView.as_view(), name="task_list"),
     path("notifications/", NotificationListView.as_view(), name="notification_list"),
