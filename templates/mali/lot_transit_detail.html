@@ -91,6 +91,7 @@
             showModal: false,
             colisRef: '',
             colisClient: '',
+            colisPhone: '',
             colisPoids: '',
             colisPrix: '',
             colisType: '',
@@ -98,9 +99,10 @@
             colisPayeChine: false,
             colisPhoto: '',
             showZoom: false,
-            openDetail(ref, client, poids, prix, type, description, payeChine, photo) {
+            openDetail(ref, client, phone, poids, prix, type, description, payeChine, photo) {
                 this.colisRef = ref;
                 this.colisClient = client;
+                this.colisPhone = phone;
                 this.colisPoids = poids;
                 this.colisPrix = prix;
                 this.colisType = type;
@@ -149,7 +151,7 @@
                     <div class="flex items-center min-w-0 flex-1">
                         <!-- Vignette image cliquable → modal détail -->
                         <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner cursor-pointer"
-                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.est_paye %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
+                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.est_paye %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
                             {% if colis.photo %}
                             <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover">
                             {% else %}
@@ -283,9 +285,13 @@
 
                         <!-- Infos -->
                         <div class="grid grid-cols-2 gap-3 text-sm">
-                            <div class="bg-gray-50 rounded-lg p-3 col-span-2">
+                            <div class="bg-gray-50 rounded-lg p-3">
                                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Client</p>
                                 <p class="font-bold text-gray-800" x-text="colisClient"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Téléphone</p>
+                                <p class="font-bold text-gray-800" x-text="colisPhone || '—'"></p>
                             </div>
                             <div class="bg-gray-50 rounded-lg p-3">
                                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Poids / Qté</p>
@@ -297,7 +303,8 @@
                             </div>
                             <div class="bg-gray-50 rounded-lg p-3 col-span-2">
                                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Prix</p>
-                                <p class="font-bold text-green-700 text-base" x-text="new Intl.NumberFormat('fr-FR').format(parseFloat(String(colisPrix).replace(/[^\d.]/g,'')) || 0) + ' FCFA'"></p>
+                                <!-- Fix: French locale '1 000,00' → remove spaces → '1000,00' → replace comma → '1000.00' → parseFloat → 1000 -->
+                                <p class="font-bold text-green-700 text-base" x-text="new Intl.NumberFormat('fr-FR').format(parseFloat(String(colisPrix).replace(/\s|\u00a0/g,'').replace(',','.')) || 0) + ' FCFA'"></p>
                             </div>
                         </div>
 

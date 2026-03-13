@@ -694,6 +694,7 @@ class LotTransitDetailView(LotDetailView):
                 Q(reference__icontains=qc)
                 | Q(client__nom__icontains=qc)
                 | Q(nom_complet__icontains=qc)
+                | Q(client__telephone__icontains=qc)
             )
 
         from django.core.paginator import Paginator
@@ -730,6 +731,7 @@ class LotArriveDetailView(LotDetailView):
                 Q(reference__icontains=qc)
                 | Q(client__nom__icontains=qc)
                 | Q(nom_complet__icontains=qc)
+                | Q(client__telephone__icontains=qc)
             )
 
         from django.core.paginator import Paginator
