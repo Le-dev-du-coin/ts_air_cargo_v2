@@ -76,6 +76,13 @@
                             <span class="text-sm font-bold text-gray-900 bg-gray-100 px-3 py-1 rounded-full">
                                 {{ lot.nb_colis_livre }}
                             </span>
+                            {% if lot.nb_colis_payes_chine %}
+                            <div class="mt-1">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 uppercase">
+                                    🇨🇳 {{ lot.nb_colis_payes_chine }} payé{{ lot.nb_colis_payes_chine|pluralize }} Chine
+                                </span>
+                            </div>
+                            {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <span class="text-sm font-extrabold text-green-700">

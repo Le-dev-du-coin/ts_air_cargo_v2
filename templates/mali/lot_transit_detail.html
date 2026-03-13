@@ -85,8 +85,32 @@
         </div>
     </div>
 
-    <!-- Colis List (Pointage) -->
-    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
+    <!-- Colis List (Pointage) avec Modal Détail -->
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100"
+         x-data="{
+            showModal: false,
+            colisRef: '',
+            colisClient: '',
+            colisPoids: '',
+            colisPrix: '',
+            colisType: '',
+            colisDescription: '',
+            colisPayeChine: false,
+            colisPhoto: '',
+            showZoom: false,
+            openDetail(ref, client, poids, prix, type, description, payeChine, photo) {
+                this.colisRef = ref;
+                this.colisClient = client;
+                this.colisPoids = poids;
+                this.colisPrix = prix;
+                this.colisType = type;
+                this.colisDescription = description;
+                this.colisPayeChine = payeChine;
+                this.colisPhoto = photo;
+                this.showZoom = false;
+                this.showModal = true;
+            }
+         }">
         <div class="px-6 py-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 bg-gray-50/50">
             <div>
                 <h3 class="text-lg font-bold text-gray-900">Pointage des Colis (Déchargement)</h3>
@@ -123,9 +147,11 @@
             <li id="colis-item-{{ colis.pk }}" class="px-6 py-5 hover:bg-green-50/30 transition-colors">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center min-w-0 flex-1">
-                        <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
+                        <!-- Vignette image cliquable → modal détail -->
+                        <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner cursor-pointer"
+                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.est_paye %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
                             {% if colis.photo %}
-                            <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover cursor-pointer" onclick="window.open(this.src)">
+                            <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover">
                             {% else %}
                             <div class="h-full w-full flex items-center justify-center text-gray-300">
                                 <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -135,7 +161,14 @@
                             {% endif %}
                         </div>
                         <div class="ml-4 min-w-0">
-                            <span class="text-sm font-black text-indigo-700 uppercase tracking-wider">{{ colis.reference }}</span>
+                            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                <span class="text-sm font-black text-indigo-700 uppercase tracking-wider">{{ colis.reference }}</span>
+                                {% if colis.est_paye %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 uppercase">
+                                    🇨🇳 Payé Chine
+                                </span>
+                                {% endif %}
+                            </div>
                             <div class="text-sm font-bold text-gray-900 mt-1">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
                             <div class="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">
                                 {% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}
@@ -198,6 +231,100 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- ===== Modal Détail Colis ===== -->
+        <div x-show="showModal"
+             class="fixed inset-0 z-50 overflow-y-auto"
+             x-cloak
+             role="dialog" aria-modal="true">
+            <div class="flex items-center justify-center min-h-screen px-4 py-8">
+                <!-- Overlay -->
+                <div class="fixed inset-0 bg-gray-900 bg-opacity-60 transition-opacity"
+                     @click="showZoom ? showZoom = false : showModal = false"></div>
+
+                <!-- Zoom plein écran -->
+                <img x-show="showZoom && colisPhoto" :src="colisPhoto" alt="Zoom"
+                     class="fixed inset-0 z-[60] w-screen h-screen object-contain cursor-zoom-out"
+                     @click="showZoom = false" x-cloak>
+
+                <!-- Panel -->
+                <div x-show="!showZoom" class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden z-10"
+                     x-transition:enter="ease-out duration-200"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100">
+                    
+                    <!-- Header -->
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-indigo-50">
+                        <div>
+                            <h3 class="text-base font-black text-indigo-700 uppercase tracking-widest" x-text="colisRef"></h3>
+                            <p class="text-xs text-gray-500 font-medium mt-0.5">Détail du colis</p>
+                        </div>
+                        <button @click="showModal = false" class="p-2 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Corps -->
+                    <div class="px-6 py-5 space-y-4">
+                        <!-- Image avec zoom -->
+                        <div x-show="colisPhoto" class="relative group">
+                            <img :src="colisPhoto" alt="Photo colis"
+                                 class="w-full h-52 object-cover rounded-xl border border-gray-200 cursor-zoom-in shadow-sm transition-transform group-hover:brightness-95"
+                                 @click="showZoom = true">
+                            <div class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                                🔍 Cliquer pour agrandir
+                            </div>
+                        </div>
+                        <div x-show="!colisPhoto" class="w-full h-28 flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                            <p class="text-xs text-gray-400 font-medium">Aucune photo disponible</p>
+                        </div>
+
+                        <!-- Infos -->
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="bg-gray-50 rounded-lg p-3 col-span-2">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Client</p>
+                                <p class="font-bold text-gray-800" x-text="colisClient"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Poids / Qté</p>
+                                <p class="font-bold text-gray-800" x-text="colisPoids"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Type</p>
+                                <p class="font-bold text-gray-800" x-text="colisType"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-3 col-span-2">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Prix</p>
+                                <p class="font-bold text-green-700 text-base" x-text="new Intl.NumberFormat('fr-FR').format(parseFloat(String(colisPrix).replace(/[^\d.]/g,'')) || 0) + ' FCFA'"></p>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div x-show="colisDescription" class="bg-gray-50 rounded-lg p-3">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Description</p>
+                            <p class="text-sm text-gray-700" x-text="colisDescription"></p>
+                        </div>
+
+                        <!-- Badge Payé en Chine -->
+                        <div x-show="colisPayeChine" class="flex items-center space-x-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3">
+                            <span class="text-2xl">🇨🇳</span>
+                            <div>
+                                <p class="text-xs font-black text-amber-800 uppercase">Payé en Chine</p>
+                                <p class="text-xs text-amber-700">Ce colis a été encaissé par l'agence Chine.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 text-right">
+                        <button @click="showModal = false" class="px-4 py-2 text-sm font-bold rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                            Fermer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -210,9 +337,6 @@
             item.style.opacity = "0";
             item.style.transform = "translateX(50px)";
             setTimeout(() => item.remove(), 500);
-            
-            // Optional: Update count
-            // htmx.ajax('GET', window.location.href, {select: '#count-element'});
         }
     });
 </script>

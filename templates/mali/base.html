@@ -280,3 +280,27 @@
     </div>
 </div>
 {% endblock %}
+
+<!-- Overlay zoom image global pour toutes les pages Mali -->
+<div id="img-zoom-overlay"
+     style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.9); cursor:zoom-out; align-items:center; justify-content:center;"
+     onclick="closeImgZoom()">
+    <img id="img-zoom-target" src="" alt="Zoom"
+         style="max-width:95vw; max-height:95vh; object-fit:contain; border-radius:4px;">
+    <button onclick="closeImgZoom()" style="position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,0.15);border:none;color:white;border-radius:50%;width:2.5rem;height:2.5rem;font-size:1.25rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+</div>
+<script>
+    function openImgZoom(src) {
+        const overlay = document.getElementById('img-zoom-overlay');
+        document.getElementById('img-zoom-target').src = src;
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    function closeImgZoom() {
+        document.getElementById('img-zoom-overlay').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeImgZoom();
+    });
+</script>

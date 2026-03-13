@@ -324,6 +324,11 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
                 total_recettes_transit=Sum(
                     "colis__prix_final", filter=Q(colis__status="EXPEDIE")
                 ),
+                # Nombre de colis déjà payés en Chine dans ce lot (parmi les colis en transit)
+                nb_colis_payes_chine=Count(
+                    "colis",
+                    filter=Q(colis__status="EXPEDIE", colis__est_paye=True),
+                ),
             )
             .filter(nb_colis_transit__gt=0)
             .distinct()
@@ -385,6 +390,11 @@ class LotsArrivesView(LotsEnTransitView):
                 total_recettes_arrive=Sum(
                     "colis__prix_final", filter=Q(colis__status="ARRIVE")
                 ),
+                # Nombre de colis déjà payés en Chine (parmi les colis arrivés)
+                nb_colis_payes_chine=Count(
+                    "colis",
+                    filter=Q(colis__status="ARRIVE", colis__est_paye=True),
+                ),
             )
             .filter(nb_colis_arrive__gt=0)
             .distinct()
@@ -439,6 +449,13 @@ class LotsLivresView(LotsEnTransitView):
                 )
                 - Sum(
                     "colis__montant_jc", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                ),
+                # Nombre de colis payés en Chine parmi les livrés/perdus
+                nb_colis_payes_chine=Count(
+                    "colis",
+                    filter=Q(
+                        colis__status__in=["LIVRE", "PERDU"], colis__est_paye=True
+                    ),
                 ),
             )
             .filter(nb_colis_livre__gt=0)
@@ -1041,9 +1058,15 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
             colis.montant_jc = 0
 
         # Gestion Paiement
-        status_paiement = request.POST.get("status_paiement")
-        if status_paiement == "PAYE":
-            colis.est_paye = True
+        # Si le colis était déjà payé en Chine (est_paye=True avant la livraison),
+        # on préserve ce statut sans tenir compte du formulaire (sécurité anti double-encaissement).
+        if colis.est_paye:
+            # Déjà payé en Chine — on conserve est_paye=True et on ignore le champ formulaire
+            pass
+        else:
+            status_paiement = request.POST.get("status_paiement")
+            if status_paiement == "PAYE":
+                colis.est_paye = True
 
         colis.status = "LIVRE"
         colis.save()

@@ -107,10 +107,9 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
             self.request.user.country if hasattr(self.request.user, "country") else None
         )
 
-        # 1. Recettes (Colis payés)
-
+        # 1. Recettes (Colis livrés ET payés — status LIVRE obligatoire)
         colis_qs = Colis.objects.filter(
-            est_paye=True, updated_at__year=year, updated_at__month=month
+            status="LIVRE", est_paye=True, updated_at__year=year, updated_at__month=month
         )
 
         if country:
@@ -213,9 +212,9 @@ class RapportExportView(LoginRequiredMixin, View):
         country = request.user.country if hasattr(request.user, "country") else None
 
         # --- Récupération des données (Similaire à RapportFinancierView) ---
-        # 1. Recettes
+        # 1. Recettes (Colis livrés ET payés — status LIVRE obligatoire)
         colis_qs = Colis.objects.filter(
-            est_paye=True, updated_at__year=year, updated_at__month=month
+            status="LIVRE", est_paye=True, updated_at__year=year, updated_at__month=month
         )
         if country:
             colis_qs = colis_qs.filter(lot__destination=country)
