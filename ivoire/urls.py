@@ -18,6 +18,8 @@ from .views import (
     LotTransitPDFView,
     NotificationConfigView,
     NotifyArrivalsView,
+    IvoireNotificationListView,
+    IvoireRetryNotificationsView,
 )
 from report.views import (
     DepenseListView,
@@ -37,6 +39,16 @@ urlpatterns = [
         "notifications/config/",
         NotificationConfigView.as_view(),
         name="notifications_config",
+    ),
+    path(
+        "notifications/",
+        IvoireNotificationListView.as_view(),
+        name="notification_list",
+    ),
+    path(
+        "notifications/retry/",
+        IvoireRetryNotificationsView.as_view(),
+        name="retry_notifications",
     ),
     path("aujourdhui/", AujourdhuiView.as_view(), name="aujourdhui"),
     path("lots/transit/", LotsEnTransitView.as_view(), name="lots_transit"),

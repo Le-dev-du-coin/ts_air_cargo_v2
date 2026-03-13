@@ -242,6 +242,7 @@ class Notification(models.Model):
     statut = models.CharField(
         max_length=20, choices=STATUT_CHOICES, default="en_attente"
     )
+    region = models.CharField("Région WaChap", max_length=50, blank=True, null=True)
     message_id_externe = models.CharField("ID WaChap/Email", max_length=100, blank=True)
     erreur_envoi = models.TextField(blank=True)
     nombre_tentatives = models.IntegerField(default=0)
@@ -256,6 +257,7 @@ class Notification(models.Model):
             models.Index(fields=["statut"]),
             models.Index(fields=["categorie"]),
             models.Index(fields=["date_creation"]),
+            models.Index(fields=["region"]),
         ]
 
     def __str__(self):

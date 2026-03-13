@@ -177,7 +177,7 @@ def send_parcel_reminders_periodic():
 
 
 @shared_task
-def retry_failed_notifications_periodic(force_retry_all=False):
+def retry_failed_notifications_periodic(force_retry_all=False, region=None):
     """
     File d'attente WhatsApp : retente l'envoi des notifications en échec.
     - Récupère toutes les Notification avec statut='echec' et prochaine_tentative <= now()
@@ -197,6 +197,9 @@ def retry_failed_notifications_periodic(force_retry_all=False):
             statut="echec",
             prochaine_tentative__lte=timezone.now(),
         ).exclude(nombre_tentatives__gte=5)
+        
+    if region:
+        notifications_to_retry = notifications_to_retry.filter(region=region)
 
     count_success = 0
     count_fail = 0

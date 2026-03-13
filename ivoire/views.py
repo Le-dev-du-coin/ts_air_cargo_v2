@@ -1227,3 +1227,92 @@ class NotificationConfigView(
     def form_valid(self, form):
         messages.success(self.request, "✅ Configuration des rappels mise à jour.")
         return super().form_valid(form)
+
+
+class IvoireNotificationListView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """Gestionnaire de notifications WhatsApp pour l'agent Côte d'Ivoire (region='cote_divoire')"""
+
+    template_name = "ivoire/notifications/list.html"
+    context_object_name = "notifications"
+    paginate_by = 50
+
+    def get_queryset(self):
+        from notification.models import Notification
+
+        queryset = Notification.objects.filter(region="cote_divoire").order_by("-date_creation")
+
+        status = self.request.GET.get("status")
+        date_start = self.request.GET.get("date_start")
+        date_end = self.request.GET.get("date_end")
+        q = self.request.GET.get("q")
+
+        if status:
+            queryset = queryset.filter(statut=status)
+        if date_start:
+            queryset = queryset.filter(date_creation__date__gte=date_start)
+        if date_end:
+            queryset = queryset.filter(date_creation__date__lte=date_end)
+        if q:
+            queryset = queryset.filter(
+                Q(telephone_destinataire__icontains=q)
+                | Q(message__icontains=q)
+                | Q(erreur_envoi__icontains=q)
+            )
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        from notification.models import Notification
+
+        context = super().get_context_data(**kwargs)
+        context["stats_notif"] = Notification.objects.filter(region="cote_divoire").aggregate(
+            total=Count("id"),
+            envoye=Count("id", filter=Q(statut="envoye")),
+            echec=Count("id", filter=Q(statut="echec")),
+            echec_permanent=Count("id", filter=Q(statut="echec_permanent")),
+        )
+        return context
+
+    def post(self, request, *args, **kwargs):
+        from notification.models import Notification
+
+        action = request.POST.get("action")
+        selected_ids = request.POST.getlist("selected_ids")
+
+        single_id = request.POST.get("notification_id")
+        if single_id and not selected_ids:
+            selected_ids = [single_id]
+
+        next_url = request.POST.get("next")
+        base_url = reverse_lazy("ivoire:notification_list")
+
+        if not selected_ids:
+            messages.warning(request, "Aucune notification sélectionnée.")
+            return redirect(f"{base_url}?{next_url}" if next_url else base_url)
+
+        if action == "delete":
+            deleted_count, _ = Notification.objects.filter(
+                id__in=selected_ids, region="cote_divoire"
+            ).delete()
+            messages.success(request, f"{deleted_count} notification(s) supprimée(s).")
+
+        elif action == "retry":
+            from notification.tasks import retry_failed_notifications_periodic
+
+            updated = Notification.objects.filter(
+                id__in=selected_ids, region="cote_divoire"
+            ).update(statut="echec", nombre_tentatives=0, prochaine_tentative=timezone.now())
+            retry_failed_notifications_periodic.delay(force_retry_all=True)
+            messages.success(request, f"{updated} notification(s) relancée(s).")
+
+        return redirect(f"{base_url}?{next_url}" if next_url else base_url)
+
+
+class IvoireRetryNotificationsView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+    """Relance toutes les notifications en échec pour la région Côte d'Ivoire"""
+
+    def post(self, request):
+        from notification.tasks import retry_failed_notifications_periodic
+
+        retry_failed_notifications_periodic.delay(force_retry_all=True)
+        messages.success(request, "Les relances WhatsApp Côte d'Ivoire ont été déclenchées.")
+        return redirect("ivoire:notification_list")

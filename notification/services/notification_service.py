@@ -51,6 +51,7 @@ class NotificationService:
                 titre=titre,
                 type_notification="whatsapp",
                 statut="en_attente",
+                region=region,
             )
 
             # 3. Envoyer via WaChap
