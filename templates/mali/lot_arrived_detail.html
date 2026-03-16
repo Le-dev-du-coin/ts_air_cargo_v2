@@ -103,6 +103,17 @@
         this.hasSelection = checked.length > 0;
         this.mixedSelectionError = false;
         
+        let totalPoids = 0;
+        let totalMontant = 0;
+        
+        checked.forEach(cb => {
+            totalPoids += parseFloat(cb.dataset.poids || 0);
+            totalMontant += parseFloat(cb.dataset.prix || 0);
+        });
+        
+        this.selectedPoids = totalPoids.toFixed(1);
+        this.selectedMontant = totalMontant;
+
         // Restriction : interdire mélange colis payés en Chine et non-payés en Chine
         if (checked.length > 1) {
             const payeChineValues = Array.from(checked).map(cb => cb.dataset.payeChine === 'true');
@@ -114,6 +125,8 @@
             }
         }
     },
+    selectedPoids: 0,
+    selectedMontant: 0,
     // Modal Détail Colis (Modèle Transit)
     showModal: false,
     colisRef: '',
@@ -203,13 +216,20 @@
                     <label for="selectAll" class="ml-2 block text-sm font-bold text-gray-700 cursor-pointer">Tout sélectionner</label>
                 </div>
                 
-                <button type="submit" x-show="hasSelection" x-cloak
-                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors">
-                    <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Livrer la sélection
-                </button>
+                <div class="flex flex-col items-end space-y-1" x-show="hasSelection" x-cloak>
+                    <div class="flex items-center space-x-4 mb-1">
+                        <span class="text-xs font-bold text-gray-500 uppercase">Sélection : </span>
+                        <span class="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded" x-text="selectedPoids + ' kg'"></span>
+                        <span class="text-sm font-black text-green-600 bg-green-50 px-2 py-0.5 rounded" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant) + ' FCFA'"></span>
+                    </div>
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors">
+                        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Livrer la sélection
+                    </button>
+                </div>
                 <!-- Alerte sélection mixte -->
                 <div x-show="mixedSelectionError" x-cloak class="flex items-center space-x-2 text-xs font-bold text-red-600 bg-red-50 border border-red-300 rounded-md px-3 py-2">
                     <svg class="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
@@ -227,6 +247,8 @@
                             {% if colis.status == 'ARRIVE' %}
                                 <input type="checkbox" name="colis_ids" value="{{ colis.pk }}" 
                                        data-paye-chine="{% if colis.paye_en_chine %}true{% else %}false{% endif %}"
+                                       data-poids="{{ colis.poids|stringformat:".2f" }}"
+                                       data-prix="{{ colis.prix_final|stringformat:".2f" }}"
                                        @change="updateSelection()"
                                        class="colis-checkbox h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
                             {% else %}
@@ -261,6 +283,8 @@
                             <div class="text-sm font-bold text-gray-900">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
                             <div class="text-xs text-gray-500 flex items-center mt-1">
                                 <span class="font-bold text-green-600">{{ colis.prix_final|fcfa }}</span>
+                                <span class="mx-2 text-gray-300">|</span>
+                                <span class="font-medium text-blue-600">{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unité(s){% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}</span>
                                 <span class="mx-2 text-gray-300">|</span>
                                 {{ colis.client.telephone }}
                             </div>
@@ -451,17 +475,52 @@
                                         </div>
                                     </div>
 
-                                    <!-- Jeton Cédé — masqué si déjà payé en Chine -->
-                                    <div x-show="!estPayeChine">
-                                        <label class="block text-gray-700 font-bold mb-1" title="Montant remis au client ou écart de caisse">JC (Jeton Cédé)</label>
-                                        <div class="relative rounded-md shadow-sm">
-                                            <input type="number" name="montant_jc" placeholder="0" 
-                                                   class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                                <span class="text-gray-500 sm:text-sm">FCFA</span>
+                                    <!-- Options de Paiement — masqué si déjà payé en Chine -->
+                                    <div x-show="!estPayeChine" class="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4 mt-4">
+                                        <!-- Statut Paiement -->
+                                        <div class="col-span-2 sm:col-span-1">
+                                            <label class="block text-xs font-black text-gray-700 uppercase mb-2">Statut Paiement</label>
+                                            <select name="status_paiement" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
+                                                <option value="PAYE" selected>💰 Payé (Complet)</option>
+                                                <option value="NON_PAYE">⏳ En attente (Partiel/Crédit)</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Mode de Paiement -->
+                                        <div class="col-span-2 sm:col-span-1">
+                                            <label class="block text-xs font-black text-gray-700 uppercase mb-2">Mode de Paiement</label>
+                                            <select name="mode_paiement" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
+                                                <option value="ESPECE" selected>💵 Espèce</option>
+                                                <option value="ORANGE_MONEY">📱 Orange Money</option>
+                                                <option value="SARALI">💳 Sarali</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Reste à payer -->
+                                        <div class="col-span-2 sm:col-span-1">
+                                            <label class="block text-xs font-black text-gray-700 uppercase mb-2">Reste à payer (Si partiel)</label>
+                                            <div class="relative rounded-md shadow-sm">
+                                                <input type="number" name="reste_a_payer" step="1"
+                                                    class="block w-full border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold pl-3 pr-12"
+                                                    placeholder="0">
+                                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                    <span class="text-gray-500 sm:text-xs font-bold">FCFA</span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <p class="text-xs text-gray-400 mt-1">Ex: Si total 2200, payé 2000 => JC = 200</p>
+
+                                        <!-- Jeton Cédé (JC) -->
+                                        <div class="col-span-2 sm:col-span-1">
+                                            <label class="block text-xs font-black text-gray-700 uppercase mb-2">Remise / JC</label>
+                                            <div class="relative rounded-md shadow-sm">
+                                                <input type="number" name="montant_jc" step="1"
+                                                    class="block w-full border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold pl-3 pr-12"
+                                                    placeholder="0">
+                                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                    <span class="text-gray-500 sm:text-xs font-bold">FCFA</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
 

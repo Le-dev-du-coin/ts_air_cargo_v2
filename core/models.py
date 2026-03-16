@@ -250,6 +250,22 @@ class Colis(TenantAwareModel):
     paye_en_chine = models.BooleanField(
         default=False, help_text=_("Indique si le colis a été encaissé par l'agence en Chine")
     )
+    reste_a_payer = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text=_("Montant restant à payer par le client"),
+    )
+    mode_paiement = models.CharField(
+        max_length=20,
+        choices=[
+            ("ESPECE", "Espèce"),
+            ("ORANGE_MONEY", "Orange Money"),
+            ("SARALI", "Sarali"),
+        ],
+        null=True,
+        blank=True,
+    )
     montant_jc = models.DecimalField(
         max_digits=10,
         decimal_places=2,

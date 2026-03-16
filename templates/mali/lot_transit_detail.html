@@ -121,9 +121,22 @@
                 this.updateSelection();
             },
             updateSelection() {
-                const checked = document.querySelectorAll('.colis-checkbox:checked').length;
-                this.hasSelection = checked > 0;
-            }
+                const checked = document.querySelectorAll('.colis-checkbox:checked');
+                this.hasSelection = checked.length > 0;
+                
+                let totalPoids = 0;
+                let totalMontant = 0;
+                
+                checked.forEach(cb => {
+                    totalPoids += parseFloat(cb.dataset.poids || 0);
+                    totalMontant += parseFloat(cb.dataset.prix || 0);
+                });
+                
+                this.selectedPoids = totalPoids.toFixed(1);
+                this.selectedMontant = totalMontant;
+            },
+            selectedPoids: 0,
+            selectedMontant: 0,
          }">
         <div class="px-6 py-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 bg-gray-50/50">
             <div>
@@ -172,15 +185,27 @@
                     <input type="checkbox" id="selectAll" @click="toggleAll()" class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
                     <label for="selectAll" class="ml-2 block text-sm font-bold text-gray-700 cursor-pointer">Tout sélectionner</label>
                 </div>
-                
-                <button type="submit" x-show="hasSelection" x-cloak
-                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-orange-600 hover:bg-orange-700 transition-colors">
-                    <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Pointer la sélection
-                </button>
-            </div>
+                <div class="flex flex-col items-end space-y-1" x-show="hasSelection" x-cloak>
+                    <div class="flex items-center space-x-4 mb-1">
+                        <span class="text-xs font-bold text-gray-500 uppercase">Sélection : </span>
+                        <span class="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded" x-text="selectedPoids + ' kg'"></span>
+                        <span class="text-sm font-black text-green-600 bg-green-50 px-2 py-0.5 rounded" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant) + ' FCFA'"></span>
+                    </div>
+                    {% if lot.frais_douane %}
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+                        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Pointer la sélection
+                    </button>
+                    {% else %}
+                    <div class="text-[10px] font-bold text-red-500 bg-red-50 px-3 py-1 rounded border border-red-200">
+                        ⚠️ Saisir les frais de douane pour pointer
+                    </div>
+                    {% endif %}
+                </div>
+           </div>
 
         <ul class="divide-y divide-gray-200">
             {% for colis in colis_list %}
@@ -189,8 +214,12 @@
                     <div class="flex items-center min-w-0 flex-1">
                         <!-- Checkbox -->
                         <div class="mr-4">
-                            {% if lot.frais_douane %}
-                                <input type="checkbox" name="colis_ids" value="{{ colis.pk }}" class="colis-checkbox h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                            {% if colis.status == 'EXPEDIE' %}
+                                <input type="checkbox" name="colis_ids" value="{{ colis.pk }}" 
+                                       data-poids="{{ colis.poids|stringformat:".2f" }}"
+                                       data-prix="{{ colis.prix_final|stringformat:".2f" }}"
+                                       @change="updateSelection()"
+                                       class="colis-checkbox h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
                             {% else %}
                                 <input type="checkbox" disabled class="h-5 w-5 text-gray-300 border-gray-200 rounded cursor-not-allowed hidden">
                             {% endif %}

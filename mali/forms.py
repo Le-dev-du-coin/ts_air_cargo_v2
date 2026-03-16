@@ -37,6 +37,26 @@ class ColisUpdateMaliForm(forms.ModelForm):
                 }
             ),
         }
+class ColisLivreMaliForm(forms.ModelForm):
+    class Meta:
+        model = Colis
+        fields = [
+            "mode_livraison",
+            "infos_recepteur",
+            "commentaire_livraison",
+            "reste_a_payer",
+            "mode_paiement",
+            "montant_jc",
+            "sortie_sous_garantie",
+            "sortie_autorisee_par",
+        ]
+        widgets = {
+            "mode_livraison": forms.RadioSelect(),
+            "commentaire_livraison": forms.Textarea(attrs={"rows": 2}),
+            "mode_paiement": forms.Select(attrs={"class": "w-full rounded-md border-gray-300"}),
+            "reste_a_payer": forms.NumberInput(attrs={"class": "w-full rounded-md border-gray-300"}),
+            "montant_jc": forms.NumberInput(attrs={"class": "w-full rounded-md border-gray-300"}),
+        }
 
 class NotificationConfigForm(forms.ModelForm):
     """

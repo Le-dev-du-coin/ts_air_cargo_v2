@@ -71,12 +71,12 @@
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-red-600">
-                            {{ colis.prix_final|fcfa }}
+                            {{ colis.montant_du|fcfa }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <form method="POST" action="{% url 'mali:colis_encaisser' pk=colis.pk %}" class="inline-block form-encaisser-{{ colis.pk }}">
                                 {% csrf_token %}
-                                <button type="button" onclick="confirmerEncaissement('{{ colis.pk }}', '{{ colis.reference }}', {{ colis.prix_final|default:0|unlocalize }})" 
+                                <button type="button" onclick="confirmerEncaissement('{{ colis.pk }}', '{{ colis.reference }}', {{ colis.montant_du|default:0|unlocalize }})" 
                                         class="text-green-600 hover:text-green-900 font-bold bg-green-50 px-3 py-1 rounded-md border border-green-200 hover:bg-green-100 transition-colors">
                                     Encaisser
                                 </button>

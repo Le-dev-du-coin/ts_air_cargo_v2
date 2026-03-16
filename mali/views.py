@@ -1,12 +1,12 @@
 from django.views.generic import TemplateView, ListView, View, DetailView
 from django.views.generic.edit import UpdateView
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from django.urls import reverse_lazy
-from django.db.models import Q, Count, Sum, Value, F
-from django.db.models.functions import Concat
+from django.db.models import Q, Count, Sum, Value, F, DecimalField
+from django.db.models.functions import Concat, Coalesce
 from core.mixins import DestinationAgentRequiredMixin
 from core.models import Country, Lot, Colis, Client
 from report.models import Depense
@@ -16,10 +16,28 @@ from notification.models import ConfigurationNotification
 from .forms import NotificationConfigForm
 
 import logging
-from django.db.models import Sum, Count, F
-from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+def apply_flexible_search(queryset, query, search_fields):
+    """
+    Applique une recherche flexible : chaque mot de la requête doit se trouver 
+    dans au moins un des champs de recherche (Logique AND entre les mots).
+    """
+    if not query:
+        return queryset
+    
+    words = query.split()
+    for word in words:
+        q_obj = Q()
+        for field in search_fields:
+            if "__icontains" not in field:
+                q_obj |= Q(**{f"{field}__icontains": word})
+            else:
+                q_obj |= Q(**{field: word})
+        queryset = queryset.filter(q_obj)
+    return queryset.distinct()
 
 
 class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateView):
@@ -212,7 +230,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
 
         # --- 2. ACTIVITÉ DU JOUR (Cargo, Express, Bateau) ---
         colis_livres_jour = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", est_paye=True, updated_at__date=today
+            lot__destination=mali, status="LIVRE", updated_at__date=today
         ).select_related("client", "lot")
 
         # Séparation par type de transport (via le Lot)
@@ -221,37 +239,37 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         # A. Cargo (Air)
         colis_cargo = colis_livres_jour.filter(lot__type_transport="CARGO")
         recette_cargo = (
-            colis_cargo.aggregate(total=Sum(F("prix_final") - F("montant_jc")))["total"]
+            colis_cargo.aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"]
             or 0
         )
         context["colis_cargo_list"] = colis_cargo.annotate(
-            net_price=F("prix_final") - F("montant_jc")
+            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
         ).order_by("-updated_at")
         context["recette_cargo_jour"] = recette_cargo
 
         # B. Express (Air)
         colis_express = colis_livres_jour.filter(lot__type_transport="EXPRESS")
         recette_express = (
-            colis_express.aggregate(total=Sum(F("prix_final") - F("montant_jc")))[
+            colis_express.aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))[
                 "total"
             ]
             or 0
         )
         context["colis_express_list"] = colis_express.annotate(
-            net_price=F("prix_final") - F("montant_jc")
+            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
         ).order_by("-updated_at")
         context["recette_express_jour"] = recette_express
 
         # C. Bateau (Maritime)
         colis_bateau = colis_livres_jour.filter(lot__type_transport="BATEAU")
         recette_bateau = (
-            colis_bateau.aggregate(total=Sum(F("prix_final") - F("montant_jc")))[
+            colis_bateau.aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))[
                 "total"
             ]
             or 0
         )
         context["colis_bateau_list"] = colis_bateau.annotate(
-            net_price=F("prix_final") - F("montant_jc")
+            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
         ).order_by("-updated_at")
         context["recette_bateau_jour"] = recette_bateau
 
@@ -336,25 +354,19 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
 
         query = self.request.GET.get("q")
         if query:
-            queryset = (
-                queryset.annotate(
-                    nom_complet=Concat(
-                        "colis__client__nom", Value(" "), "colis__client__prenom"
-                    ),
-                    prenom_complet=Concat(
-                        "colis__client__prenom", Value(" "), "colis__client__nom"
-                    ),
-                )
-                .filter(
-                    Q(numero__icontains=query)
-                    | Q(colis__client__nom__icontains=query)
-                    | Q(colis__client__prenom__icontains=query)
-                    | Q(colis__client__telephone__icontains=query)
-                    | Q(nom_complet__icontains=query)
-                    | Q(prenom_complet__icontains=query)
-                )
-                .distinct()
+            queryset = queryset.annotate(
+                nom_complet=Concat(
+                    "colis__client__nom", Value(" "), "colis__client__prenom"
+                ),
+                prenom_complet=Concat(
+                    "colis__client__prenom", Value(" "), "colis__client__nom"
+                ),
             )
+            search_fields = [
+                "numero", "colis__client__nom", "colis__client__prenom",
+                "colis__client__telephone", "nom_complet", "prenom_complet"
+            ]
+            queryset = apply_flexible_search(queryset, query, search_fields)
 
         return queryset.order_by("-date_expedition")
 
@@ -402,25 +414,19 @@ class LotsArrivesView(LotsEnTransitView):
 
         query = self.request.GET.get("q")
         if query:
-            queryset = (
-                queryset.annotate(
-                    nom_complet=Concat(
-                        "colis__client__nom", Value(" "), "colis__client__prenom"
-                    ),
-                    prenom_complet=Concat(
-                        "colis__client__prenom", Value(" "), "colis__client__nom"
-                    ),
-                )
-                .filter(
-                    Q(numero__icontains=query)
-                    | Q(colis__client__nom__icontains=query)
-                    | Q(colis__client__prenom__icontains=query)
-                    | Q(colis__client__telephone__icontains=query)
-                    | Q(nom_complet__icontains=query)
-                    | Q(prenom_complet__icontains=query)
-                )
-                .distinct()
+            queryset = queryset.annotate(
+                nom_complet=Concat(
+                    "colis__client__nom", Value(" "), "colis__client__prenom"
+                ),
+                prenom_complet=Concat(
+                    "colis__client__prenom", Value(" "), "colis__client__nom"
+                ),
             )
+            search_fields = [
+                "numero", "colis__client__nom", "colis__client__prenom",
+                "colis__client__telephone", "nom_complet", "prenom_complet"
+            ]
+            queryset = apply_flexible_search(queryset, query, search_fields)
 
         return queryset.order_by("-date_arrivee", "-created_at")
 
@@ -474,19 +480,16 @@ class LotsLivresView(LotsEnTransitView):
 
         query = self.request.GET.get("q")
         if query:
-            queryset = (
-                queryset.annotate(
-                    nom_complet=Concat(
-                        "colis__client__nom", Value(" "), "colis__client__prenom"
-                    ),
-                )
-                .filter(
-                    Q(numero__icontains=query)
-                    | Q(colis__client__nom__icontains=query)
-                    | Q(colis__client__telephone__icontains=query)
-                )
-                .distinct()
+            queryset = queryset.annotate(
+                nom_complet=Concat(
+                    "colis__client__nom", Value(" "), "colis__client__prenom"
+                ),
             )
+            search_fields = [
+                "numero", "colis__client__nom", "colis__client__telephone",
+                "nom_complet"
+            ]
+            queryset = apply_flexible_search(queryset, query, search_fields)
 
         return queryset.order_by("-updated_at")
 
@@ -640,21 +643,12 @@ class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailVie
 
         qc = self.request.GET.get("qc")
         if qc:
-            from django.db.models import Value
-            from django.db.models.functions import Concat
-
             colis_queryset = colis_queryset.annotate(
                 nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
                 prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
-            ).filter(
-                Q(reference__icontains=qc)
-                | Q(client__nom__icontains=qc)
-                | Q(client__prenom__icontains=qc)
-                | Q(client__telephone__icontains=qc)
-                | Q(poids__icontains=qc)
-                | Q(nom_complet__icontains=qc)
-                | Q(prenom_complet__icontains=qc)
             )
+            search_fields = ["reference", "client__nom", "client__prenom", "client__telephone", "poids", "nom_complet", "prenom_complet"]
+            colis_queryset = apply_flexible_search(colis_queryset, qc, search_fields)
             context["qc"] = qc
 
         paginator = Paginator(colis_queryset, 20)
@@ -691,14 +685,10 @@ class LotTransitDetailView(LotDetailView):
         if qc:
             colis_qs = colis_qs.annotate(
                 nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
-            ).filter(
-                Q(reference__icontains=qc)
-                | Q(client__nom__icontains=qc)
-                | Q(nom_complet__icontains=qc)
-                | Q(client__telephone__icontains=qc)
-                | Q(poids__icontains=qc)
+                prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
             )
-
+            search_fields = ["reference", "client__nom", "client__prenom", "client__telephone", "poids", "nom_complet", "prenom_complet"]
+            colis_qs = apply_flexible_search(colis_qs, qc, search_fields)
         from django.core.paginator import Paginator
 
         paginator = Paginator(colis_qs.order_by("-created_at"), 20)
@@ -1210,8 +1200,16 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
             status_paiement = request.POST.get("status_paiement")
             if status_paiement == "PAYE":
                 colis.est_paye = True
+                colis.reste_a_payer = 0
             elif status_paiement == "NON_PAYE":
                 colis.est_paye = False  # -> "En attente de paiement"
+                try:
+                    rp = request.POST.get("reste_a_payer", "0")
+                    colis.reste_a_payer = float(rp) if rp else 0
+                except ValueError:
+                    colis.reste_a_payer = 0
+        
+        colis.mode_paiement = request.POST.get("mode_paiement")
 
         colis.status = "LIVRE"
         colis.save()
@@ -1289,13 +1287,17 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         # Get list of colis objects before updating
         colis_list = list(colis_qs.select_related("client", "client__user"))
 
-        # Mettre à jour en masse avec options standards (agence, pas de jc/garantie)
-        # On ne touche pas au paiement (est_paye) ni au statut 'paye_en_chine'
+        # Mettre à jour en masse : Statut LIVRÉ et Paiement NON_PAYÉ (En attente) par défaut
+        # comme demandé (action directe sans modal)
         for c in colis_list:
             c.status = "LIVRE"
             c.mode_livraison = "AGENCE"
+            # Si déjà payé en Chine on garde, sinon on met en attente (False)
+            if not c.paye_en_chine:
+                c.est_paye = False
+                c.reste_a_payer = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
 
-        Colis.objects.bulk_update(colis_list, ["status", "mode_livraison"])
+        Colis.objects.bulk_update(colis_list, ["status", "mode_livraison", "est_paye", "reste_a_payer"])
 
         # Grouper les notifications
         from notification.tasks import send_notification_async
@@ -1314,13 +1316,21 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             nb = len(client_colis)
 
             nom_livre = user.get_full_name() or user.username
+            lines = []
+            for c in client_colis:
+                details = ""
+                if c.type_colis == "TELEPHONE":
+                    details = f" - {c.nombre_pieces} unité(s)"
+                elif c.poids:
+                    details = f" - {c.poids} kg"
+                lines.append(f"   \u2022 *{c.reference}*{details}")
 
-            # Message générique pour le bulk
-            refs = ", ".join([c.reference for c in client_colis])
+            liste_str = "\n".join(lines)
             message = (
                 f"Bonjour *{nom_livre}*,\n\n"
-                f"\u2705 *Livraison r\u00e9ussie !*\n\n"
-                f"{'Votre colis' if nb == 1 else 'Vos colis'} *{refs}* {'a' if nb == 1 else 'ont'} bien \u00e9t\u00e9 livr\u00e9{'s' if nb > 1 else ''} avec succ\u00e8s.\n\n"
+                f"\u2705 *{'Livraison r\u00e9ussie !' if nb == 1 else f'Livraison r\u00e9ussie pour vos {nb} colis !'}*\n\n"
+                f"{'Le colis suivant a' if nb == 1 else 'Les colis suivants ont'} bien \u00e9t\u00e9 livr\u00e9{'s' if nb > 1 else ''} avec succ\u00e8s :\n"
+                f"{liste_str}\n\n"
                 f"Merci d'avoir choisi TS AIR CARGO pour vos envois !\n"
                 f"Nous esp\u00e9rons vous revoir tr\u00e8s prochainement. 😊\n\n"
                 f"🌐 Cr\u00e9ez une nouvelle commande : https://ts-aircargo.com/login\n"
@@ -1390,36 +1400,33 @@ class ColisAttentePaiementView(
         if not mali:
             return Colis.objects.none()
 
+        from django.db.models import F, Case, When, DecimalField
+
         queryset = (
             Colis.objects.filter(lot__destination=mali, status="LIVRE", est_paye=False)
             .select_related("client", "lot")
+            .annotate(
+                montant_du=Case(
+                    When(reste_a_payer__gt=0, then=F("reste_a_payer")),
+                    default=F("prix_final") - F("montant_jc"),
+                    output_field=DecimalField(),
+                )
+            )
             .order_by("-updated_at")
         )
 
         query = self.request.GET.get("q")
         if query:
-            queryset = (
-                queryset.annotate(
-                    nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
-                    prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
-                )
-                .filter(
-                    Q(reference__icontains=query)
-                    | Q(client__nom__icontains=query)
-                    | Q(client__prenom__icontains=query)
-                    | Q(client__telephone__icontains=query)
-                    | Q(nom_complet__icontains=query)
-                    | Q(prenom_complet__icontains=query)
-                )
-                .distinct()
-            )
+            # (Recherche multi-mots gérée par le reste du code)
+            queryset = apply_flexible_search(queryset, query)
+
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Calcul du total des impayés
+        # Calcul du total des impayés basé sur l'annotation
         total_impaye = (
-            self.get_queryset().aggregate(total=Sum("prix_final"))["total"] or 0
+            self.get_queryset().aggregate(total=Sum("montant_du"))["total"] or 0
         )
         context["total_impaye"] = total_impaye
         context["q"] = self.request.GET.get("q", "")
@@ -1432,8 +1439,9 @@ class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, V
     def post(self, request, pk):
         colis = get_object_or_404(Colis, pk=pk)
 
-        # Marquer comme payé
+        # Marquer comme payé et solder le reste à payer
         colis.est_paye = True
+        colis.reste_a_payer = 0
         # Force update of updated_at to ensure it counts for TODAY's report
         colis.updated_at = timezone.now()
         colis.save()

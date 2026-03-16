@@ -117,7 +117,10 @@
                         <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Photo</th>
                         <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Référence</th>
                         <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Client</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Poids</th>
                         <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Montant</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Mode</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Reste</th>
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Paiement</th>
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Statut</th>
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Date Action</th>
@@ -148,11 +151,21 @@
                             <div class="text-sm font-bold text-gray-900 uppercase">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
                             <div class="text-[10px] text-gray-500">{{ colis.client.telephone }}</div>
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-xs font-bold text-gray-600">{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} u{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}</span>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
-                            <span class="text-sm font-bold text-gray-900">{{ colis.net_price|fcfa }}</span>
-                            {% if colis.montant_jc > 0 %}
-                            <div class="text-[10px] text-gray-500 italic">JC: {{ colis.montant_jc|fcfa }}</div>
-                            {% endif %}
+                            <span class="text-sm font-bold text-gray-900">{{ colis.prix_final|fcfa }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {% if colis.mode_paiement == 'ESPECE' %}bg-green-100 text-green-800{% elif colis.mode_paiement == 'ORANGE_MONEY' %}bg-orange-100 text-orange-800{% else %}bg-blue-100 text-blue-800{% endif %} uppercase">
+                                {{ colis.get_mode_paiement_display|default:"—" }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-sm font-bold {% if colis.reste_a_payer > 0 %}text-red-600{% else %}text-gray-400{% endif %}">
+                                {% if colis.reste_a_payer > 0 %}{{ colis.reste_a_payer|fcfa }}{% else %}-{% endif %}
+                            </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             {% if colis.paye_en_chine %}
