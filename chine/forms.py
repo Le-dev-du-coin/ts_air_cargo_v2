@@ -327,6 +327,16 @@ class ColisForm(forms.ModelForm):
 
         return cleaned_data
 
+    def save(self, commit=True):
+        colis = super().save(commit=False)
+        # S'il y a paiement en Chine (c'est le script chine), on marque le badge
+        if colis.est_paye:
+            colis.paye_en_chine = True
+            
+        if commit:
+            colis.save()
+        return colis
+
 
 from core.models import Tarif
 

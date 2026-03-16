@@ -855,6 +855,132 @@ class ColisArriveView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
         return redirect("mali:lot_transit_detail", pk=colis.lot.pk)
 
 
+class ColisArriveBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+    """Marquer plusieurs colis comme ARRIVÉ (Pointage Groupé) et envoyer une seule notification par client"""
+
+    def post(self, request, pk):
+        lot = get_object_or_404(Lot, pk=pk)
+        colis_ids = request.POST.getlist("colis_ids")
+
+        if not colis_ids:
+            messages.warning(request, "Aucun colis sélectionné.")
+            return redirect("mali:lot_transit_detail", pk=lot.pk)
+
+        # Restriction : frais de douane requis pour pointer
+        if not lot.frais_douane:
+            if request.headers.get("HX-Request"):
+                from django.http import HttpResponse
+
+                return HttpResponse(
+                    '<div id="bulk-error" class="text-xs font-bold text-red-500 bg-red-50 p-2 rounded border border-red-200 mb-4">'
+                    "⚠️ Veuillez renseigner les frais de douane du lot avant de pointer les colis."
+                    "</div>",
+                    status=400,
+                )
+            messages.error(
+                request,
+                "Veuillez renseigner les frais de douane du lot avant de pointer les colis.",
+            )
+            return redirect("mali:lot_transit_detail", pk=lot.pk)
+
+        colis_qs = Colis.objects.filter(id__in=colis_ids, lot=lot, status="EXPEDIE")
+
+        if not colis_qs.exists():
+            if request.headers.get("HX-Request"):
+                from django.http import HttpResponse
+
+                return HttpResponse()
+            return redirect("mali:lot_transit_detail", pk=lot.pk)
+
+        # Get list of colis objects before updating status
+        colis_list = list(colis_qs.select_related("client", "client__user"))
+
+        # Mettre à jour le statut en masse
+        colis_qs.update(status="ARRIVE")
+
+        # Grouper les notifications par client pour envoi combiné
+        from notification.tasks import send_notification_async
+
+        by_client = {}
+        for c in colis_list:
+            if not c.client or not c.client.user:
+                continue
+            if c.client.id not in by_client:
+                by_client[c.client.id] = {"user": c.client.user, "colis": []}
+            by_client[c.client.id]["colis"].append(c)
+
+        for cid, data in by_client.items():
+            user = data["user"]
+            client_colis = data["colis"]
+            nb = len(client_colis)
+
+            lines = []
+            total = 0
+            for c in client_colis:
+                prix = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
+                total += prix
+                fmt = f"{prix:,.0f}".replace(",", " ")
+
+                details = ""
+                if c.type_colis == "TELEPHONE":
+                    details = f" - {c.nombre_pieces} unité(s)"
+                elif c.poids:
+                    details = f" - {c.poids} kg"
+
+                lines.append(f"   \u2022 *{c.reference}*{details} — {fmt} FCFA")
+
+            liste_str = "\n".join(lines)
+            fmt_total = f"{total:,.0f}".replace(",", " ")
+            nom_notify = user.get_full_name() or user.username
+
+            date_arrive = timezone.now().strftime("%d/%m/%Y \u00e0 %H:%M")
+            message = (
+                f"Bonjour *{nom_notify}*,\n\n"
+                f"📍 *{'Bonne nouvelle ! Votre colis est arriv\u00e9 !' if nb == 1 else f'Bonne nouvelle ! Vos {nb} colis sont arriv\u00e9s !'}*\n\n"
+                f"Nous venons de r\u00e9ceptionner {'votre colis' if nb == 1 else 'vos colis'} \u00e0 l'agence au Mali 🇲🇱 le *{date_arrive}* :\n"
+                f"{liste_str}\n\n"
+                f"💰 *Total \u00e0 r\u00e9gler : {fmt_total} FCFA*\n\n"
+                f"Merci de passer {'le' if nb == 1 else 'les'} r\u00e9cup\u00e9rer \u00e0 votre convenance.\n\n"
+                f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
+                f"\u2014\u2014\n"
+                f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+            )
+
+            try:
+                send_notification_async.delay(
+                    user_id=user.id,
+                    message=message,
+                    categorie="colis_arrive",
+                    titre=f"{'Colis arrivé' if nb == 1 else f'{nb} colis arrivés'} — {fmt_total} FCFA à régler",
+                    region="mali",
+                )
+
+                # Marquer comme notifié (sinon NotifyArrivalsView spammerait à nouveau)
+                Colis.objects.filter(id__in=[c.id for c in client_colis]).update(
+                    whatsapp_notified=True
+                )
+
+            except Exception as e:
+                import logging as _log
+
+                _log.getLogger(__name__).error(
+                    f"Erreur notif bulk pointage colis lot {lot.pk}: {e}"
+                )
+
+        if request.headers.get("HX-Request"):
+            from django.http import HttpResponse
+            import json
+
+            response = HttpResponse("")
+            response["HX-Trigger"] = json.dumps(
+                {"colisArrivedBulk": {"pks": [c.id for c in colis_list]}}
+            )
+            return response
+
+        messages.success(request, f"{len(colis_list)} colis marqués comme Arrivés.")
+        return redirect("mali:lot_transit_detail", pk=lot.pk)
+
+
 class LotArriveView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Vue pour finaliser l'arrivée d'un lot et saisir les frais"""
 
@@ -1060,15 +1186,17 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
             colis.montant_jc = 0
 
         # Gestion Paiement
-        # Si le colis était déjà payé en Chine (est_paye=True avant la livraison),
-        # on préserve ce statut sans tenir compte du formulaire (sécurité anti double-encaissement).
-        if colis.est_paye:
-            # Déjà payé en Chine — on conserve est_paye=True et on ignore le champ formulaire
-            pass
+        # Si le colis a été payé en Chine, on préserve est_paye=True (anti double-encaissement),
+        # Sinon, on applique le choix du formulaire : PAYE ou NON_PAYE (en attente)
+        if colis.paye_en_chine:
+            # Déjà encaissé en Chine — immutable
+            colis.est_paye = True
         else:
             status_paiement = request.POST.get("status_paiement")
             if status_paiement == "PAYE":
                 colis.est_paye = True
+            elif status_paiement == "NON_PAYE":
+                colis.est_paye = False  # -> "En attente de paiement"
 
         colis.status = "LIVRE"
         colis.save()
@@ -1121,6 +1249,97 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
 
         messages.success(request, f"Colis {colis.reference} livré avec succès.")
         return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
+
+
+class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+    """Marquer plusieurs colis comme LIVRÉ (Livraison Groupée) avec paiement standard"""
+
+    def post(self, request, pk):
+        lot = get_object_or_404(Lot, pk=pk)
+        colis_ids = request.POST.getlist("colis_ids")
+
+        if not colis_ids:
+            messages.warning(request, "Aucun colis sélectionné pour la livraison.")
+            return redirect("mali:lot_arrived_detail", pk=lot.pk)
+
+        colis_qs = Colis.objects.filter(id__in=colis_ids, lot=lot, status="ARRIVE")
+
+        if not colis_qs.exists():
+            if request.headers.get("HX-Request"):
+                from django.http import HttpResponse
+
+                return HttpResponse()
+            return redirect("mali:lot_arrived_detail", pk=lot.pk)
+
+        # Get list of colis objects before updating
+        colis_list = list(colis_qs.select_related("client", "client__user"))
+
+        # Mettre à jour en masse avec options standards (agence, pas de jc/garantie)
+        # On ne touche pas au paiement (est_paye) ni au statut 'paye_en_chine'
+        for c in colis_list:
+            c.status = "LIVRE"
+            c.mode_livraison = "AGENCE"
+
+        Colis.objects.bulk_update(colis_list, ["status", "mode_livraison"])
+
+        # Grouper les notifications
+        from notification.tasks import send_notification_async
+
+        by_client = {}
+        for c in colis_list:
+            if not c.client or not c.client.user:
+                continue
+            if c.client.id not in by_client:
+                by_client[c.client.id] = {"user": c.client.user, "colis": []}
+            by_client[c.client.id]["colis"].append(c)
+
+        for cid, data in by_client.items():
+            user = data["user"]
+            client_colis = data["colis"]
+            nb = len(client_colis)
+
+            nom_livre = user.get_full_name() or user.username
+
+            # Message générique pour le bulk
+            refs = ", ".join([c.reference for c in client_colis])
+            message = (
+                f"Bonjour *{nom_livre}*,\n\n"
+                f"\u2705 *Livraison r\u00e9ussie !*\n\n"
+                f"{'Votre colis' if nb == 1 else 'Vos colis'} *{refs}* {'a' if nb == 1 else 'ont'} bien \u00e9t\u00e9 livr\u00e9{'s' if nb > 1 else ''} avec succ\u00e8s.\n\n"
+                f"Merci d'avoir choisi TS AIR CARGO pour vos envois !\n"
+                f"Nous esp\u00e9rons vous revoir tr\u00e8s prochainement. 😊\n\n"
+                f"🌐 Cr\u00e9ez une nouvelle commande : https://ts-aircargo.com/login\n"
+                f"\u2014\u2014\n"
+                f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+            )
+
+            try:
+                send_notification_async.delay(
+                    user_id=user.id,
+                    message=message,
+                    categorie="colis_livre",
+                    titre=f"Livraison effectuée - {nb} colis",
+                    region="mali",
+                )
+            except Exception as e:
+                import logging as _log
+
+                _log.getLogger(__name__).error(
+                    f"Erreur notif bulk livraison lot {lot.pk}: {e}"
+                )
+
+        if request.headers.get("HX-Request"):
+            from django.http import HttpResponse
+            import json
+
+            response = HttpResponse("")
+            response["HX-Trigger"] = json.dumps(
+                {"colisLivreBulk": {"pks": [c.id for c in colis_list]}}
+            )
+            return response
+
+        messages.success(request, f"{len(colis_list)} colis livrés avec succès.")
+        return redirect("mali:lot_arrived_detail", pk=lot.pk)
 
 
 class ColisPerduView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
@@ -1380,8 +1599,6 @@ class LotTransitPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View)
         )
 
 
-
-
 class NotificationConfigView(
     LoginRequiredMixin, DestinationAgentRequiredMixin, UpdateView
 ):
@@ -1403,7 +1620,9 @@ class NotificationConfigView(
         return super().form_valid(form)
 
 
-class MaliNotificationListView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+class MaliNotificationListView(
+    LoginRequiredMixin, DestinationAgentRequiredMixin, ListView
+):
     """Gestionnaire de notifications WhatsApp pour l'agent Mali (region='mali')"""
 
     template_name = "mali/notifications/list.html"
@@ -1475,14 +1694,18 @@ class MaliNotificationListView(LoginRequiredMixin, DestinationAgentRequiredMixin
 
             updated = Notification.objects.filter(
                 id__in=selected_ids, region="mali"
-            ).update(statut="echec", nombre_tentatives=0, prochaine_tentative=timezone.now())
+            ).update(
+                statut="echec", nombre_tentatives=0, prochaine_tentative=timezone.now()
+            )
             retry_failed_notifications_periodic.delay(force_retry_all=True)
             messages.success(request, f"{updated} notification(s) relancée(s).")
 
         return redirect(f"{base_url}?{next_url}" if next_url else base_url)
 
 
-class MaliRetryNotificationsView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+class MaliRetryNotificationsView(
+    LoginRequiredMixin, DestinationAgentRequiredMixin, View
+):
     """Relance toutes les notifications en échec pour la région Mali"""
 
     def post(self, request):
@@ -1491,3 +1714,33 @@ class MaliRetryNotificationsView(LoginRequiredMixin, DestinationAgentRequiredMix
         retry_failed_notifications_periodic.delay(force_retry_all=True)
         messages.success(request, "Les relances WhatsApp Mali ont été déclenchées.")
         return redirect("mali:notification_list")
+
+
+from django.views.generic import UpdateView
+from .forms import ColisUpdateMaliForm
+
+
+class ColisUpdateMaliView(
+    LoginRequiredMixin, DestinationAgentRequiredMixin, UpdateView
+):
+    """Permet à l'agent Mali de corriger le poids, le CBM ou le prix d'un colis."""
+
+    model = Colis
+    form_class = ColisUpdateMaliForm
+    template_name = "mali/colis_update.html"
+
+    def get_success_url(self):
+        messages.success(
+            self.request, f"Colis {self.object.reference} mis à jour avec succès."
+        )
+        return reverse("mali:lot_transit_detail", kwargs={"pk": self.object.lot.pk})
+
+    def form_valid(self, form):
+        # Recalculer le prix_transport et prix_final
+        colis = form.instance
+        if colis.type_colis == "MANUEL" and colis.prix_kilo_manuel:
+            colis.prix_transport = colis.poids * colis.prix_kilo_manuel
+
+        # Le hook save() du modèle Colis contient déjà la logique de calcul de prix final
+
+        return super().form_valid(form)

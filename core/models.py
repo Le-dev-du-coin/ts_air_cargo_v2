@@ -247,6 +247,9 @@ class Colis(TenantAwareModel):
     )
     # Livraison & Paiement
     est_paye = models.BooleanField(default=False)
+    paye_en_chine = models.BooleanField(
+        default=False, help_text=_("Indique si le colis a été encaissé par l'agence en Chine")
+    )
     montant_jc = models.DecimalField(
         max_digits=10,
         decimal_places=2,

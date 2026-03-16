@@ -1,6 +1,42 @@
 from django import forms
+from core.models import Colis
 from notification.models import ConfigurationNotification
 
+class ColisUpdateMaliForm(forms.ModelForm):
+    class Meta:
+        model = Colis
+        fields = ["type_colis", "nombre_pieces", "poids", "cbm", "prix_kilo_manuel"]
+        widgets = {
+            "type_colis": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                }
+            ),
+            "nombre_pieces": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "min": "1",
+                }
+            ),
+            "poids": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "step": "0.01",
+                }
+            ),
+            "cbm": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "step": "0.0001",
+                }
+            ),
+            "prix_kilo_manuel": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "step": "0.1",
+                }
+            ),
+        }
 
 class NotificationConfigForm(forms.ModelForm):
     """

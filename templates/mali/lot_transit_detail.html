@@ -111,6 +111,18 @@
                 this.colisPhoto = photo;
                 this.showZoom = false;
                 this.showModal = true;
+            },
+            allSelected: false,
+            hasSelection: false,
+            toggleAll() {
+                this.allSelected = !this.allSelected;
+                const checkboxes = document.querySelectorAll('.colis-checkbox:not(:disabled)');
+                checkboxes.forEach(cb => cb.checked = this.allSelected);
+                this.updateSelection();
+            },
+            updateSelection() {
+                const checked = document.querySelectorAll('.colis-checkbox:checked').length;
+                this.hasSelection = checked > 0;
             }
          }">
         <div class="px-6 py-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 bg-gray-50/50">
@@ -144,14 +156,48 @@
             </form>
         </div>
         
+        <!-- Formulaire de pointage en masse -->
+        <form id="bulk-pointage-form" 
+              hx-post="{% url 'mali:colis_arrive_bulk' lot.pk %}"
+              hx-target="#bulk-messages"
+              hx-swap="innerHTML"
+              @change="updateSelection()">
+            {% csrf_token %}
+            
+            <div id="bulk-messages"></div>
+            
+            <div class="px-6 py-3 border-b border-gray-200 bg-white flex items-center justify-between">
+                
+                <div class="flex items-center">
+                    <input type="checkbox" id="selectAll" @click="toggleAll()" class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                    <label for="selectAll" class="ml-2 block text-sm font-bold text-gray-700 cursor-pointer">Tout sélectionner</label>
+                </div>
+                
+                <button type="submit" x-show="hasSelection" x-cloak
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-orange-600 hover:bg-orange-700 transition-colors">
+                    <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Pointer la sélection
+                </button>
+            </div>
+
         <ul class="divide-y divide-gray-200">
             {% for colis in colis_list %}
             <li id="colis-item-{{ colis.pk }}" class="px-6 py-5 hover:bg-green-50/30 transition-colors">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center min-w-0 flex-1">
+                        <!-- Checkbox -->
+                        <div class="mr-4">
+                            {% if lot.frais_douane %}
+                                <input type="checkbox" name="colis_ids" value="{{ colis.pk }}" class="colis-checkbox h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                            {% else %}
+                                <input type="checkbox" disabled class="h-5 w-5 text-gray-300 border-gray-200 rounded cursor-not-allowed hidden">
+                            {% endif %}
+                        </div>
                         <!-- Vignette image cliquable → modal détail -->
                         <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner cursor-pointer"
-                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.est_paye %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
+                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
                             {% if colis.photo %}
                             <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover">
                             {% else %}
@@ -165,7 +211,7 @@
                         <div class="ml-4 min-w-0">
                             <div class="flex items-center space-x-2 flex-wrap gap-y-1">
                                 <span class="text-sm font-black text-indigo-700 uppercase tracking-wider">{{ colis.reference }}</span>
-                                {% if colis.est_paye %}
+                                {% if colis.paye_en_chine %}
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 uppercase">
                                     🇨🇳 Payé Chine
                                 </span>
@@ -184,6 +230,7 @@
             </li>
             {% endfor %}
         </ul>
+        </form>
         <!-- Pagination -->
         {% if colis_list.has_other_pages %}
         <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-b-xl">
@@ -336,6 +383,24 @@
 </div>
 
 <script>
+    document.body.addEventListener("colisArrivedBulk", function(evt){
+        const pks = evt.detail.pks;
+        if(pks && pks.length) {
+            pks.forEach(pk => {
+                const item = document.getElementById("colis-item-" + pk);
+                if(item){
+                    item.style.transition = "all 0.5s ease";
+                    item.style.opacity = "0";
+                    item.style.transform = "translateX(50px)";
+                    setTimeout(() => item.remove(), 500);
+                }
+            });
+            // Reset "Tout sélectionner" checkbox
+            const selectAll = document.getElementById("selectAll");
+            if(selectAll) selectAll.checked = false;
+        }
+    });
+
     document.body.addEventListener("colisArrived", function(evt){
         const pk = evt.detail.pk;
         const item = document.getElementById("colis-item-" + pk);

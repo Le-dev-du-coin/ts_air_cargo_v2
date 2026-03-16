@@ -21,6 +21,9 @@ from .views import (
     NotifyArrivalsView,
     MaliNotificationListView,
     MaliRetryNotificationsView,
+    ColisArriveBulkView,
+    ColisLivreBulkView,
+    ColisUpdateMaliView,
 )
 from report.views import (
     DepenseListView,
@@ -77,7 +80,10 @@ urlpatterns = [
         name="lot_notify_arrivals",
     ),
     path("colis/<int:pk>/arrive/", ColisArriveView.as_view(), name="colis_arrive"),
+    path("lots/<int:pk>/arrive-bulk/", ColisArriveBulkView.as_view(), name="colis_arrive_bulk"),
     path("colis/<int:pk>/livre/", ColisLivreView.as_view(), name="colis_livre"),
+    path("lots/<int:pk>/livre-bulk/", ColisLivreBulkView.as_view(), name="colis_livre_bulk"),
+    path("colis/<int:pk>/update/", ColisUpdateMaliView.as_view(), name="colis_update"),
     path("colis/<int:pk>/perdu/", ColisPerduView.as_view(), name="colis_perdu"),
     path(
         "colis/attente-paiement/",

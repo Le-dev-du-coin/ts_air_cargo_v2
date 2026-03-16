@@ -1,0 +1,39 @@
+{% extends 'mali/base.html' %}
+{% block title %}Modifier Colis - Mali - TS Air Cargo{% endblock %}
+{% block header %}Modifier Colis : {{ object.reference }}{% endblock %}
+
+{% block mali_content %}
+<div class="max-w-3xl mx-auto mt-6">
+    <div class="bg-white shadow rounded-lg p-6 border border-gray-100">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Modification du poids / prix</h2>
+        <p class="text-sm text-gray-500 mb-6">Le prix de transport sera automatiquement recalculé lors de l'enregistrement si vous modifiez le poids ou le type.</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="space-y-4">
+                {% for field in form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                    <p class="mt-1 text-xs text-gray-500">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% if field.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ field.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="mt-6 flex justify-end space-x-3">
+                <a href="javascript:history.back()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Annuler
+                </a>
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                    Enregistrer les modifications
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

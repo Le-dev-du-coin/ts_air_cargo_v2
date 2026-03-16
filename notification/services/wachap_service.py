@@ -284,6 +284,12 @@ class WaChapService:
             logger.error("[WaChap V4] Clé secrète non configurée.")
             return False, "Clé secrète WaChap V4 non configurée.", None
 
+        # Override téléphone pour les tests locaux (comme dans send_message)
+        if config.test_phone_number:
+            test_clean = config.test_phone_number.replace(" ", "")
+            logger.info(f"[WaChap V4] TEST OVERRIDE (image): {phone} → {test_clean}")
+            phone = test_clean
+
         if not region:
             region = self._determine_region(phone, sender_role)
 

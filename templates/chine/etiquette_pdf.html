@@ -195,8 +195,8 @@
                     </tr>
                     <tr>
                         <td class="label-cell">Statut</td>
-                        <td class="value-cell {% if colis.est_paye %}status-paid{% else %}status-unpaid{% endif %}">
-                            {% if colis.est_paye %}PAYÉ EN CHINE{% else %}NON PAYÉ{% endif %}
+                        <td class="value-cell {% if colis.paye_en_chine %}status-paid{% elif not colis.est_paye %}status-unpaid{% endif %}">
+                            {% if colis.paye_en_chine %}PAYÉ EN CHINE{% elif colis.est_paye %}PAYÉ MALI{% else %}NON PAYÉ{% endif %}
                         </td>
                     </tr>
                     <tr>
