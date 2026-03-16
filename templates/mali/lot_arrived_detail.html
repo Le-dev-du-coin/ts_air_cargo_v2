@@ -113,6 +113,31 @@
                 this.hasSelection = false; // Désactiver le bouton de bulk livraison
             }
         }
+    },
+    // Modal Détail Colis (Modèle Transit)
+    showModal: false,
+    colisRef: '',
+    colisClient: '',
+    colisPhone: '',
+    colisPoids: '',
+    colisPrix: '',
+    colisType: '',
+    colisDescription: '',
+    colisPayeChine: false,
+    colisPhoto: '',
+    showZoom: false,
+    openDetail(ref, client, phone, poids, prix, type, description, payeChine, photo) {
+        this.colisRef = ref;
+        this.colisClient = client;
+        this.colisPhone = phone;
+        this.colisPoids = poids;
+        this.colisPrix = prix;
+        this.colisType = type;
+        this.colisDescription = description;
+        this.colisPayeChine = payeChine;
+        this.colisPhoto = photo;
+        this.showZoom = false;
+        this.showModal = true;
     }
 }">
     <!-- Infos Lot -->
@@ -156,7 +181,7 @@
                     </div>
                     <input type="text" name="qc" value="{{ qc|default:'' }}"
                         class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 sm:text-sm shadow-sm transition-all"
-                        placeholder="Réf ou Nom Client...">
+                        placeholder="Réf, Client ou Poids (ex: 5.0)...">
                 </div>
                 <button type="submit" class="hidden">Rechercher</button>
             </form>
@@ -211,9 +236,9 @@
                         <!-- Vignette image avec zoom -->
                         <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
                             {% if colis.photo %}
-                                <img src="{{ colis.photo.url }}" alt="Colis"
+                                 <img src="{{ colis.photo.url }}" alt="Colis"
                                      class="h-full w-full object-cover cursor-zoom-in"
-                                     onclick="openImgZoom('{{ colis.photo.url }}')">
+                                     @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
                             {% else %}
                             <div class="h-full w-full flex items-center justify-center text-gray-200">
                                 <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -224,12 +249,13 @@
                         </div>
                         <div class="ml-4 min-w-0">
                             <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-                                <span class="text-sm font-black text-indigo-700 uppercase">{{ colis.reference }}</span>
+                                <span class="text-sm font-black text-indigo-700 uppercase cursor-pointer hover:underline"
+                                      @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">{{ colis.reference }}</span>
                                 {% if colis.status == 'LIVRE' %}
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-gray-100 text-gray-500 border border-gray-200 uppercase">Livré</span>
                                 {% endif %}
                                 {% if colis.paye_en_chine %}
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 uppercase">🇨🇳 Payé Chine</span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 uppercase">🏮 Payé Chine</span>
                                 {% endif %}
                             </div>
                             <div class="text-sm font-bold text-gray-900">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
@@ -355,7 +381,7 @@
                                     </p>
                                     <!-- Bandeau Payé en Chine -->
                                     <div x-show="estPayeChine" x-cloak class="mt-3 flex items-center space-x-2 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
-                                        <span class="text-xl">🇨🇳</span>
+                                        <span class="text-xl">🏮</span>
                                         <div>
                                             <p class="text-xs font-black text-amber-800 uppercase">Payé en Chine</p>
                                             <p class="text-xs text-amber-700">Ce colis a déjà été encaissé par l'agence en Chine. Aucun paiement à collecter.</p>
@@ -397,16 +423,16 @@
                                     <!-- Status Paiement — masqué si déjà payé en Chine -->
                                     <div x-show="!estPayeChine">
                                         <label class="block text-gray-700 font-bold mb-1">Status Paiement</label>
-                                        <select name="status_paiement" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                        <select name="status_paiement" :disabled="estPayeChine" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                                             <option value="PAYE" selected>Payé (Reçu)</option>
                                             <option value="NON_PAYE">En attente de paiement</option>
                                         </select>
                                     </div>
                                     <!-- Champ caché PAYE pour les colis payés en Chine -->
-                                    <input x-show="estPayeChine" type="hidden" name="status_paiement" value="PAYE">
+                                    <input x-show="estPayeChine" type="hidden" name="status_paiement" value="PAYE" :disabled="!estPayeChine">
 
                                     <!-- Sortie sous Garantie -->
-                                    <div class="border-t border-gray-200 mt-4 pt-4">
+                                    <div class="border-t border-gray-200 mt-4 pt-4" x-show="!estPayeChine">
                                         <div class="flex items-start mb-3">
                                             <div class="flex items-center h-5">
                                                 <input id="sortie_sous_garantie" name="sortie_sous_garantie" type="checkbox" x-model="sortieSousGarantie"
@@ -455,7 +481,106 @@
                 </form>
             </div>
         </div>
+    </div>
+    <!-- Detail Modal (Modèle Transit) -->
+    <div x-show="showModal"
+         class="fixed inset-0 z-50 overflow-y-auto"
+         x-cloak
+         role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <!-- Overlay -->
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-60 transition-opacity"
+                 @click="showZoom ? showZoom = false : showModal = false"></div>
+
+            <!-- Zoom plein écran -->
+            <img x-show="showZoom && colisPhoto" :src="colisPhoto" alt="Zoom"
+                 class="fixed inset-0 z-[60] w-screen h-screen object-contain cursor-zoom-out"
+                 @click="showZoom = false" x-cloak>
+
+            <!-- Panel -->
+            <div x-show="!showZoom" class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden z-10"
+                 x-transition:enter="ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100">
+                
+                <!-- Header -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-indigo-50">
+                    <div>
+                        <h3 class="text-base font-black text-indigo-700 uppercase tracking-widest" x-text="colisRef"></h3>
+                        <p class="text-xs text-gray-500 font-medium mt-0.5">Détail du colis</p>
+                    </div>
+                    <button @click="showModal = false" class="p-2 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Corps -->
+                <div class="px-6 py-5 space-y-4">
+                    <!-- Image avec zoom -->
+                    <div x-show="colisPhoto" class="relative group">
+                        <img :src="colisPhoto" alt="Photo colis"
+                             class="w-full h-64 object-cover rounded-xl border border-gray-200 cursor-zoom-in shadow-sm transition-all group-hover:brightness-95"
+                             @click="showZoom = true">
+                        <div class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                            🔍 Cliquer pour agrandir
+                        </div>
+                    </div>
+                    <div x-show="!colisPhoto" class="w-full h-28 flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        <p class="text-xs text-gray-400 font-medium">Aucune photo disponible</p>
+                    </div>
+
+                    <!-- Infos -->
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Client</p>
+                            <p class="font-bold text-gray-800" x-text="colisClient"></p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Téléphone</p>
+                            <p class="font-bold text-gray-800" x-text="colisPhone || '—'"></p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Poids / Qté</p>
+                            <p class="font-bold text-gray-800" x-text="colisPoids"></p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Type</p>
+                            <p class="font-bold text-gray-800" x-text="colisType"></p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3 col-span-2">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Prix Transport</p>
+                            <p class="font-bold text-green-700 text-lg" x-text="new Intl.NumberFormat('fr-FR').format(parseFloat(String(colisPrix).replace(/[^\d.,]/g, '').replace(',', '.')) || 0) + ' FCFA'"></p>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div x-show="colisDescription" class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Description</p>
+                        <p class="text-sm text-gray-700" x-text="colisDescription"></p>
+                    </div>
+
+                    <!-- Badge Payé en Chine -->
+                    <div x-show="colisPayeChine" class="flex items-center space-x-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3">
+                        <span class="text-2xl">🏮</span>
+                        <div>
+                            <p class="text-xs font-black text-amber-800 uppercase">Payé en Chine</p>
+                            <p class="text-xs text-amber-700">Ce colis a été encaissé par l'agence Chine.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 text-right">
+                    <button @click="showModal = false" class="px-4 py-2 text-sm font-bold rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
 <script>
     document.body.addEventListener("colisLivreBulk", function(evt){
         const pks = evt.detail.pks;

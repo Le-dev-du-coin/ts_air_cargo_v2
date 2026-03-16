@@ -141,7 +141,7 @@
                     </div>
                     <input type="text" name="qc" value="{{ qc|default:'' }}"
                         class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm shadow-sm transition-all"
-                        placeholder="Référence ou Nom Client...">
+                        placeholder="Réf, Client ou Poids (ex: 5.0)...">
                 </div>
                 <button type="submit" class="ml-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all">
                     Filtrer
@@ -213,7 +213,7 @@
                                 <span class="text-sm font-black text-indigo-700 uppercase tracking-wider">{{ colis.reference }}</span>
                                 {% if colis.paye_en_chine %}
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 uppercase">
-                                    🇨🇳 Payé Chine
+                                    🏮 Payé Chine
                                 </span>
                                 {% endif %}
                             </div>

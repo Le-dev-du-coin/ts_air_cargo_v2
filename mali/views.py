@@ -454,7 +454,7 @@ class LotsLivresView(LotsEnTransitView):
                 nb_colis_payes_chine=Count(
                     "colis",
                     filter=Q(
-                        colis__status__in=["LIVRE", "PERDU"], colis__est_paye=True
+                        colis__status__in=["LIVRE", "PERDU"], colis__paye_en_chine=True
                     ),
                 ),
             )
@@ -651,6 +651,7 @@ class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailVie
                 | Q(client__nom__icontains=qc)
                 | Q(client__prenom__icontains=qc)
                 | Q(client__telephone__icontains=qc)
+                | Q(poids__icontains=qc)
                 | Q(nom_complet__icontains=qc)
                 | Q(prenom_complet__icontains=qc)
             )
@@ -695,6 +696,7 @@ class LotTransitDetailView(LotDetailView):
                 | Q(client__nom__icontains=qc)
                 | Q(nom_complet__icontains=qc)
                 | Q(client__telephone__icontains=qc)
+                | Q(poids__icontains=qc)
             )
 
         from django.core.paginator import Paginator
@@ -732,6 +734,7 @@ class LotArriveDetailView(LotDetailView):
                 | Q(client__nom__icontains=qc)
                 | Q(nom_complet__icontains=qc)
                 | Q(client__telephone__icontains=qc)
+                | Q(poids__icontains=qc)
             )
 
         from django.core.paginator import Paginator
@@ -763,6 +766,18 @@ class LotLivreDetailView(LotDetailView):
         colis_qs = self.object.colis.filter(status__in=["LIVRE", "PERDU"]).annotate(
             net_price=F("prix_final") - F("montant_jc")
         )
+
+        qc = self.request.GET.get("qc")
+        if qc:
+            colis_qs = colis_qs.annotate(
+                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
+            ).filter(
+                Q(reference__icontains=qc)
+                | Q(client__nom__icontains=qc)
+                | Q(nom_complet__icontains=qc)
+                | Q(client__telephone__icontains=qc)
+                | Q(poids__icontains=qc)
+            )
 
         from django.core.paginator import Paginator
 
