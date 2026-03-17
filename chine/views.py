@@ -1701,6 +1701,8 @@ class ChinaDepenseCreateView(
 
     def form_valid(self, form):
         form.instance.enregistre_par = self.request.user
+        # Les dépenses saisies par l'agent Chine pour d'autres pays sont toujours indicatives
+        form.instance.is_china_indicative = True
         messages.success(self.request, "Dépense ajoutée avec succès.")
         return super().form_valid(form)
 

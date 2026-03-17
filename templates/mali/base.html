@@ -58,7 +58,7 @@
 
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-green-300 uppercase tracking-wider">Finance</h3></div>
                         <a href="{% url 'mali:depenses_list' %}" class="{% if 'depenses' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dépenses</a>
-                        <a href="{% url 'mali:transferts_list' %}" class="{% if 'transferts' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Envois vers Chine</a>
+                        <a href="{% url 'mali:transferts_list' %}" class="{% if 'transferts' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Transferts</a>
                         <a href="{% url 'mali:rapport_financier' %}" class="{% if request.resolver_match.url_name == 'rapport_financier' %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rapport Avancé</a>
                     </nav>
                 </div>
@@ -198,7 +198,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                     </svg>
-                                    Envois vers Chine
+                                    Transferts
                                 </a>
                                 <a href="{% url 'mali:rapport_financier' %}"
                                     class="{% if request.resolver_match.url_name == 'rapport_financier' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">

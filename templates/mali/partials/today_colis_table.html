@@ -68,9 +68,11 @@
         </tbody>
         {% if colis_list %}
         <tfoot class="bg-gray-50">
-            <tr>
-                <td colspan="5" class="px-6 py-3 text-right text-sm font-bold text-gray-900">Total Net {{ type }} :</td>
-                <td class="px-6 py-3 text-right text-sm font-black text-green-700">
+            <tr class="min-h-[50px]">
+                <td colspan="5" class="px-6 py-4 text-right text-sm font-bold text-gray-900 border-t border-gray-200">
+                    Total Net {{ type }} :
+                </td>
+                <td class="px-6 py-4 text-right text-base font-black text-green-700 border-t border-gray-200 whitespace-normal">
                     {{ total_recette|default:0|fcfa }}
                 </td>
             </tr>

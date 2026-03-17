@@ -51,12 +51,19 @@ class DepenseListView(LoginRequiredMixin, ListView):
             transferts_mois.aggregate(Sum("montant"))["montant__sum"] or 0
         )
 
+        # Séparation des dépenses pour l'affichage
+        context["depenses_mali"] = self.object_list.filter(is_china_indicative=False)
+        context["depenses_chine"] = self.object_list.filter(is_china_indicative=True)
+        
+        context["total_depenses_mali"] = context["depenses_mali"].aggregate(Sum("montant"))["montant__sum"] or 0
+        context["total_depenses_chine"] = context["depenses_chine"].aggregate(Sum("montant"))["montant__sum"] or 0
+
         return context
 
 
 class DepenseCreateView(LoginRequiredMixin, CreateView):
     model = Depense
-    fields = ["date", "categorie", "description", "montant", "piece_jointe"]
+    fields = ["date", "categorie", "description", "montant", "is_china_indicative", "piece_jointe"]
 
     def form_valid(self, form):
         form.instance.enregistre_par = self.request.user
@@ -122,12 +129,19 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
         )
         total_recettes = recettes_agg["total_net"] or 0
 
-        # 2. Dépenses
+        # 2. Dépenses (Mali uniquement)
         depenses_qs = Depense.objects.filter(date__year=year, date__month=month)
         if country:
             depenses_qs = depenses_qs.filter(pays=country)
-
-        total_depenses = depenses_qs.aggregate(Sum("montant"))["montant__sum"] or 0
+        
+        # Séparer réelles et indicatives
+        total_depenses_reelles = depenses_qs.filter(
+            is_china_indicative=False
+        ).aggregate(Sum("montant"))["montant__sum"] or 0
+        
+        total_depenses_chine = depenses_qs.filter(
+            is_china_indicative=True
+        ).aggregate(Sum("montant"))["montant__sum"] or 0
 
         # 3. Transferts (considérés comme dépenses)
         transferts_qs = TransfertArgent.objects.filter(
@@ -138,18 +152,26 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
 
         total_transferts = transferts_qs.aggregate(Sum("montant"))["montant__sum"] or 0
 
+        # Total Transferts par destination
+        total_transferts_chine = transferts_qs.filter(destinataire="CHINE").aggregate(Sum("montant"))["montant__sum"] or 0
+        total_transferts_gaoussou = transferts_qs.filter(destinataire="GAOUSSOU").aggregate(Sum("montant"))["montant__sum"] or 0
+
         # 4. Solde
-        # Solde = Recettes - (Dépenses + Transferts)
-        solde = total_recettes - (total_depenses + total_transferts)
+        # Solde = Recettes - (Dépenses Réelles + Transferts)
+        solde = total_recettes - (total_depenses_reelles + total_transferts)
 
         context.update(
             {
                 "total_recettes": total_recettes,
-                "total_depenses": total_depenses,
+                "total_depenses": total_depenses_reelles,
+                "total_depenses_chine": total_depenses_chine,
+                "total_transferts_chine": total_transferts_chine,
+                "total_transferts_gaoussou": total_transferts_gaoussou,
                 "total_transferts": total_transferts,
-                "total_sorties": total_depenses + total_transferts,
+                "total_gaoussou": total_transferts_gaoussou, # Doublon temporaire pour compatibilité si utilisé ailleurs
+                "total_sorties": total_depenses_reelles + total_transferts,
                 "solde": solde,
-                "depenses_by_category": depenses_qs.values("categorie")
+                "depenses_by_category": depenses_qs.filter(is_china_indicative=False).values("categorie")
                 .annotate(total=Sum("montant"))
                 .order_by("-total"),
             }
@@ -174,12 +196,20 @@ class TransfertListView(LoginRequiredMixin, ListView):
         context["total_transferts"] = (
             self.object_list.aggregate(Sum("montant"))["montant__sum"] or 0
         )
+        
+        # Séparation des transferts
+        context["transferts_chine"] = self.object_list.filter(destinataire="CHINE")
+        context["transferts_gaoussou"] = self.object_list.filter(destinataire="GAOUSSOU")
+        
+        context["total_chine"] = context["transferts_chine"].aggregate(Sum("montant"))["montant__sum"] or 0
+        context["total_gaoussou"] = context["transferts_gaoussou"].aggregate(Sum("montant"))["montant__sum"] or 0
+        
         return context
 
 
 class TransfertCreateView(LoginRequiredMixin, CreateView):
     model = TransfertArgent
-    fields = ["date", "montant", "description", "preuve_image"]
+    fields = ["date", "destinataire", "montant", "description", "preuve_image"]
 
     def form_valid(self, form):
         form.instance.enregistre_par = self.request.user
@@ -228,29 +258,36 @@ class RapportExportView(LoginRequiredMixin, View):
         depenses_qs = Depense.objects.filter(date__year=year, date__month=month)
         if country:
             depenses_qs = depenses_qs.filter(pays=country)
-
-        total_depenses = depenses_qs.aggregate(Sum("montant"))["montant__sum"] or 0
+        
+        total_depenses_reelles = depenses_qs.filter(is_china_indicative=False).aggregate(Sum("montant"))["montant__sum"] or 0
+        total_depenses_chine = depenses_qs.filter(is_china_indicative=True).aggregate(Sum("montant"))["montant__sum"] or 0
 
         # 3. Transferts (considérés comme dépenses)
-        transferts_qs = TransfertArgent.objects.filter(
-            date__year=year, date__month=month
-        )
+        transferts_qs = TransfertArgent.objects.filter(date__year=year, date__month=month)
         if country:
             transferts_qs = transferts_qs.filter(pays_expediteur=country)
 
         total_transferts = transferts_qs.aggregate(Sum("montant"))["montant__sum"] or 0
+        total_transferts_chine = transferts_qs.filter(destinataire="CHINE").aggregate(Sum("montant"))["montant__sum"] or 0
+        total_transferts_gaoussou = transferts_qs.filter(destinataire="GAOUSSOU").aggregate(Sum("montant"))["montant__sum"] or 0
 
         # 4. Solde
-        solde = total_recettes - (total_depenses + total_transferts)
+        solde = total_recettes - (total_depenses_reelles + total_transferts)
 
         context = {
             "year": year,
             "month": month,
             "total_recettes": total_recettes,
-            "total_depenses": total_depenses,
+            "total_depenses": total_depenses_reelles,
+            "total_depenses_chine": total_depenses_chine,
             "total_transferts": total_transferts,
+            "total_transferts_chine": total_transferts_chine,
+            "total_transferts_gaoussou": total_transferts_gaoussou,
             "solde": solde,
+            "depenses_by_category": depenses_qs.filter(is_china_indicative=False).values("categorie")
+                .annotate(total=Sum("montant")).order_by("-total"),
             "depenses": depenses_qs.order_by("date"),
+            "country": country,
             "user": request.user,
             "date_generation": timezone.now(),
         }

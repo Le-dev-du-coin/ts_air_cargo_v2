@@ -114,6 +114,9 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">
                                     {{ depense.montant|intcomma }} FCFA
+                                    {% if depense.is_china_indicative %}
+                                        <div class="text-[10px] text-amber-600 font-normal">Indicateur Chine</div>
+                                    {% endif %}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <form id="delete-form-{{ depense.pk }}" action="{% url 'chine:depense_delete' depense.pk %}" method="post" class="inline">
@@ -162,7 +165,9 @@
                             <label for="pays" class="block text-sm font-medium text-gray-700">Pays (Payer pour)</label>
                             <select id="pays" name="pays" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                                 {% for country in countries %}
-                                    <option value="{{ country.id }}" {% if user.country == country %}selected{% endif %}>{{ country.name }}</option>
+                                    {% if country.code != 'CN' %}
+                                        <option value="{{ country.id }}" {% if country.code == 'ML' %}selected{% endif %}>{{ country.name }}</option>
+                                    {% endif %}
                                 {% endfor %}
                             </select>
                         </div>

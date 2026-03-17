@@ -199,7 +199,7 @@
             <span class="amount text-green">+ {{ total_encaissements|intcomma }} FCFA</span>
         </div>
         <div class="summary-row">
-            <span>Dépenses Journalières</span>
+            <span>Dépenses Journalières Mali</span>
             <span class="amount text-red">- {{ total_depenses|intcomma }} FCFA</span>
         </div>
         <div class="summary-row">
@@ -207,9 +207,15 @@
             <span class="amount text-blue">- {{ total_transferts|intcomma }} FCFA</span>
         </div>
         <div class="summary-row summary-total">
-            <span>SOLDE DE CAISSE FINAL</span>
+            <span>SOLDE DE CAISSE FINAL MALI</span>
             <span class="amount">{{ solde_final|intcomma }} FCFA</span>
         </div>
+    </div>
+    {% else %}
+    <div style="margin-bottom: 20px;">
+        <span class="total-badge">
+            POIDS/VOL TOTAL : {{ total_poids|floatformat:2 }} {% if report_type == 'bateau' %}m³{% else %}kg{% endif %}
+        </span>
     </div>
     {% endif %}
 
@@ -218,43 +224,56 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 25%">Client</th>
-                <th style="width: 20%">Réf. Colis</th>
-                <th style="width: 15%">N° Lot</th>
-                <th style="width: 15%; text-align: right;">Brut</th>
-                <th style="width: 10%; text-align: right;">JC</th>
-                <th style="width: 15%; text-align: right;">Net Encaissé</th>
+                <th style="width: 22%">Client</th>
+                <th style="width: 15%">Réf. Colis</th>
+                <th style="width: 10%; text-align: center;">Poids/Vol</th>
+                <th style="width: 10%; text-align: center;">Mode</th>
+                <th style="width: 11%; text-align: right;">Total Brut</th>
+                <th style="width: 10%; text-align: right;">Reste</th>
+                <th style="width: 10%; text-align: right;">Remise(JC)</th>
+                <th style="width: 12%; text-align: right;">Net Encaissé</th>
             </tr>
         </thead>
         <tbody>
             {% for colis in colis_livres %}
             <tr>
                 <td style="font-weight: 600;">{{ colis.client.nom|upper }} {{ colis.client.prenom }}</td>
-                <td>{{ colis.reference }}</td>
-                <td>{{ colis.lot.numero }}</td>
+                <td>
+                    {{ colis.reference }}
+                    <div style="font-size: 8px; color: #9ca3af;">{{ colis.lot.numero }}</div>
+                </td>
+                <td style="text-align: center;">
+                    {% if report_type == 'bateau' %}{{ colis.cbm }} m³{% else %}{{ colis.poids }} kg{% endif %}
+                </td>
+                <td style="text-align: center; font-size: 8px;">{{ colis.get_mode_paiement_display|default:"—" }}</td>
                 <td class="amount">{{ colis.prix_final|intcomma }}</td>
+                <td class="amount {% if colis.reste_a_payer > 0 %}text-red{% endif %}">
+                    {% if colis.reste_a_payer > 0 %}{{ colis.reste_a_payer|intcomma }}{% else %}-{% endif %}
+                </td>
                 <td class="amount" style="color: var(--text-muted);">
                     {% if colis.montant_jc > 0 %}{{ colis.montant_jc|intcomma }}{% else %}-{% endif %}
                 </td>
-                <td class="amount text-green" style="font-size: 11px;">{{ colis.net_price|intcomma }} FCFA</td>
+                <td class="amount text-green" style="font-size: 10px; font-weight: 800;">{{ colis.net_price|intcomma }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">
                     Aucun encaissement enregistré pour cette période.
                 </td>
             </tr>
             {% endfor %}
         </tbody>
+        {% if colis_livres %}
+        <tfoot>
+            <tr style="background-color: #f9fafb; font-weight: 800;">
+                <td colspan="2" style="padding: 10px; border-top: 2px solid var(--border);">TOTAL :</td>
+                <td style="padding: 10px; border-top: 2px solid var(--border); text-align: center;">{{ total_poids|floatformat:1 }}</td>
+                <td colspan="4" style="padding: 10px; border-top: 2px solid var(--border); text-align: right;">TOTAL NET ENCAISSÉ :</td>
+                <td style="padding: 10px; border-top: 2px solid var(--border); text-align: right;" class="text-green">{{ total_encaissements|intcomma }} FCFA</td>
+            </tr>
+        </tfoot>
+        {% endif %}
     </table>
-
-    {% if colis_livres %}
-    <div style="text-align: right; margin-top: -15px;">
-        <div class="total-badge">
-            TOTAL NET ENCAISSÉ : {{ total_encaissements|intcomma }} FCFA
-        </div>
-    </div>
-    {% endif %}
 
     <div class="footer">
         Document généré automatiquement par le système TS Air Cargo.<br>

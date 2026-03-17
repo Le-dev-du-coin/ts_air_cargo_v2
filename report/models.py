@@ -30,6 +30,11 @@ class Depense(models.Model):
         User, on_delete=models.PROTECT, related_name="depenses_enregistrees"
     )
     pays = models.ForeignKey(Country, on_delete=models.PROTECT, related_name="depenses")
+    is_china_indicative = models.BooleanField(
+        default=False, 
+        verbose_name=_("Dépense Chine (Indicatif)"),
+        help_text=_("Si coché, ne sera pas pris en compte dans le solde de caisse Mali")
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -40,7 +45,8 @@ class Depense(models.Model):
         verbose_name_plural = _("Dépenses")
 
     def __str__(self):
-        return f"{self.date} - {self.description} ({self.montant} FCFA)"
+        suffix = " (CHINE)" if self.is_china_indicative else ""
+        return f"{self.date} - {self.description}{suffix} ({self.montant} FCFA)"
 
 
 class TransfertArgent(models.Model):
@@ -49,9 +55,16 @@ class TransfertArgent(models.Model):
         RECU = "RECU", _("Reçu")
         ANNULE = "ANNULE", _("Annulé")
 
+    class Destinataire(models.TextChoices):
+        CHINE = "CHINE", _("Chine")
+        GAOUSSOU = "GAOUSSOU", _("Gaoussou")
+
     date = models.DateField(default=timezone.now)
     montant = models.DecimalField(
         max_digits=12, decimal_places=0, help_text=_("Montant transféré en FCFA")
+    )
+    destinataire = models.CharField(
+        max_length=20, choices=Destinataire.choices, default=Destinataire.CHINE
     )
     description = models.TextField(blank=True, help_text=_("Note ou observation"))
     preuve_image = models.ImageField(

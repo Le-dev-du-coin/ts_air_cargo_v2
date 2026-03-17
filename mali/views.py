@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 def apply_flexible_search(queryset, query, search_fields):
     """
-    Applique une recherche flexible : chaque mot de la requête doit se trouver 
+    Applique une recherche flexible : chaque mot de la requête doit se trouver
     dans au moins un des champs de recherche (Logique AND entre les mots).
     """
     if not query:
         return queryset
-    
+
     words = query.split()
     for word in words:
         q_obj = Q()
@@ -74,9 +74,15 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         )
         context["recettes_mois"] = recettes_mois
 
+        # Poids total des colis livrés (mois en cours)
+        total_poids_mois = colis_livres_mois_qs.aggregate(
+            total=Sum("poids")
+        )["total"] or 0
+        context["total_poids_mois"] = total_poids_mois
+
         # 2. Dépenses (mois)
         depenses_classiques_mois_qs = Depense.objects.filter(
-            pays=mali, date__year=today.year, date__month=today.month
+            pays=mali, date__year=today.year, date__month=today.month, is_china_indicative=False
         )
         depenses_classiques_mois = (
             depenses_classiques_mois_qs.aggregate(total=Sum("montant"))["total"] or 0
@@ -210,7 +216,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         )
 
         depenses_globales = (
-            Depense.objects.filter(pays=mali, date__lt=today).aggregate(
+            Depense.objects.filter(pays=mali, date__lt=today, is_china_indicative=False).aggregate(
                 total=Sum("montant")
             )["total"]
             or 0
@@ -239,44 +245,60 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         # A. Cargo (Air)
         colis_cargo = colis_livres_jour.filter(lot__type_transport="CARGO")
         recette_cargo = (
-            colis_cargo.aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"]
+            colis_cargo.aggregate(
+                total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+            )["total"]
             or 0
         )
+        poids_cargo = colis_cargo.aggregate(total=Sum("poids"))["total"] or 0
+        
         context["colis_cargo_list"] = colis_cargo.annotate(
             net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
         ).order_by("-updated_at")
         context["recette_cargo_jour"] = recette_cargo
+        context["poids_cargo_jour"] = poids_cargo
 
         # B. Express (Air)
         colis_express = colis_livres_jour.filter(lot__type_transport="EXPRESS")
         recette_express = (
-            colis_express.aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))[
-                "total"
-            ]
+            colis_express.aggregate(
+                total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+            )["total"]
             or 0
         )
+        poids_express = colis_express.aggregate(total=Sum("poids"))["total"] or 0
+        
         context["colis_express_list"] = colis_express.annotate(
             net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
         ).order_by("-updated_at")
         context["recette_express_jour"] = recette_express
+        context["poids_express_jour"] = poids_express
 
         # C. Bateau (Maritime)
         colis_bateau = colis_livres_jour.filter(lot__type_transport="BATEAU")
         recette_bateau = (
-            colis_bateau.aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))[
-                "total"
-            ]
+            colis_bateau.aggregate(
+                total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+            )["total"]
             or 0
         )
+        poids_bateau = colis_bateau.aggregate(total=Sum("poids"))["total"] or 0
+        cbm_bateau = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
+        
         context["colis_bateau_list"] = colis_bateau.annotate(
             net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
         ).order_by("-updated_at")
         context["recette_bateau_jour"] = recette_bateau
+        context["poids_bateau_jour"] = poids_bateau
+        context["cbm_bateau_jour"] = cbm_bateau
 
         # Total Recettes Jour
         context["total_recettes_jour"] = (
             recette_cargo + recette_express + recette_bateau
         )
+        
+        # Poids Total Jour (Kilos livrés du jour)
+        context["total_poids_jour"] = poids_cargo + poids_express + poids_bateau
 
         # Total JC Jour (Pour info)
         context["total_jc_jour"] = (
@@ -284,29 +306,45 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         )
 
         # --- 3. DÉPENSES & TRANSFERTS DU JOUR ---
-        # Dépenses
+        # Dépenses - On exclut les dépenses indicatives Chine du solde Mali
         depenses_jour_qs = Depense.objects.filter(pays=mali, date=today).order_by(
             "-created_at"
         )
-        total_depenses = depenses_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
+        
+        # Dépenses réelles (Mali)
+        total_depenses_mali = depenses_jour_qs.filter(
+            is_china_indicative=False
+        ).aggregate(total=Sum("montant"))["total"] or 0
+        
+        # Dépenses indicatives (Chine)
+        total_depenses_chine = depenses_jour_qs.filter(
+            is_china_indicative=True
+        ).aggregate(total=Sum("montant"))["total"] or 0
 
         # Transferts (considérés comme dépenses jour)
-
         transferts_jour_qs = TransfertArgent.objects.filter(
             pays_expediteur=mali, date=today
         ).order_by("-created_at")
+        
         total_transferts = (
             transferts_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
         )
 
         context["depenses_jour_list"] = depenses_jour_qs
         context["transferts_jour_list"] = transferts_jour_qs
-        context["total_sorties_jour"] = total_depenses + total_transferts
-        context["total_depenses_only"] = total_depenses
+        
+        # Séparation des transferts pour l'affichage
+        context["transferts_chine_list"] = transferts_jour_qs.filter(destinataire="CHINE")
+        context["transferts_gaoussou_list"] = transferts_jour_qs.filter(destinataire="GAOUSSOU")
+        
+        # Sorties Jour réelles (pour solde caisse)
+        context["total_sorties_jour"] = total_depenses_mali + total_transferts
+        context["total_depenses_only"] = total_depenses_mali
+        context["total_depenses_chine_only"] = total_depenses_chine
         context["total_transferts_only"] = total_transferts
 
         # --- 4. SOLDE CAISSE ACTUEL ---
-        # Solde Veille + Recettes Jour - Sorties Jour
+        # Solde Veille + Recettes Jour - Sorties Jour (Réelles)
         context["solde_caisse_actuel"] = (
             context["solde_veille"]
             + context["total_recettes_jour"]
@@ -363,8 +401,12 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
                 ),
             )
             search_fields = [
-                "numero", "colis__client__nom", "colis__client__prenom",
-                "colis__client__telephone", "nom_complet", "prenom_complet"
+                "numero",
+                "colis__client__nom",
+                "colis__client__prenom",
+                "colis__client__telephone",
+                "nom_complet",
+                "prenom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
 
@@ -423,8 +465,12 @@ class LotsArrivesView(LotsEnTransitView):
                 ),
             )
             search_fields = [
-                "numero", "colis__client__nom", "colis__client__prenom",
-                "colis__client__telephone", "nom_complet", "prenom_complet"
+                "numero",
+                "colis__client__nom",
+                "colis__client__prenom",
+                "colis__client__telephone",
+                "nom_complet",
+                "prenom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
 
@@ -486,8 +532,10 @@ class LotsLivresView(LotsEnTransitView):
                 ),
             )
             search_fields = [
-                "numero", "colis__client__nom", "colis__client__telephone",
-                "nom_complet"
+                "numero",
+                "colis__client__nom",
+                "colis__client__telephone",
+                "nom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
 
@@ -647,7 +695,15 @@ class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailVie
                 nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
                 prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
             )
-            search_fields = ["reference", "client__nom", "client__prenom", "client__telephone", "poids", "nom_complet", "prenom_complet"]
+            search_fields = [
+                "reference",
+                "client__nom",
+                "client__prenom",
+                "client__telephone",
+                "poids",
+                "nom_complet",
+                "prenom_complet",
+            ]
             colis_queryset = apply_flexible_search(colis_queryset, qc, search_fields)
             context["qc"] = qc
 
@@ -687,7 +743,15 @@ class LotTransitDetailView(LotDetailView):
                 nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
                 prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
             )
-            search_fields = ["reference", "client__nom", "client__prenom", "client__telephone", "poids", "nom_complet", "prenom_complet"]
+            search_fields = [
+                "reference",
+                "client__nom",
+                "client__prenom",
+                "client__telephone",
+                "poids",
+                "nom_complet",
+                "prenom_complet",
+            ]
             colis_qs = apply_flexible_search(colis_qs, qc, search_fields)
         from django.core.paginator import Paginator
 
@@ -1208,7 +1272,7 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
                     colis.reste_a_payer = float(rp) if rp else 0
                 except ValueError:
                     colis.reste_a_payer = 0
-        
+
         colis.mode_paiement = request.POST.get("mode_paiement")
 
         colis.status = "LIVRE"
@@ -1297,7 +1361,9 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                 c.est_paye = False
                 c.reste_a_payer = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
 
-        Colis.objects.bulk_update(colis_list, ["status", "mode_livraison", "est_paye", "reste_a_payer"])
+        Colis.objects.bulk_update(
+            colis_list, ["status", "mode_livraison", "est_paye", "reste_a_payer"]
+        )
 
         # Grouper les notifications
         from notification.tasks import send_notification_async
@@ -1518,13 +1584,16 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                     status="LIVRE",
                     est_paye=True,
                     updated_at__date__lt=today,
-                ).aggregate(total=Sum(F("prix_final") - F("montant_jc")))["total"]
+                ).aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"]
                 or 0
             )
+            # Dépenses cumulées Mali uniquement
             depenses_globales_veille = (
-                Depense.objects.filter(pays__code="ML", date__lt=today).aggregate(
-                    total=Sum("montant")
-                )["total"]
+                Depense.objects.filter(
+                    pays__code="ML", 
+                    date__lt=today,
+                    is_china_indicative=False
+                ).aggregate(total=Sum("montant"))["total"]
                 or 0
             )
             from report.models import TransfertArgent
@@ -1539,11 +1608,13 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                 depenses_globales_veille + transferts_globaux_veille
             )
 
-            # Dépenses Jour
+            # Dépenses Jour Mali uniquement
             total_depenses = (
-                Depense.objects.filter(pays__code="ML", date=today).aggregate(
-                    total=Sum("montant")
-                )["total"]
+                Depense.objects.filter(
+                    pays__code="ML", 
+                    date=today,
+                    is_china_indicative=False
+                ).aggregate(total=Sum("montant"))["total"]
                 or 0
             )
             # Transferts Jour
@@ -1555,8 +1626,6 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             )
 
         # Calcul du solde final (pour ce rapport)
-        # Si Global : Solde Veille + Recettes - (Dépenses + Transferts)
-        # Si Spécifique : Juste Recettes (car pas de dépenses spécifiques trackées ici)
         solde_final = 0
         if report_type == "global":
             solde_final = (
@@ -1567,16 +1636,20 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                 encaissements  # Pour un rapport spécifique, le solde est le CA généré
             )
 
+        # Calcul du poids total pour le rapport
+        total_poids = colis_qs.aggregate(total=Sum("poids"))["total"] or 0
+
         # Contexte pour le template
         context = {
             "date": today,
             "report_type": report_type,
             "titre_rapport": titre_rapport,
-            "colis_list": colis_qs,  # Renommé pour cohérence avec template (vérifier template)
+            "colis_list": colis_qs,
             "total_encaissements": encaissements,
             "total_jc": total_jc,
             "total_depenses": total_depenses,
             "total_transferts": total_transferts,
+            "total_poids": total_poids,
             "solde_veille": solde_veille,
             "solde_final": solde_final,
             "user": request.user,

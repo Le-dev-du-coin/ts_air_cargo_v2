@@ -1,7 +1,7 @@
 {% extends "mali/base.html" %}
 {% load humanize %}
 
-{% block header %}Transferts vers Chine{% endblock %}
+{% block header %}Transferts{% endblock %}
 
 {% block actions %}
 <button onclick="document.getElementById('add-transfert-modal').classList.remove('hidden')" 
@@ -15,21 +15,43 @@
 
 {% block mali_content %}
 <!-- Indicateurs -->
-<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-    <div class="bg-white overflow-hidden shadow rounded-lg">
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2 mb-8">
+    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-blue-500">
         <div class="p-5">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
-                    <svg class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.065M15 3a2 2 0 012 2v1M9 21h4" />
                     </svg>
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">Total Transféré</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate uppercase tracking-wider">Total vers CHINE</dt>
                         <dd>
-                            <div class="text-lg font-medium text-gray-900">
-                                {{ total_transferts|intcomma }} FCFA
+                            <div class="text-xl font-black text-blue-700">
+                                {{ total_chine|intcomma }} FCFA
+                            </div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-purple-500">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate uppercase tracking-wider">Total vers GAOUSSOU</dt>
+                        <dd>
+                            <div class="text-xl font-black text-purple-700">
+                                {{ total_gaoussou|intcomma }} FCFA
                             </div>
                         </dd>
                     </dl>
@@ -40,64 +62,101 @@
 </div>
 
 <!-- Liste des transferts -->
-<div class="flex flex-col">
-    <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-        <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-            <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preuve</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enregistré par</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for transfert in transferts %}
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ transfert.date|date:"d/m/Y" }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
-                                {{ transfert.montant|intcomma }} FCFA
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-500">
-                                {{ transfert.description|default:"-" }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {% if transfert.preuve_image %}
-                                    <a href="{{ transfert.preuve_image.url }}" target="_blank" class="text-blue-600 hover:text-blue-900">
-                                        Voir Reçu
-                                    </a>
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                    {% if transfert.statut == 'RECU' %}bg-green-100 text-green-800
-                                    {% elif transfert.statut == 'ANNULE' %}bg-red-100 text-red-800
-                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
-                                    {{ transfert.get_statut_display }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ transfert.enregistre_par.get_full_name|default:transfert.enregistre_par.username }}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
-                                Aucun transfert enregistré.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+<div class="space-y-10">
+    <!-- 1. Transferts vers la CHINE -->
+    <div class="bg-white shadow rounded-lg border border-blue-100 overflow-hidden">
+        <div class="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-blue-800 flex items-center">
+                <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.065M15 3a2 2 0 012 2v1M9 21h4" />
+                </svg>
+                Transferts vers la CHINE
+            </h3>
+            <span class="text-xl font-black text-blue-700">{{ total_chine|intcomma }} FCFA</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preuve</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    {% for transfert in transferts_chine %}
+                    <tr class="hover:bg-blue-50/30 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ transfert.date|date:"d/m/Y" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">{{ transfert.montant|intcomma }} FCFA</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">{{ transfert.description|default:"-" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if transfert.preuve_image %}
+                                <a href="{{ transfert.preuve_image.url }}" target="_blank" class="text-blue-600 hover:text-blue-900 font-medium">Voir Reçu</a>
+                            {% else %} - {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                {{ transfert.get_statut_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="px-6 py-10 text-center text-gray-400 italic">Aucun transfert vers la Chine enregistré.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 2. Transferts vers GAOUSSOU -->
+    <div class="bg-white shadow rounded-lg border border-purple-100 overflow-hidden">
+        <div class="bg-purple-50 px-6 py-4 border-b border-purple-100 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-purple-800 flex items-center">
+                <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Transferts vers GAOUSSOU
+            </h3>
+            <span class="text-xl font-black text-purple-700">{{ total_gaoussou|intcomma }} FCFA</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preuve</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    {% for transfert in transferts_gaoussou %}
+                    <tr class="hover:bg-purple-50/30 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ transfert.date|date:"d/m/Y" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">{{ transfert.montant|intcomma }} FCFA</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">{{ transfert.description|default:"-" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if transfert.preuve_image %}
+                                <a href="{{ transfert.preuve_image.url }}" target="_blank" class="text-purple-600 hover:text-purple-900 font-medium">Voir Reçu</a>
+                            {% else %} - {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                {{ transfert.get_statut_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="px-6 py-10 text-center text-gray-400 italic">Aucun transfert vers Gaoussou enregistré.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
             <!-- Pagination -->
             {% if is_paginated %}
@@ -158,7 +217,7 @@
                     <div class="sm:flex sm:items-start">
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                             <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                Nouveau Transfert vers Chine
+                                Nouveau Transfert
                             </h3>
                             <div class="mt-4 space-y-4">
                                 <div>
@@ -166,6 +225,15 @@
                                     <input type="date" name="date" id="date" required 
                                            class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
                                            value="{% now 'Y-m-d' %}">
+                                </div>
+
+                                <div>
+                                    <label for="destinataire" class="block text-sm font-medium text-gray-700">Destinataire</label>
+                                    <select name="destinataire" id="destinataire" required
+                                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                        <option value="CHINE">Chine</option>
+                                        <option value="GAOUSSOU">Gaoussou</option>
+                                    </select>
                                 </div>
                                 
                                 <div>
