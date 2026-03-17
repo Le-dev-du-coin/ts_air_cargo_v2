@@ -25,6 +25,7 @@ class User(AbstractUser):
         GLOBAL_ADMIN = "GLOBAL_ADMIN", _("Global Admin")
         ADMIN_CHINE = "ADMIN_CHINE", _("Admin Chine")
         AGENT_CHINE = "AGENT_CHINE", _("Agent Chine")
+        ADMIN_MALI = "ADMIN_MALI", _("Admin Mali")
         AGENT_MALI = "AGENT_MALI", _("Agent Mali")
         AGENT_RCI = "AGENT_RCI", _("Agent RCI")
         CLIENT = "CLIENT", _("Client")
@@ -119,6 +120,10 @@ class Lot(TenantAwareModel):
     type_transport = models.CharField(
         max_length=20, choices=TypeTransport.choices, default=TypeTransport.CARGO
     )
+    nb_colis = models.PositiveIntegerField(
+        default=0,
+        help_text=_("Nombre de colis groupés dans ce lot (ex: 33 colis pour 415 cartons)"),
+    )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.OUVERT
     )
@@ -184,6 +189,10 @@ class Lot(TenantAwareModel):
 
 
 class Colis(TenantAwareModel):
+    class Meta:
+        verbose_name = _("Carton")
+        verbose_name_plural = _("Cartons")
+
     class Status(models.TextChoices):
         RECU = "RECU", _("Reçu Chine")
         EXPEDIE = "EXPEDIE", _("Expédié")
@@ -322,7 +331,7 @@ class Colis(TenantAwareModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Colis {self.reference} - {self.client}"
+        return f"Carton {self.reference} - {self.client}"
 
 
 class Tarif(TenantAwareModel):

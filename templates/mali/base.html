@@ -60,6 +60,13 @@
                         <a href="{% url 'mali:depenses_list' %}" class="{% if 'depenses' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dépenses</a>
                         <a href="{% url 'mali:transferts_list' %}" class="{% if 'transferts' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Transferts</a>
                         <a href="{% url 'mali:rapport_financier' %}" class="{% if request.resolver_match.url_name == 'rapport_financier' %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rapport Avancé</a>
+
+                        {% if user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' %}
+                        <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-green-300 uppercase tracking-wider">Administration</h3></div>
+                        <a href="{% url 'mali:admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dashboard Admin</a>
+                        <a href="{% url 'mali:admin_agents' %}" class="{% if 'agents' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Gestion Agents</a>
+                        <a href="{% url 'mali:admin_correction_list' %}" class="{% if 'correction' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Outils Correction</a>
+                        {% endif %}
                     </nav>
                 </div>
 
@@ -210,6 +217,39 @@
                                 </a>
                             </div>
                         </div>
+
+                        {% if user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' %}
+                        <!-- Section Admin -->
+                        <div class="mt-8">
+                            <h3 class="px-3 text-xs font-semibold text-green-300 uppercase tracking-wider">
+                                Administration
+                            </h3>
+                            <div class="mt-2 space-y-1">
+                                <a href="{% url 'mali:admin_dashboard' %}"
+                                    class="{% if request.resolver_match.url_name == 'admin_dashboard' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Dashboard Admin
+                                </a>
+                                <a href="{% url 'mali:admin_agents' %}"
+                                    class="{% if 'agents' in request.path %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                    Gestion Agents
+                                </a>
+                                <a href="{% url 'mali:admin_correction_list' %}"
+                                    class="{% if 'correction' in request.path %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    Outils Correction
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
                     </nav>
                 </div>
                 <!-- User Profile -->

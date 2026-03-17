@@ -152,6 +152,7 @@ class LotForm(forms.ModelForm):
         fields = [
             "destination",
             "type_transport",
+            "nb_colis",
             "frais_transport",
             "photo",
         ]
@@ -164,6 +165,12 @@ class LotForm(forms.ModelForm):
             "type_transport": forms.Select(
                 attrs={
                     "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                }
+            ),
+            "nb_colis": forms.NumberInput(
+                attrs={
+                    "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
+                    "placeholder": "Ex: 33",
                 }
             ),
             "frais_transport": forms.NumberInput(

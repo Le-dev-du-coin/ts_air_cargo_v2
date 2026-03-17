@@ -83,10 +83,10 @@
                         </div>
                     </dl>
 
-                    <!-- Statistiques Colis (Avion vs Bateau) -->
+                    <!-- Statistiques Cartons (Avion vs Bateau) -->
                     <div class="mt-6 border-t border-gray-200 pt-4">
                         <div class="flex items-center justify-between mb-3">
-                            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Statistiques Colis</h4>
+                            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Statistiques Cartons</h4>
                             <a href="{% url 'chine:transport_stats' %}" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">Voir détails &rarr;</a>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -209,10 +209,10 @@
                         </div>
                     </dl>
 
-                    <!-- Statistiques Colis (Avion vs Bateau) -->
+                    <!-- Statistiques Cartons (Avion vs Bateau) -->
                     <div class="mt-6 border-t border-gray-200 pt-4">
                         <div class="flex items-center justify-between mb-3">
-                            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Statistiques Colis</h4>
+                            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Statistiques Cartons</h4>
                             <a href="{% url 'chine:transport_stats' %}" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">Voir détails &rarr;</a>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -368,7 +368,7 @@
 
         <!-- Graphique Admin -->
         <div class="lg:col-span-4 bg-white p-6 shadow rounded-xl">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Volume des Colis (Evolution 6 mois)</h3>
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Volume des Cartons (Evolution 6 mois)</h3>
             <div class="h-64">
                 <canvas id="performanceChart"></canvas>
             </div>
@@ -455,7 +455,7 @@
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
-                        <dt class="text-sm font-medium text-emerald-700 truncate">Montant Total Colis</dt>
+                        <dt class="text-sm font-medium text-emerald-700 truncate">Montant Total Cartons</dt>
                         <dd class="text-xl lg:text-lg xl:text-xl font-semibold text-gray-900 truncate" title="{{ montant_total_colis_agent|default:'0'|floatformat:0|intcomma }} FCFA">
                             {{ montant_total_colis_agent|default:"0"|floatformat:0|intcomma }} FCFA
                         </dd>
@@ -494,7 +494,7 @@
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
-                        <dt class="text-sm font-medium text-gray-500 truncate">Total Colis Reçus</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Total Cartons Reçus</dt>
                         <dd class="text-2xl font-semibold text-gray-900">{{ colis_total_count|default:"0"|intcomma }}</dd>
                     </div>
                 </div>
@@ -533,7 +533,7 @@
                 data: {
                     labels: data.map(item => item.month),
                     datasets: [{
-                        label: 'Nombre de Colis',
+                        label: 'Nombre de Cartons',
                         data: data.map(item => item.count),
                         borderColor: 'rgb(79, 70, 229)',
                         backgroundColor: 'rgba(79, 70, 229, 0.1)',
@@ -589,7 +589,7 @@
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Montant Total Colis
+                                        Montant Total Cartons
                                     </th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

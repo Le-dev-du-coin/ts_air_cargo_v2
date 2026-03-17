@@ -1,0 +1,75 @@
+{% extends "mali/base.html" %}
+
+{% block title %}{% if object %}Modifier Agent{% else %}Ajouter Agent{% endif %}{% endblock %}
+
+{% block header %}{% if object %}Modifier Agent : {{ object.username }}{% else %}Nouvel Agent Mali{% endif %}{% endblock %}
+
+{% block mali_content %}
+<div class="max-w-2xl mx-auto">
+    <form method="POST" class="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 space-y-6">
+        {% csrf_token %}
+        
+        <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label for="{{ form.username.id_for_label }}" class="block text-sm font-bold text-gray-700 uppercase tracking-tight">Nom d'utilisateur</label>
+                {{ form.username }}
+                {% if form.username.errors %}<p class="mt-1 text-xs text-red-500">{{ form.username.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Prénom</label>
+                {{ form.first_name }}
+            </div>
+
+            <div>
+                <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Nom</label>
+                {{ form.last_name }}
+            </div>
+
+            <div class="sm:col-span-2">
+                <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">Email</label>
+                {{ form.email }}
+            </div>
+
+            <div class="sm:col-span-2">
+                <label for="{{ form.phone.id_for_label }}" class="block text-sm font-medium text-gray-700">Téléphone</label>
+                {{ form.phone }}
+            </div>
+
+            {% if not object %}
+            <div class="sm:col-span-2">
+                <label for="{{ form.password.id_for_label }}" class="block text-sm font-bold text-gray-700 uppercase tracking-tight">Mot de passe</label>
+                <input type="password" name="password" id="id_password" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-11 border px-3">
+            </div>
+            {% else %}
+            <div class="sm:col-span-2 flex items-center">
+                {{ form.is_active }}
+                <label for="{{ form.is_active.id_for_label }}" class="ml-2 block text-sm font-medium text-gray-700">Compte Actif</label>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Custom Styling for Form Fields -->
+        <style>
+            input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+                @apply mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-11 border px-3 transition-all duration-200 bg-gray-50 focus:bg-white;
+            }
+        </style>
+        {% for field in form %}
+            {% if field.name != 'is_active' and field.name != 'password' and field.name != 'username' and field.name != 'first_name' and field.name != 'last_name' and field.name != 'email' and field.name != 'phone' %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
+                    {{ field }}
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        <div class="pt-4 flex items-center justify-end space-x-3 border-t border-gray-100">
+            <a href="{% url 'mali:admin_agents' %}" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Annuler</a>
+            <button type="submit" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5">
+                {% if object %}Enregistrer les modifications{% else %}Créer l'agent{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

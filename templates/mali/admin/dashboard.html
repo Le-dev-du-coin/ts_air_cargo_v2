@@ -1,0 +1,116 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block title %}Admin Mali - Dashboard{% endblock %}
+
+{% block header %}Tableau de Bord Administrateur{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-6">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Agents Mali</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ total_agents }}</p>
+                </div>
+                <div class="bg-indigo-50 p-3 rounded-lg">
+                    <svg class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a href="{% url 'mali:admin_agents' %}" class="text-indigo-600 hover:text-indigo-700 text-sm font-medium flex items-center">
+                    Gérer les agents
+                    <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Cartons (Mois)</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ total_colis_mois }}</p>
+                </div>
+                <div class="bg-green-50 p-3 rounded-lg">
+                    <svg class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4">
+                <p class="text-sm text-gray-400">Total des nouveaux cartons ce mois</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Outil de Correction</p>
+                    <p class="text-lg font-bold text-gray-900 mt-1">Actions Rapides</p>
+                </div>
+                <div class="bg-orange-50 p-3 rounded-lg">
+                    <svg class="h-8 w-8 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a href="{% url 'mali:admin_correction_list' %}" class="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center">
+                    Voir les erreurs possibles
+                    <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Deliveries / Error Checking -->
+    <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-gray-900">Livraisons Récentes (Vérification Erreurs)</h3>
+            <a href="{% url 'mali:lots_livres' %}" class="text-sm text-indigo-600 hover:underline">Tout voir</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Référence</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernière Action</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action Correction</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for colis in recent_deliveries %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">{{ colis.reference }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ colis.client.nom }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ colis.updated_at|naturaltime }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <form action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" onsubmit="return confirm('Voulez-vous vraiment annuler la livraison de ce carton ?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="revert_to_arrive">
+                                <button type="submit" class="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded-md transition-colors">
+                                    Remettre en Arrivé
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-8 text-center text-gray-500 italic">Aucune livraison récente détectée.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

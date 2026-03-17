@@ -61,9 +61,49 @@ class DestinationAgentRequiredMixin(AccessMixin):
 
         return Country.objects.first()
 
+class AdminMaliRequiredMixin(AccessMixin):
+    """
+    Mixin pour restreindre l'accès aux administrateurs du Mali
+    ou au Global Admin.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+
+        allowed_roles = ["GLOBAL_ADMIN", "ADMIN_MALI"]
+        if request.user.role not in allowed_roles:
+            messages.error(
+                request,
+                "Accès refusé. Cette section est réservée aux administrateurs du Mali.",
+            )
+            return redirect("index")
+        return super().dispatch(request, *args, **kwargs)
+
     def handle_no_permission(self):
-        messages.error(
-            self.request,
-            "Veuillez vous connecter pour accéder à l'Espace de Destination.",
-        )
+        messages.error(self.request, "Veuillez vous connecter pour accéder à l'Espace Admin Mali.")
+        return redirect("index")
+
+
+class AdminChineRequiredMixin(AccessMixin):
+    """
+    Mixin pour restreindre l'accès aux administrateurs de la Chine
+    ou au Global Admin.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+
+        allowed_roles = ["GLOBAL_ADMIN", "ADMIN_CHINE"]
+        if request.user.role not in allowed_roles:
+            messages.error(
+                request,
+                "Accès refusé. Cette section est réservée aux administrateurs de la Chine.",
+            )
+            return redirect("index")
+        return super().dispatch(request, *args, **kwargs)
+
+    def handle_no_permission(self):
+        messages.error(self.request, "Veuillez vous connecter pour accéder à l'Espace Admin Chine.")
         return redirect("index")

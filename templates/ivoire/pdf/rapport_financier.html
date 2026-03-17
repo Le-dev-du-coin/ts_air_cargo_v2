@@ -1,3 +1,4 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -190,21 +191,21 @@
     <div class="summary-grid">
         <div class="summary-card">
             <span class="card-label">Total Recettes</span>
-            <div class="card-value positive">+ {{ total_recettes }} FCFA</div>
+            <div class="card-value positive">+ {{ total_recettes|intcomma }} FCFA</div>
         </div>
         <div class="summary-card">
             <span class="card-label">Total Dépenses</span>
-            <div class="card-value negative">- {{ total_depenses }} FCFA</div>
+            <div class="card-value negative">- {{ total_depenses|intcomma }} FCFA</div>
         </div>
         <div class="summary-card">
             <span class="card-label">Total Transferts</span>
-            <div class="card-value negative">- {{ total_transferts }} FCFA</div>
+            <div class="card-value negative">- {{ total_transferts|intcomma }} FCFA</div>
         </div>
         
         <div class="summary-total">
             <span class="total-label">SOLDE NET PÉRIODE</span>
             <span class="total-value {% if solde >= 0 %}positive{% else %}negative{% endif %}">
-                {{ solde }} FCFA
+                {{ solde|intcomma }} FCFA
             </span>
         </div>
     </div>
@@ -225,7 +226,7 @@
                 <td>{{ depense.date|date:"d/m/Y" }}</td>
                 <td>{{ depense.get_categorie_display }}</td>
                 <td>{{ depense.description }}</td>
-                <td style="text-align: right; font-weight: 700;">{{ depense.montant }} FCFA</td>
+                <td style="text-align: right; font-weight: 700;">{{ depense.montant|intcomma }} FCFA</td>
             </tr>
             {% empty %}
             <tr>

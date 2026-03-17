@@ -138,4 +138,11 @@ urlpatterns = [
         RapportExportView.as_view(),
         name="rapport_export",
     ),
+    # Mali Admin Space
+    path("admin/", MaliAdminDashboardView.as_view(), name="admin_dashboard"),
+    path("admin/agents/", MaliAgentListView.as_view(), name="admin_agents"),
+    path("admin/agents/add/", MaliAgentCreateView.as_view(), name="admin_agent_add"),
+    path("admin/agents/<int:pk>/edit/", MaliAgentUpdateView.as_view(), name="admin_agent_edit"),
+    path("admin/correction/", MaliCorrectionListView.as_view(), name="admin_correction_list"),
+    path("admin/correction/<int:pk>/revert/", MaliActionRevertView.as_view(), name="admin_action_revert"),
 ]

@@ -1085,6 +1085,14 @@ class LotStatusUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Vie
                 )
                 return redirect("chine:lot_detail", pk=pk)
 
+            # Validation : Nombre de colis obligatoire à l'expédition
+            if not lot.nb_colis or lot.nb_colis <= 0:
+                messages.error(
+                    request,
+                    "Impossible d'expédier : Veuillez renseigner le nombre de colis groupés (ex: 33 colis) via 'Modifier' ou 'Réouvrir'.",
+                )
+                return redirect("chine:lot_detail", pk=pk)
+
             lot.status = "EN_TRANSIT"
             lot.date_expedition = timezone.now()
             lot.save()

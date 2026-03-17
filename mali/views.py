@@ -7,8 +7,8 @@ from django.utils import timezone
 from django.urls import reverse_lazy
 from django.db.models import Q, Count, Sum, Value, F, DecimalField
 from django.db.models.functions import Concat, Coalesce
-from core.mixins import DestinationAgentRequiredMixin
-from core.models import Country, Lot, Colis, Client
+from core.mixins import DestinationAgentRequiredMixin, AdminMaliRequiredMixin
+from core.models import Country, Lot, Colis, Client, User
 from report.models import Depense
 from django.contrib import messages
 
@@ -1840,3 +1840,87 @@ class ColisUpdateMaliView(
         # Le hook save() du modèle Colis contient déjà la logique de calcul de prix final
 
         return super().form_valid(form)
+
+# --- VUES ADMIN MALI ---
+
+class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
+    template_name = "mali/admin/dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.request.user.country
+        
+        # Stats globales
+        context["total_agents"] = User.objects.filter(country=mali, role="AGENT_MALI").count()
+        context["total_colis_mois"] = Colis.objects.filter(lot__destination=mali, created_at__month=timezone.now().month).count()
+        
+        # Dernières erreurs potentielles (ex: colis livrés aujourd'hui)
+        context["recent_deliveries"] = Colis.objects.filter(lot__destination=mali, status="LIVRE").order_by("-updated_at")[:10]
+        
+        return context
+
+class MaliAgentListView(AdminMaliRequiredMixin, ListView):
+    model = User
+    template_name = "mali/admin/agents_list.html"
+    context_object_name = "agents"
+
+    def get_queryset(self):
+        return User.objects.filter(country=self.request.user.country, role="AGENT_MALI")
+
+class MaliAgentCreateView(AdminMaliRequiredMixin, CreateView):
+    model = User
+    template_name = "mali/admin/agent_form.html"
+    fields = ["username", "first_name", "last_name", "email", "phone", "password"]
+    success_url = reverse_lazy("mali:admin_agents")
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        user.role = "AGENT_MALI"
+        user.country = self.request.user.country
+        user.set_password(form.cleaned_data["password"])
+        user.save()
+        messages.success(self.request, f"Agent {user.username} créé avec succès.")
+        return super().form_valid(form)
+
+class MaliAgentUpdateView(AdminMaliRequiredMixin, UpdateView):
+    model = User
+    template_name = "mali/admin/agent_form.html"
+    fields = ["first_name", "last_name", "email", "phone", "is_active"]
+    success_url = reverse_lazy("mali:admin_agents")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Profil agent mis à jour.")
+        return super().form_valid(form)
+
+class MaliCorrectionListView(AdminMaliRequiredMixin, ListView):
+    model = Colis
+    template_name = "mali/admin/correction_list.html"
+    context_object_name = "colis_list"
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = Colis.objects.filter(lot__destination=self.request.user.country).order_by("-updated_at")
+        search = self.request.GET.get("q")
+        if search:
+            qs = apply_flexible_search(qs, search, ["reference", "client__nom", "client__telephone"])
+        return qs
+
+class MaliActionRevertView(AdminMaliRequiredMixin, View):
+    def post(self, request, pk):
+        colis = get_object_or_404(Colis, pk=pk, lot__destination=request.user.country)
+        action = request.POST.get("action")
+        
+        if action == "revert_to_transit" and colis.status == "ARRIVE":
+            # Repasser en EXPEDIE (transit)
+            colis.status = "EXPEDIE"
+            colis.save()
+            messages.success(request, f"Le carton {colis.reference} est repassé en TRANSIT.")
+            
+        elif action == "revert_to_arrive" and colis.status == "LIVRE":
+            # Annulation encaissement si existant
+            colis.status = "ARRIVE"
+            colis.est_paye = False
+            colis.save()
+            messages.warning(request, f"Le carton {colis.reference} est repassé en ARRIVÉ. Le paiement a été annulé.")
+            
+        return redirect("mali:admin_correction_list")

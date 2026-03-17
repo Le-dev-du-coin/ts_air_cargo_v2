@@ -44,7 +44,7 @@
                         <form id="form-close-lot" action="{% url 'chine:lot_close' lot.pk %}" method="POST">
                             {% csrf_token %}
                             <button type="button" 
-                                onclick="confirmAction('Fermer ce lot ?', 'Il ne pourra plus recevoir de colis.', 'form-close-lot', 'Fermer', '#F59E0B')"
+                                onclick="confirmAction('Fermer ce lot ?', 'Il ne pourra plus recevoir de cartons.', 'form-close-lot', 'Fermer', '#F59E0B')"
                                 class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
                                 Fermer le Lot
                             </button>
@@ -53,7 +53,7 @@
                          <form id="form-reopen-lot" action="{% url 'chine:lot_reopen' lot.pk %}" method="POST">
                             {% csrf_token %}
                             <button type="button"
-                                onclick="confirmAction('Réouvrir ce lot ?', 'Vous pourrez à nouveau y ajouter des colis.', 'form-reopen-lot', 'Réouvrir', '#4F46E5')"
+                                onclick="confirmAction('Réouvrir ce lot ?', 'Vous pourrez à nouveau y ajouter des cartons.', 'form-reopen-lot', 'Réouvrir', '#4F46E5')"
                                 class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 Réouvrir le Lot
                             </button>
@@ -100,7 +100,7 @@
 
                 {% if user.role == 'ADMIN_CHINE' or user.role == 'AGENT_CHINE' %}
                 <div class="sm:col-span-1 border-t border-gray-100 pt-4">
-                    <dt class="text-xs font-medium text-gray-500 uppercase">Recettes (Colis)</dt>
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Recettes (Cartons)</dt>
                     <dd class="mt-1 text-lg font-bold text-green-600">{{ total_montant_colis|default:"0"|fcfa }}</dd>
                 </div>
                 <div class="sm:col-span-1 border-t border-gray-100 pt-4">
@@ -132,14 +132,14 @@
     </div>
     </div>
     
-    <!-- Colis Management -->
+    <!-- Cartons Management -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-16">
-        <!-- Add Colis Form -->
+        <!-- Add Carton Form -->
         {% if lot.status == 'OUVERT' %}
         <div class="lg:col-span-1">
             <div class="bg-white shadow sm:rounded-lg">
                 <div class="px-4 py-5 sm:p-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Ajouter un Colis</h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Ajouter un Carton</h3>
                     
                     <div id="colis-calculator" x-data="colisCalculator({{ tarif_json|default:'{}' }})" class="mt-5">
                         {% if user.role == 'AGENT_CHINE' %}
@@ -236,7 +236,7 @@
 
                             <!-- Photo & Submit -->
                             <div x-data="photoHandler()" class="space-y-3">
-                                <label class="block text-sm font-medium text-gray-700">Photo du Colis</label>
+                                <label class="block text-sm font-medium text-gray-700">Photo du Carton</label>
                                 
                                 <div class="flex gap-2">
                                     <button type="button" @click="openWebcam()" 
@@ -298,7 +298,7 @@
                                 </div>
                                 <div class="ml-3">
                                     <p class="text-sm text-blue-700">
-                                        Seuls les agents peuvent ajouter des colis à ce lot.
+                                        Seuls les agents peuvent ajouter des cartons à ce lot.
                                     </p>
                                 </div>
                             </div>
@@ -458,7 +458,7 @@
                                     
                                     if (!hasWebcamPhoto && !hasFilePhoto) {
                                         event.preventDefault();
-                                        alert('⚠️ Photo obligatoire !\n\nVeuillez capturer une photo avec la webcam ou uploader un fichier avant d\'ajouter le colis.');
+                                        alert('⚠️ Photo obligatoire !\n\nVeuillez capturer une photo avec la webcam ou uploader un fichier avant d\'ajouter le carton.');
                                         return false;
                                     }
                                     // Don't prevent default - let HTMX handle it
@@ -541,9 +541,9 @@
                 <div class="px-4 py-5 sm:px-6">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
-                             <h3 class="text-lg leading-6 font-medium text-gray-900">Colis dans ce lot</h3>
+                             <h3 class="text-lg leading-6 font-medium text-gray-900">Cartons dans ce lot</h3>
                              <div class="flex items-center gap-2">
-                                <span class="text-sm text-gray-500">{{ lot.colis.count }} colis</span>
+                                <span class="text-sm text-gray-500">{{ lot.colis.count }} cartons</span>
                                 <div class="flex flex-wrap gap-2">
                                     <a href="{% url 'chine:colis_print_pdf' %}?lot_id={{ lot.pk }}" target="_blank" class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">
                                         <svg class="-ml-0.5 mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -654,7 +654,7 @@
                                     <form id="form-delete-colis-{{ colis.pk }}" action="{% url 'chine:colis_delete' colis.pk %}" method="POST" class="inline">
                                         {% csrf_token %}
                                         <button type="button"
-                                            onclick="confirmAction('Retirer ce colis du lot ?', 'Le colis sera supprimé définitivement.', 'form-delete-colis-{{ colis.pk }}', 'Retirer', '#DC2626')"
+                                            onclick="confirmAction('Retirer ce carton du lot ?', 'Le carton sera supprimé définitivement.', 'form-delete-colis-{{ colis.pk }}', 'Retirer', '#DC2626')"
                                             class="text-xs text-red-600 hover:text-red-900 font-medium flex items-center bg-red-50 px-2 py-1 rounded hover:bg-red-100 transition-colors">
                                             <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -669,7 +669,7 @@
                     </li>
                     {% empty %}
                     <li class="px-4 py-8 text-center text-gray-500">
-                        Aucun colis dans ce lot pour le moment.
+                        Aucun carton dans ce lot pour le moment.
                     </li>
                     {% endfor %}
                 </ul>
@@ -758,7 +758,7 @@
             <div class="ml-4">
                 <h3 class="text-xl font-bold text-red-900 mb-2">Zone de Danger</h3>
                 <p class="text-sm text-red-600 mb-6">
-                    La suppression d'un lot est une action <strong>irréversible</strong>. Toutes les données associées (colis, photos, historique) seront définitivement effacées de la base de données.
+                    La suppression d'un lot est une action <strong>irréversible</strong>. Toutes les données associées (cartons, photos, historique) seront définitivement effacées de la base de données.
                 </p>
                 <form id="form-delete-lot" action="{% url 'chine:lot_delete' lot.pk %}" method="POST">
                     {% csrf_token %}
