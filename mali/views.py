@@ -1,4 +1,4 @@
-from django.views.generic import TemplateView, ListView, View, DetailView
+from django.views.generic import TemplateView, ListView, View, DetailView, CreateView
 from django.views.generic.edit import UpdateView
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse
@@ -82,7 +82,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
 
         # 2. Dépenses (mois)
         depenses_classiques_mois_qs = Depense.objects.filter(
-            pays=mali, date__year=today.year, date__month=today.month, is_china_indicative=False
+            pays=mali, date__year=today.year, date__month=today.month
         )
         depenses_classiques_mois = (
             depenses_classiques_mois_qs.aggregate(total=Sum("montant"))["total"] or 0
@@ -216,7 +216,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         )
 
         depenses_globales = (
-            Depense.objects.filter(pays=mali, date__lt=today, is_china_indicative=False).aggregate(
+            Depense.objects.filter(pays=mali, date__lt=today).aggregate(
                 total=Sum("montant")
             )["total"]
             or 0
@@ -311,15 +311,8 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             "-created_at"
         )
         
-        # Dépenses réelles (Mali)
-        total_depenses_mali = depenses_jour_qs.filter(
-            is_china_indicative=False
-        ).aggregate(total=Sum("montant"))["total"] or 0
-        
-        # Dépenses indicatives (Chine)
-        total_depenses_chine = depenses_jour_qs.filter(
-            is_china_indicative=True
-        ).aggregate(total=Sum("montant"))["total"] or 0
+        # Dépenses Jour
+        total_depenses_mali = depenses_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
 
         # Transferts (considérés comme dépenses jour)
         transferts_jour_qs = TransfertArgent.objects.filter(
@@ -340,7 +333,6 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         # Sorties Jour réelles (pour solde caisse)
         context["total_sorties_jour"] = total_depenses_mali + total_transferts
         context["total_depenses_only"] = total_depenses_mali
-        context["total_depenses_chine_only"] = total_depenses_chine
         context["total_transferts_only"] = total_transferts
 
         # --- 4. SOLDE CAISSE ACTUEL ---

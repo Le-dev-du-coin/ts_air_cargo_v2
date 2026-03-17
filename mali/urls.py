@@ -24,6 +24,12 @@ from .views import (
     ColisArriveBulkView,
     ColisLivreBulkView,
     ColisUpdateMaliView,
+    MaliAdminDashboardView,
+    MaliAgentListView,
+    MaliAgentCreateView,
+    MaliAgentUpdateView,
+    MaliCorrectionListView,
+    MaliActionRevertView,
 )
 from report.views import (
     DepenseListView,

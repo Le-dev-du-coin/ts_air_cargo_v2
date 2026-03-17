@@ -77,12 +77,12 @@ class AdminMaliRequiredMixin(AccessMixin):
                 request,
                 "Accès refusé. Cette section est réservée aux administrateurs du Mali.",
             )
-            return redirect("index")
+            return redirect("core:login_admin_mali")
         return super().dispatch(request, *args, **kwargs)
 
     def handle_no_permission(self):
-        messages.error(self.request, "Veuillez vous connecter pour accéder à l'Espace Admin Mali.")
-        return redirect("index")
+        messages.error(self.request, "Veuillez vous connecter avec un compte Administrateur Mali.")
+        return redirect("core:login_admin_mali")
 
 
 class AdminChineRequiredMixin(AccessMixin):
@@ -101,9 +101,9 @@ class AdminChineRequiredMixin(AccessMixin):
                 request,
                 "Accès refusé. Cette section est réservée aux administrateurs de la Chine.",
             )
-            return redirect("index")
+            return redirect("core:login_admin_chine")
         return super().dispatch(request, *args, **kwargs)
 
     def handle_no_permission(self):
-        messages.error(self.request, "Veuillez vous connecter pour accéder à l'Espace Admin Chine.")
-        return redirect("index")
+        messages.error(self.request, "Veuillez vous connecter avec un compte Administrateur Chine.")
+        return redirect("core:login_admin_chine")
