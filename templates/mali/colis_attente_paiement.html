@@ -16,7 +16,32 @@
 {% endblock %}
 
 {% block mali_content %}
-<div class="space-y-6">
+<div class="space-y-6" x-data="{
+    selectedIds: [],
+    selectedCount: 0,
+    selectedPoids: 0,
+    selectedMontant: 0,
+    updateSelection() {
+        const checked = document.querySelectorAll('input[name=\'colis_ids\']:checked');
+        this.selectedCount = checked.length;
+        let poids = 0;
+        let montant = 0;
+        let ids = [];
+        checked.forEach(cb => {
+            poids += parseFloat(cb.dataset.poids || 0);
+            montant += parseFloat(cb.dataset.montant || 0);
+            ids.push(cb.value);
+        });
+        this.selectedPoids = poids.toFixed(1);
+        this.selectedMontant = montant;
+        this.selectedIds = ids;
+    },
+    toggleAll(e) {
+        const checkboxes = document.querySelectorAll('input[name=\'colis_ids\']');
+        checkboxes.forEach(cb => cb.checked = e.target.checked);
+        this.updateSelection();
+    }
+}">
     <!-- Filtres / Recherche -->
     <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
         <form method="GET" class="flex gap-4">
@@ -42,6 +67,9 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
+                        <th scope="col" class="px-6 py-3 text-left">
+                            <input type="checkbox" @change="toggleAll" class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                        </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colis</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Livraison</th>
@@ -52,6 +80,13 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for colis in colis_list %}
                     <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <input type="checkbox" name="colis_ids" value="{{ colis.pk }}" 
+                                   data-poids="{{ colis.poids|default:0|unlocalize }}"
+                                   data-montant="{{ colis.montant_du|default:0|unlocalize }}"
+                                   @change="updateSelection"
+                                   class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded uppercase mr-2">{{ colis.reference }}</span>
@@ -85,7 +120,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                        <td colspan="6" class="px-6 py-10 text-center text-gray-500">
                             Aucun paiement en attente.
                         </td>
                     </tr>
@@ -146,6 +181,58 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- Barre d'actions flottante pour la sélection -->
+    <div x-show="selectedCount > 0" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-y-full opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="translate-y-0 opacity-100"
+         x-transition:leave-end="translate-y-full opacity-0"
+         class="fixed bottom-0 inset-x-0 pb-2 sm:pb-5 z-40" x-cloak>
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+            <div class="p-2 rounded-lg bg-indigo-600 shadow-lg sm:p-3">
+                <div class="flex items-center justify-between flex-wrap">
+                    <div class="w-0 flex-1 flex items-center">
+                        <span class="flex p-2 rounded-lg bg-indigo-800">
+                            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                        </span>
+                        <p class="ml-3 font-medium text-white truncate text-sm">
+                            <span class="md:hidden"> <span x-text="selectedCount"></span> colis | <span x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant)"></span> F </span>
+                            <span class="hidden md:inline"> 
+                                <span class="font-black text-indigo-100" x-text="selectedCount"></span> colis sélectionnés 
+                                <span class="mx-2 text-indigo-300">|</span>
+                                Poids : <span class="font-black text-indigo-100" x-text="selectedPoids"></span> kg
+                                <span class="mx-2 text-indigo-300">|</span>
+                                Total : <span class="font-black text-indigo-100" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant)"></span> FCFA
+                            </span>
+                        </p>
+                    </div>
+                    <div class="order-3 mt-2 flex-shrink-0 w-full sm:order-2 sm:mt-0 sm:w-auto flex items-center space-x-2">
+                        <select name="mode_paiement" form="bulk-encaissement-form"
+                                class="block w-40 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                            <option value="ESPECE" selected>💵 Espèce</option>
+                            <option value="ORANGE_MONEY">📱 Orange Money</option>
+                            <option value="SARALI">💳 Sarali</option>
+                        </select>
+                        <form method="POST" action="{% url 'mali:colis_encaisser_bulk' %}" id="bulk-encaissement-form">
+                            {% csrf_token %}
+                            <template x-for="id in selectedIds" :key="id">
+                                <input type="hidden" name="colis_ids" :value="id">
+                            </template>
+                            <button type="button" @click="confirmerEncaissementBulk()"
+                                    class="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-bold text-indigo-600 bg-white hover:bg-indigo-50">
+                                Encaisser
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -165,6 +252,26 @@
         }).then((result) => {
             if (result.isConfirmed) {
                 document.querySelector(`.form-encaisser-${pk}`).submit();
+            }
+        })
+    }
+
+    function confirmerEncaissementBulk() {
+        const count = document.querySelectorAll('input[name="colis_ids"]:checked').length;
+        if (count === 0) return;
+
+        Swal.fire({
+            title: `Encaisser ${count} colis ?`,
+            text: "Cette action marquera tous les colis sélectionnés comme payés.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Oui, tout encaisser',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('bulk-encaissement-form').submit();
             }
         })
     }

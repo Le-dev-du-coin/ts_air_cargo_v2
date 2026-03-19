@@ -133,7 +133,7 @@
                         <td class="px-4 py-3">
                             {% if colis.photo %}
                                  <img src="{{ colis.photo.url }}" alt="Colis"
-                                     class="h-12 w-12 rounded-lg object-cover border border-gray-200 cursor-zoom-in shadow-sm"
+                                     class="h-12 w-12 rounded-lg object-cover border border-gray-200 cursor-pointer shadow-sm"
                                      @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
                             {% else %}
                                 <div class="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center border border-dashed border-gray-200">
@@ -221,7 +221,6 @@
             </div>
         </div>
         {% endif %}
-    </div>
 
     <!-- Detail Modal (Modèle Transit) -->
     <div x-show="showModal"
@@ -262,10 +261,10 @@
                     <!-- Image avec zoom -->
                     <div x-show="colisPhoto" class="relative group">
                         <img :src="colisPhoto" alt="Photo colis"
-                             class="w-full h-64 object-cover rounded-xl border border-gray-200 cursor-zoom-in shadow-sm transition-all group-hover:brightness-95"
+                             class="w-full h-64 object-cover rounded-xl border border-gray-200 cursor-pointer shadow-sm transition-all group-hover:brightness-95"
                              @click="showZoom = true">
                         <div class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                            🔍 Cliquer pour agrandir
+                            📷 Cliquer pour agrandir
                         </div>
                     </div>
                     <div x-show="!colisPhoto" class="w-full h-28 flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200">

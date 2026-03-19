@@ -4,13 +4,35 @@
 {% block header %}Transferts{% endblock %}
 
 {% block actions %}
-<button onclick="document.getElementById('add-transfert-modal').classList.remove('hidden')" 
-        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-    </svg>
-    Nouveau Transfert
-</button>
+<div class="flex flex-col md:flex-row md:items-center gap-4">
+    <!-- Filtre Mois/Année -->
+    <form method="get" class="flex items-center bg-white rounded-lg border border-gray-300 shadow-sm overflow-hidden">
+        <select name="month" class="pl-3 pr-8 py-2 text-sm border-0 focus:ring-0 bg-transparent">
+            {% for m_num, m_name in months %}
+                <option value="{{ m_num }}" {% if current_month == m_num %}selected{% endif %}>{{ m_name }}</option>
+            {% endfor %}
+        </select>
+        <div class="w-px h-6 bg-gray-200"></div>
+        <select name="year" class="pl-3 pr-8 py-2 text-sm border-0 focus:ring-0 bg-transparent">
+            {% for y in years %}
+                <option value="{{ y }}" {% if current_year == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="bg-gray-50 px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 border-l border-gray-200 transition-colors uppercase tracking-wider">
+            Filtrer
+        </button>
+    </form>
+
+    <div class="hidden md:block h-8 w-px bg-gray-200 mx-2"></div>
+
+    <button onclick="document.getElementById('add-transfert-modal').classList.remove('hidden')" 
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Nouveau Transfert
+    </button>
+</div>
 {% endblock %}
 
 {% block mali_content %}

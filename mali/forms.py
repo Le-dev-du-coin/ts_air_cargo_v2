@@ -38,6 +38,17 @@ class ColisUpdateMaliForm(forms.ModelForm):
             ),
         }
 class ColisLivreMaliForm(forms.ModelForm):
+    STATUS_PAIEMENT_CHOICES = [
+        ("PAYE", "💰 Payé (Complet)"),
+        ("PARTIEL", "⏳ Paiement Partiel"),
+        ("ATTENTE", "⌛ En attente de paiement"),
+    ]
+    status_paiement = forms.ChoiceField(
+        choices=STATUS_PAIEMENT_CHOICES,
+        initial="PAYE",
+        widget=forms.Select(attrs={"class": "w-full rounded-md border-gray-300 font-bold"}),
+    )
+
     class Meta:
         model = Colis
         fields = [

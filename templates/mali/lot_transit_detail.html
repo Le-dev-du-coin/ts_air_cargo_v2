@@ -123,6 +123,7 @@
             updateSelection() {
                 const checked = document.querySelectorAll('.colis-checkbox:checked');
                 this.hasSelection = checked.length > 0;
+                this.selectedCount = checked.length;
                 
                 let totalPoids = 0;
                 let totalMontant = 0;
@@ -135,6 +136,7 @@
                 this.selectedPoids = totalPoids.toFixed(1);
                 this.selectedMontant = totalMontant;
             },
+            selectedCount: 0,
             selectedPoids: 0,
             selectedMontant: 0,
          }">
@@ -188,6 +190,7 @@
                 <div class="flex flex-col items-end space-y-1" x-show="hasSelection" x-cloak>
                     <div class="flex items-center space-x-4 mb-1">
                         <span class="text-xs font-bold text-gray-500 uppercase">Sélection : </span>
+                        <span class="text-sm font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded" x-text="selectedCount + ' colis'"></span>
                         <span class="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded" x-text="selectedPoids + ' kg'"></span>
                         <span class="text-sm font-black text-green-600 bg-green-50 px-2 py-0.5 rounded" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant) + ' FCFA'"></span>
                     </div>
@@ -349,10 +352,10 @@
                         <!-- Image avec zoom -->
                         <div x-show="colisPhoto" class="relative group">
                             <img :src="colisPhoto" alt="Photo colis"
-                                 class="w-full h-52 object-cover rounded-xl border border-gray-200 cursor-zoom-in shadow-sm transition-transform group-hover:brightness-95"
+                                 class="w-full h-52 object-cover rounded-xl border border-gray-200 cursor-pointer shadow-sm transition-transform group-hover:brightness-95"
                                  @click="showZoom = true">
                             <div class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                                🔍 Cliquer pour agrandir
+                                📷 Cliquer pour agrandir
                             </div>
                         </div>
                         <div x-show="!colisPhoto" class="w-full h-28 flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200">

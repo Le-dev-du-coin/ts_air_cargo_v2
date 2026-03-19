@@ -15,6 +15,7 @@ from .views import (
     ColisAttentePaiementView,
     ColisSortieGarantieView,
     ColisEncaissementView,
+    ColisEncaissementBulkView,
     RapportJourPDFView,
     LotTransitPDFView,
     NotificationConfigView,
@@ -23,6 +24,7 @@ from .views import (
     MaliRetryNotificationsView,
     ColisArriveBulkView,
     ColisLivreBulkView,
+    ColisSortieBulkView,
     ColisUpdateMaliView,
     MaliAdminDashboardView,
     MaliAgentListView,
@@ -105,6 +107,16 @@ urlpatterns = [
         "colis/<int:pk>/encaisser/",
         ColisEncaissementView.as_view(),
         name="colis_encaisser",
+    ),
+    path(
+        "colis/encaisser-bulk/",
+        ColisEncaissementBulkView.as_view(),
+        name="colis_encaisser_bulk",
+    ),
+    path(
+        "lots/<int:pk>/sortie-bulk/",
+        ColisSortieBulkView.as_view(),
+        name="colis_sortie_bulk",
     ),
     path("rapport/jour/pdf/", RapportJourPDFView.as_view(), name="rapport_jour_pdf"),
     path(

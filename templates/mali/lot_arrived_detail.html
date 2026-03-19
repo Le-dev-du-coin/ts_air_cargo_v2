@@ -28,6 +28,12 @@
     sortieSousGarantie: false,
     estPayeChine: false,
     mixedSelectionError: false,
+    selectedCount: 0,
+    selectedPoids: 0,
+    selectedMontant: 0,
+    showBulkDeliveryModal: false,
+    showBulkSortieModal: false,
+    selectedIds: [],
     async submitDelivery() {
         const form = document.getElementById('deliveryForm');
         const formData = new FormData(form);
@@ -72,7 +78,8 @@
         this.colisId = id;
         this.colisRef = ref;
         this.colisClient = client;
-        this.colisMontant = montant;
+        // Nettoyer le montant (supprimer les virgules/espaces de intcomma)
+        this.colisMontant = String(montant).replace(/[^\d]/g, '');
         this.estPayeChine = payeChine;
         this.showDeliveryModal = true;
         this.sortieSousGarantie = false;
@@ -111,8 +118,10 @@
             totalMontant += parseFloat(cb.dataset.prix || 0);
         });
         
+        this.selectedCount = checked.length;
         this.selectedPoids = totalPoids.toFixed(1);
         this.selectedMontant = totalMontant;
+        this.selectedIds = Array.from(checked).map(cb => cb.value);
 
         // Restriction : interdire mélange colis payés en Chine et non-payés en Chine
         if (checked.length > 1) {
@@ -216,19 +225,29 @@
                     <label for="selectAll" class="ml-2 block text-sm font-bold text-gray-700 cursor-pointer">Tout sélectionner</label>
                 </div>
                 
-                <div class="flex flex-col items-end space-y-1" x-show="hasSelection" x-cloak>
+                <div class="flex flex-col items-end space-y-2" x-show="hasSelection" x-cloak>
                     <div class="flex items-center space-x-4 mb-1">
                         <span class="text-xs font-bold text-gray-500 uppercase">Sélection : </span>
+                        <span class="text-sm font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded" x-text="selectedCount + ' colis'"></span>
                         <span class="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded" x-text="selectedPoids + ' kg'"></span>
                         <span class="text-sm font-black text-green-600 bg-green-50 px-2 py-0.5 rounded" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant) + ' FCFA'"></span>
                     </div>
-                    <button type="submit"
-                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors">
-                        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Livrer la sélection
-                    </button>
+                    <div class="flex space-x-2">
+                        <button type="button" @click="showBulkDeliveryModal = true"
+                                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors">
+                            <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Livrer la sélection
+                        </button>
+                        <button type="button" @click="showBulkSortieModal = true"
+                                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-amber-600 hover:bg-amber-700 transition-colors">
+                            <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Sortie de la sélection
+                        </button>
+                    </div>
                 </div>
                 <!-- Alerte sélection mixte -->
                 <div x-show="mixedSelectionError" x-cloak class="flex items-center space-x-2 text-xs font-bold text-red-600 bg-red-50 border border-red-300 rounded-md px-3 py-2">
@@ -352,195 +371,7 @@
         {% endif %}
     </div>
 
-    <!-- Delivery Modal -->
-    <div x-show="showDeliveryModal" 
-         class="fixed inset-0 z-50 overflow-y-auto" 
-         x-cloak
-         aria-labelledby="modal-title" 
-         role="dialog" 
-         aria-modal="true">
-        
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <!-- Background overlay -->
-            <div x-show="showDeliveryModal" 
-                 x-transition:enter="ease-out duration-300" 
-                 x-transition:enter-start="opacity-0" 
-                 x-transition:enter-end="opacity-100" 
-                 x-transition:leave="ease-in duration-200" 
-                 x-transition:leave-start="opacity-100" 
-                 x-transition:leave-end="opacity-0" 
-                 class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
-                 @click="showDeliveryModal = false"
-                 aria-hidden="true"></div>
-
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <!-- Modal panel -->
-            <div x-show="showDeliveryModal" 
-                 x-transition:enter="ease-out duration-300" 
-                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
-                 x-transition:leave="ease-in duration-200" 
-                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
-                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                 class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
-                
-                <form id="deliveryForm" method="POST" action="" @submit.prevent="submitDelivery">
-                    {% csrf_token %}
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <div class="sm:flex sm:items-start">
-                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
-                                <svg class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                                </svg>
-                            </div>
-                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                    Confirmer Livraison <span x-text="colisRef" class="font-bold"></span>
-                                </h3>
-                                <div class="mt-2">
-                                    <p class="text-sm text-gray-500">
-                                        Client: <span x-text="colisClient" class="font-semibold text-gray-700"></span><br>
-                                        <span x-show="!estPayeChine">Montant à payer: <span x-text="colisMontant" class="font-bold text-green-600"></span> FCFA</span>
-                                    </p>
-                                    <!-- Bandeau Payé en Chine -->
-                                    <div x-show="estPayeChine" x-cloak class="mt-3 flex items-center space-x-2 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
-                                        <span class="text-xl">🏮</span>
-                                        <div>
-                                            <p class="text-xs font-black text-amber-800 uppercase">Payé en Chine</p>
-                                            <p class="text-xs text-amber-700">Ce colis a déjà été encaissé par l'agence en Chine. Aucun paiement à collecter.</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Form Fields -->
-                                <div class="mt-4 space-y-3 text-sm">
-                                    <!-- Mode Livraison -->
-                                    <div>
-                                        <label class="block text-gray-700 font-bold mb-1">Mode de livraison</label>
-                                        <div class="flex space-x-4">
-                                            <label class="inline-flex items-center">
-                                                <input type="radio" name="mode_livraison" value="AGENCE" checked class="form-radio text-indigo-600">
-                                                <span class="ml-2">À l'agence</span>
-                                            </label>
-                                            <label class="inline-flex items-center">
-                                                <input type="radio" name="mode_livraison" value="DOMICILE" class="form-radio text-indigo-600">
-                                                <span class="ml-2">À domicile</span>
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <!-- Récepteur -->
-                                    <div>
-                                        <label class="block text-gray-700 font-bold mb-1">Personne réceptrice</label>
-                                        <input type="text" name="infos_recepteur" placeholder="Laisser vide si propriétaire" 
-                                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                    </div>
-
-                                    <!-- Commentaire -->
-                                    <div>
-                                        <label class="block text-gray-700 font-bold mb-1">Commentaire</label>
-                                        <textarea name="commentaire" rows="2" 
-                                                  class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
-                                    </div>
-
-                                    <!-- Status Paiement — masqué si déjà payé en Chine -->
-                                    <div x-show="!estPayeChine">
-                                        <label class="block text-gray-700 font-bold mb-1">Status Paiement</label>
-                                        <select name="status_paiement" :disabled="estPayeChine" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                            <option value="PAYE" selected>Payé (Reçu)</option>
-                                            <option value="NON_PAYE">En attente de paiement</option>
-                                        </select>
-                                    </div>
-                                    <!-- Champ caché PAYE pour les colis payés en Chine -->
-                                    <input x-show="estPayeChine" type="hidden" name="status_paiement" value="PAYE" :disabled="!estPayeChine">
-
-                                    <!-- Sortie sous Garantie -->
-                                    <div class="border-t border-gray-200 mt-4 pt-4" x-show="!estPayeChine">
-                                        <div class="flex items-start mb-3">
-                                            <div class="flex items-center h-5">
-                                                <input id="sortie_sous_garantie" name="sortie_sous_garantie" type="checkbox" x-model="sortieSousGarantie"
-                                                       class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                            </div>
-                                            <div class="ml-3 text-sm">
-                                                <label for="sortie_sous_garantie" class="font-bold text-gray-700">Sortie sous garantie (Chef/Collègue)</label>
-                                                <p class="text-gray-500 text-xs text-wrap">Cocher si le colis sort sans tout payer suite à une autorisation.</p>
-                                            </div>
-                                        </div>
-                                        
-                                        <div x-show="sortieSousGarantie" x-cloak class="mt-2 pl-7">
-                                            <label class="block text-gray-700 font-bold mb-1 text-xs">Autorisée par (Nom) *</label>
-                                            <input type="text" name="sortie_autorisee_par" placeholder="Qui a autorisé ?" :required="sortieSousGarantie"
-                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm">
-                                        </div>
-                                    </div>
-
-                                    <!-- Options de Paiement — masqué si déjà payé en Chine -->
-                                    <div x-show="!estPayeChine" class="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4 mt-4">
-                                        <!-- Statut Paiement -->
-                                        <div class="col-span-2 sm:col-span-1">
-                                            <label class="block text-xs font-black text-gray-700 uppercase mb-2">Statut Paiement</label>
-                                            <select name="status_paiement" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
-                                                <option value="PAYE" selected>💰 Payé (Complet)</option>
-                                                <option value="NON_PAYE">⏳ En attente (Partiel/Crédit)</option>
-                                            </select>
-                                        </div>
-
-                                        <!-- Mode de Paiement -->
-                                        <div class="col-span-2 sm:col-span-1">
-                                            <label class="block text-xs font-black text-gray-700 uppercase mb-2">Mode de Paiement</label>
-                                            <select name="mode_paiement" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
-                                                <option value="ESPECE" selected>💵 Espèce</option>
-                                                <option value="ORANGE_MONEY">📱 Orange Money</option>
-                                                <option value="SARALI">💳 Sarali</option>
-                                            </select>
-                                        </div>
-
-                                        <!-- Reste à payer -->
-                                        <div class="col-span-2 sm:col-span-1">
-                                            <label class="block text-xs font-black text-gray-700 uppercase mb-2">Reste à payer (Si partiel)</label>
-                                            <div class="relative rounded-md shadow-sm">
-                                                <input type="number" name="reste_a_payer" step="1"
-                                                    class="block w-full border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold pl-3 pr-12"
-                                                    placeholder="0">
-                                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                                    <span class="text-gray-500 sm:text-xs font-bold">FCFA</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Jeton Cédé (JC) -->
-                                        <div class="col-span-2 sm:col-span-1">
-                                            <label class="block text-xs font-black text-gray-700 uppercase mb-2">Remise / JC</label>
-                                            <div class="relative rounded-md shadow-sm">
-                                                <input type="number" name="montant_jc" step="1"
-                                                    class="block w-full border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold pl-3 pr-12"
-                                                    placeholder="0">
-                                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                                    <span class="text-gray-500 sm:text-xs font-bold">FCFA</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Confirmer Livraison
-                        </button>
-                        <button type="button" @click="showDeliveryModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Annuler
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <!-- (Individual Delivery Modal Removed) -->
     <!-- Detail Modal (Modèle Transit) -->
     <div x-show="showModal"
          class="fixed inset-0 z-50 overflow-y-auto"
@@ -580,10 +411,10 @@
                     <!-- Image avec zoom -->
                     <div x-show="colisPhoto" class="relative group">
                         <img :src="colisPhoto" alt="Photo colis"
-                             class="w-full h-64 object-cover rounded-xl border border-gray-200 cursor-zoom-in shadow-sm transition-all group-hover:brightness-95"
+                             class="w-full h-64 object-cover rounded-xl border border-gray-200 cursor-pointer shadow-sm transition-all group-hover:brightness-95"
                              @click="showZoom = true">
                         <div class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                            🔍 Cliquer pour agrandir
+                            📷 Cliquer pour agrandir
                         </div>
                     </div>
                     <div x-show="!colisPhoto" class="w-full h-28 flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
@@ -635,6 +466,142 @@
                         Fermer
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : Livraison en masse -->
+    <div x-show="showBulkDeliveryModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showBulkDeliveryModal = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                <div>
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                        <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-5">
+                        <h3 class="text-lg leading-6 font-bold text-gray-900 uppercase tracking-tight">Livraison Groupée</h3>
+                        <div class="mt-2 text-sm text-gray-500">
+                            Vous allez livrer <span class="font-black text-indigo-600" x-text="selectedCount"></span> colis.
+                        </div>
+                    </div>
+                </div>
+                <form method="POST" action="{% url 'mali:colis_livre_bulk' lot.pk %}">
+                    {% csrf_token %}
+                    <template x-for="id in selectedIds" :key="id">
+                        <input type="hidden" name="colis_ids" :value="id">
+                    </template>
+                    
+                    <div class="mt-4 space-y-4" x-data="{ bulkPaiement: 'ATTENTE', bulkEncaisse: 0 }">
+                        <!-- Récepteur -->
+                        <div>
+                            <label class="block text-xs font-black text-gray-700 uppercase mb-1">Personne réceptrice</label>
+                            <input type="text" name="infos_recepteur" placeholder="Propriétaire (par défaut)"
+                                   class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
+                        </div>
+
+                        <!-- Mode Livraison -->
+                        <div>
+                            <label class="block text-xs font-black text-gray-700 uppercase mb-1">Mode de livraison</label>
+                            <select name="mode_livraison" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
+                                <option value="AGENCE" selected>🏠 Retrait Agence</option>
+                                <option value="DOMICILE">🚚 Livraison Domicile</option>
+                            </select>
+                        </div>
+
+                        <!-- Statut Paiement -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2">
+                                <label class="block text-xs font-black text-gray-700 uppercase mb-1">Statut Paiement</label>
+                                <select name="status_paiement" x-model="bulkPaiement"
+                                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
+                                    <option value="PAYE">💰 Payé (Tout le monde)</option>
+                                    <option value="PARTIEL">⏳ Paiement Partiel (Global)</option>
+                                    <option value="ATTENTE" selected>⌛ En attente de paiement</option>
+                                </select>
+                            </div>
+
+                            <!-- Mode de Paiement (si payé ou partiel) -->
+                            <div class="col-span-2" x-show="bulkPaiement !== 'ATTENTE'">
+                                <label class="block text-xs font-black text-gray-700 uppercase mb-1">Mode de Paiement</label>
+                                <select name="mode_paiement" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
+                                    <option value="ESPECE" selected>💵 Espèce</option>
+                                    <option value="ORANGE_MONEY">📱 Orange Money</option>
+                                    <option value="SARALI">💳 Sarali</option>
+                                </select>
+                            </div>
+
+                            <!-- Champs Partiels -->
+                            <div class="col-span-1" x-show="bulkPaiement === 'PARTIEL'">
+                                <label class="block text-xs font-black text-amber-700 uppercase mb-1 italic">Montant Encaissé</label>
+                                <input type="number" name="montant_encaisse" x-model="bulkEncaisse"
+                                       class="block w-full border-amber-300 bg-amber-50 rounded-md focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-black">
+                            </div>
+                            <div class="col-span-1" x-show="bulkPaiement === 'PARTIEL'">
+                                <label class="block text-xs font-black text-red-700 uppercase mb-1 italic">Reste Global</label>
+                                <input type="number" name="reste_a_payer" readonly
+                                       :value="Math.max(0, selectedMontant - bulkEncaisse)"
+                                       class="block w-full border-red-200 bg-red-50 rounded-md text-red-700 sm:text-sm font-black outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-bold text-white hover:bg-green-700 focus:outline-none sm:col-start-2 sm:text-sm">
+                            Confirmer la livraison
+                        </button>
+                        <button type="button" @click="showBulkDeliveryModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:col-start-1 sm:text-sm">
+                            Annuler
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : Sortie en masse -->
+    <div x-show="showBulkSortieModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showBulkSortieModal = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                <div>
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100">
+                        <svg class="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-5">
+                        <h3 class="text-lg leading-6 font-bold text-gray-900 uppercase tracking-tight">Sortie sous Garantie (Masse)</h3>
+                        <div class="mt-2 text-sm text-gray-500">
+                            Autoriser la sortie sans paiement immédiat pour <span class="font-black text-amber-600" x-text="selectedCount"></span> colis.
+                        </div>
+                    </div>
+                </div>
+                <form method="POST" action="{% url 'mali:colis_sortie_bulk' lot.pk %}">
+                    {% csrf_token %}
+                    <template x-for="id in selectedIds" :key="id">
+                        <input type="hidden" name="colis_ids" :value="id">
+                    </template>
+                    
+                    <div class="mt-4">
+                        <label class="block text-xs font-black text-gray-700 uppercase mb-2">Autorisée par (Nom) *</label>
+                        <input type="text" name="sortie_autorisee_par" required placeholder="Ex: Responsable Agence"
+                               class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-bold">
+                    </div>
+
+                    <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amber-600 text-base font-bold text-white hover:bg-amber-700 focus:outline-none sm:col-start-2 sm:text-sm">
+                            Confirmer la sortie
+                        </button>
+                        <button type="button" @click="showBulkSortieModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:col-start-1 sm:text-sm">
+                            Annuler
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

@@ -62,8 +62,14 @@ class DepenseCreateView(LoginRequiredMixin, CreateView):
     fields = ["date", "categorie", "description", "montant", "piece_jointe"]
 
     def form_valid(self, form):
-        form.instance.enregistre_par = self.request.user
-        if hasattr(self.request.user, "country") and self.request.user.country:
+        user = self.request.user
+        form.instance.enregistre_par = user
+        
+        # Automatisme : Si agent Chine, marquer comme indicatif
+        if hasattr(user, 'role') and user.role in ['ADMIN_CHINE', 'AGENT_CHINE']:
+            form.instance.is_china_indicative = True
+            
+        if hasattr(user, "country") and user.country:
             form.instance.pays = self.request.user.country
         else:
             # Fallback ou erreur si l'utilisateur n'a pas de pays ?
@@ -126,7 +132,7 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
         total_recettes = recettes_agg["total_net"] or 0
 
         # 2. Dépenses (Mali uniquement)
-        depenses_qs = Depense.objects.filter(date__year=year, date__month=month)
+        depenses_qs = Depense.objects.filter(date__year=year, date__month=month, is_china_indicative=False)
         if country:
             depenses_qs = depenses_qs.filter(pays=country)
         
@@ -176,20 +182,45 @@ class TransfertListView(LoginRequiredMixin, ListView):
         qs = super().get_queryset()
         if hasattr(self.request.user, "country") and self.request.user.country:
             qs = qs.filter(pays_expediteur=self.request.user.country)
+            
+        # Filtre par mois/année (par défaut mois courant)
+        today = timezone.now()
+        try:
+            self.year = int(self.request.GET.get("year", today.year))
+            self.month = int(self.request.GET.get("month", today.month))
+        except (ValueError, TypeError):
+            self.year = today.year
+            self.month = today.month
+
+        qs = qs.filter(date__year=self.year, date__month=self.month)
         return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["current_year"] = self.year
+        context["current_month"] = self.month
+        
+        # Totaux basés sur le queryset filtré
+        qs_all = self.get_queryset()
         context["total_transferts"] = (
-            self.object_list.aggregate(Sum("montant"))["montant__sum"] or 0
+            qs_all.aggregate(Sum("montant"))["montant__sum"] or 0
         )
         
         # Séparation des transferts
-        context["transferts_chine"] = self.object_list.filter(destinataire="CHINE")
-        context["transferts_gaoussou"] = self.object_list.filter(destinataire="GAOUSSOU")
+        context["transferts_chine"] = qs_all.filter(destinataire="CHINE")
+        context["transferts_gaoussou"] = qs_all.filter(destinataire="GAOUSSOU")
         
         context["total_chine"] = context["transferts_chine"].aggregate(Sum("montant"))["montant__sum"] or 0
         context["total_gaoussou"] = context["transferts_gaoussou"].aggregate(Sum("montant"))["montant__sum"] or 0
+        
+        # Années pour le filtre (3 dernières années)
+        today = timezone.now()
+        context["years"] = range(today.year, today.year - 4, -1)
+        context["months"] = [
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre")
+        ]
         
         return context
 

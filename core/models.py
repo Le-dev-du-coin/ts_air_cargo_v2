@@ -330,6 +330,50 @@ class Colis(TenantAwareModel):
 
         super().save(*args, **kwargs)
 
+    def recalculate_prices(self):
+        """
+        Recalcule le prix_transport et le prix_final en fonction du lot, 
+        du type de colis et des tarifs en vigueur.
+        """
+        # Recherche du tarif pour la destination et le type de transport du lot
+        try:
+            tarif = Tarif.objects.get(
+                destination=self.lot.destination,
+                type_transport=self.lot.type_transport
+            )
+        except Tarif.DoesNotExist:
+            tarif = None
+
+        if self.type_colis == "MANUEL" and self.prix_kilo_manuel:
+            self.prix_transport = (self.poids or 0) * self.prix_kilo_manuel
+        elif self.type_colis == "TELEPHONE":
+            # Pour le téléphone, on utilise le tarif spécifique téléphone s'il existe
+            try:
+                tarif_tel = Tarif.objects.get(
+                    destination=self.lot.destination,
+                    type_transport="TELEPHONE"
+                )
+                self.prix_transport = self.nombre_pieces * tarif_tel.prix_piece
+            except Tarif.DoesNotExist:
+                if tarif:
+                    self.prix_transport = self.nombre_pieces * tarif.prix_piece
+                else:
+                    self.prix_transport = 0
+        elif self.lot.type_transport == "BATEAU":
+            if tarif:
+                self.prix_transport = (self.cbm or 0) * tarif.prix_cbm
+            else:
+                self.prix_transport = 0
+        else:
+            # Cargo / Express
+            if tarif:
+                self.prix_transport = (self.poids or 0) * tarif.prix_kilo
+            else:
+                self.prix_transport = 0
+
+        # Par défaut, le prix final est égal au prix transport
+        self.prix_final = self.prix_transport
+
     def __str__(self):
         return f"Carton {self.reference} - {self.client}"
 

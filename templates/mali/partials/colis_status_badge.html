@@ -35,13 +35,6 @@
         </div>
         
         <div class="flex space-x-2">
-            <!-- Bouton Livrer -> Modal -->
-            <button type="button" 
-                    @click="openDeliveryModal('{{ colis.pk }}', '{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.prix_final|intcomma }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %})"
-                    class="flex-1 inline-flex items-center px-2 py-1.5 border border-indigo-300 shadow-sm text-[10px] font-black rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors justify-center uppercase">
-                Livrer
-            </button>
-
             <!-- Bouton Perdu -> SweetAlert -->
             <form id="perdu-form-{{ colis.pk }}"
                   hx-post="{% url 'mali:colis_perdu' colis.pk %}" 
@@ -77,6 +70,7 @@
     </div>
 {% else %}
     <div class="flex flex-col items-end space-y-1">
+        {% if user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' %}
         <a href="{% url 'mali:colis_update' colis.pk %}"
            class="inline-flex items-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-bold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
             <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -84,6 +78,7 @@
             </svg>
             Modifier
         </a>
+        {% endif %}
         {% if colis.paye_en_chine %}
         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 uppercase">
             🇨🇳 Payé Chine

@@ -5,8 +5,25 @@
 {% block mali_content %}
 <div class="max-w-3xl mx-auto mt-6">
     <div class="bg-white shadow rounded-lg p-6 border border-gray-100">
-        <h2 class="text-xl font-bold mb-4 text-gray-800">Modification du poids / prix</h2>
-        <p class="text-sm text-gray-500 mb-6">Le prix de transport sera automatiquement recalculé lors de l'enregistrement si vous modifiez le poids ou le type.</p>
+        <h2 class="text-xl font-bold mb-2 text-gray-800">Modification du poids / prix</h2>
+        <div class="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="mr-4 bg-white p-2 rounded-lg shadow-sm">
+                    {% if object.lot.type_transport == 'BATEAU' %}🚢{% else %}✈️{% endif %}
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Contexte Lot</p>
+                    <p class="text-sm font-bold text-indigo-900">{{ object.lot.numero }} — {{ object.lot.get_type_transport_display }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Client</p>
+                <p class="text-sm font-bold text-indigo-900">{{ object.client.nom }} {{ object.client.prenom }}</p>
+            </div>
+        </div>
+        <p class="text-xs text-gray-500 mb-6 italic">
+            * Le prix de transport sera automatiquement recalculé selon les tarifs <strong>{{ object.lot.get_type_transport_display }}</strong> vers <strong>{{ object.lot.destination.name }}</strong>.
+        </p>
         
         <form method="post">
             {% csrf_token %}

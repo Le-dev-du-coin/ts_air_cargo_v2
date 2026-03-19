@@ -82,7 +82,8 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
 
         # 2. Dépenses (mois)
         depenses_classiques_mois_qs = Depense.objects.filter(
-            pays=mali, date__year=today.year, date__month=today.month
+            pays=mali, date__year=today.year, date__month=today.month,
+            is_china_indicative=False
         )
         depenses_classiques_mois = (
             depenses_classiques_mois_qs.aggregate(total=Sum("montant"))["total"] or 0
@@ -216,7 +217,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         )
 
         depenses_globales = (
-            Depense.objects.filter(pays=mali, date__lt=today).aggregate(
+            Depense.objects.filter(pays=mali, date__lt=today, is_china_indicative=False).aggregate(
                 total=Sum("montant")
             )["total"]
             or 0
@@ -311,8 +312,13 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             "-created_at"
         )
         
-        # Dépenses Jour
-        total_depenses_mali = depenses_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
+        # Dépenses Jour (Réelles Mali)
+        context["depenses_jour_reelles"] = depenses_jour_qs.filter(is_china_indicative=False)
+        total_depenses_mali = context["depenses_jour_reelles"].aggregate(total=Sum("montant"))["total"] or 0
+        
+        # Dépenses Jour (Indicatives Chine)
+        context["depenses_indicatives_jour"] = depenses_jour_qs.filter(is_china_indicative=True)
+        context["total_depenses_indicatives"] = context["depenses_indicatives_jour"].aggregate(total=Sum("montant"))["total"] or 0
 
         # Transferts (considérés comme dépenses jour)
         transferts_jour_qs = TransfertArgent.objects.filter(
@@ -1231,8 +1237,8 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
         colis.infos_recepteur = request.POST.get("infos_recepteur", "")
         colis.commentaire_livraison = request.POST.get("commentaire", "")
 
-        # Gestion Sortie sous Garantie
-        if request.POST.get("sortie_sous_garantie") == "on":
+        # Gestion Sortie sous Garantie (Peut être forcé par le bouton dédié ou coché manuellement)
+        if request.POST.get("sortie_sous_garantie") == "on" or request.POST.get("is_sortie") == "true":
             colis.sortie_sous_garantie = True
             colis.sortie_autorisee_par = request.POST.get("sortie_autorisee_par", "")
         else:
@@ -1247,28 +1253,31 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
             colis.montant_jc = 0
 
         # Gestion Paiement
-        # Si le colis a été payé en Chine, on préserve est_paye=True (anti double-encaissement),
-        # Sinon, on applique le choix du formulaire : PAYE ou NON_PAYE (en attente)
         if colis.paye_en_chine:
-            # Déjà encaissé en Chine — immutable
             colis.est_paye = True
+            colis.reste_a_payer = 0
         else:
             status_paiement = request.POST.get("status_paiement")
             if status_paiement == "PAYE":
                 colis.est_paye = True
                 colis.reste_a_payer = 0
-            elif status_paiement == "NON_PAYE":
-                colis.est_paye = False  # -> "En attente de paiement"
+            elif status_paiement == "PARTIEL":
                 try:
                     rp = request.POST.get("reste_a_payer", "0")
                     colis.reste_a_payer = float(rp) if rp else 0
+                    colis.est_paye = (colis.reste_a_payer <= 0)
                 except ValueError:
                     colis.reste_a_payer = 0
+                    colis.est_paye = False
+            else: # ATTENTE ou autre
+                colis.est_paye = False
+                colis.reste_a_payer = max(0, (colis.prix_final or 0) - (colis.montant_jc or 0))
 
         colis.mode_paiement = request.POST.get("mode_paiement")
-
         colis.status = "LIVRE"
         colis.save()
+
+        # Notification... (unchanged logic)
 
         # Notification Livraison (Async)
         try:
@@ -1321,11 +1330,16 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
 
 
 class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
-    """Marquer plusieurs colis comme LIVRÉ (Livraison Groupée) avec paiement standard"""
+    """Marquer plusieurs colis comme LIVRÉ (Livraison Groupée) avec configuration"""
 
     def post(self, request, pk):
         lot = get_object_or_404(Lot, pk=pk)
         colis_ids = request.POST.getlist("colis_ids")
+        
+        status_paiement = request.POST.get("status_paiement", "ATTENTE")
+        mode_paiement = request.POST.get("mode_paiement", "ESPECE")
+        mode_livraison = request.POST.get("mode_livraison", "AGENCE")
+        infos_recepteur = request.POST.get("infos_recepteur", "")
 
         if not colis_ids:
             messages.warning(request, "Aucun colis sélectionné pour la livraison.")
@@ -1335,26 +1349,52 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
 
         if not colis_qs.exists():
             if request.headers.get("HX-Request"):
-                from django.http import HttpResponse
-
                 return HttpResponse()
             return redirect("mali:lot_arrived_detail", pk=lot.pk)
 
-        # Get list of colis objects before updating
         colis_list = list(colis_qs.select_related("client", "client__user"))
 
-        # Mettre à jour en masse : Statut LIVRÉ et Paiement NON_PAYÉ (En attente) par défaut
-        # comme demandé (action directe sans modal)
+        # Calcul pour paiement partiel global
+        if status_paiement == "PARTIEL":
+            try:
+                montant_encaisse_global = float(request.POST.get("montant_encaisse", 0))
+            except ValueError:
+                montant_encaisse_global = 0
+            
+            total_net_selection = sum((c.prix_final or 0) - (c.montant_jc or 0) for c in colis_list if not c.paye_en_chine)
+            reste_global = max(0, total_net_selection - montant_encaisse_global)
+        else:
+            total_net_selection = 0
+            reste_global = 0
+
         for c in colis_list:
             c.status = "LIVRE"
-            c.mode_livraison = "AGENCE"
-            # Si déjà payé en Chine on garde, sinon on met en attente (False)
-            if not c.paye_en_chine:
-                c.est_paye = False
-                c.reste_a_payer = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
+            c.mode_livraison = mode_livraison
+            c.mode_paiement = mode_paiement
+            c.infos_recepteur = infos_recepteur
+            
+            if c.paye_en_chine:
+                c.est_paye = True
+                c.reste_a_payer = 0
+            else:
+                if status_paiement == "PAYE":
+                    c.est_paye = True
+                    c.reste_a_payer = 0
+                elif status_paiement == "PARTIEL":
+                    # Distribution proportionnelle du reste
+                    if total_net_selection > 0:
+                        part_colis = (c.prix_final or 0) - (c.montant_jc or 0)
+                        share = part_colis / total_net_selection
+                        c.reste_a_payer = round(reste_global * share)
+                    else:
+                        c.reste_a_payer = 0
+                    c.est_paye = (c.reste_a_payer <= 0)
+                else: # ATTENTE
+                    c.est_paye = False
+                    c.reste_a_payer = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
 
         Colis.objects.bulk_update(
-            colis_list, ["status", "mode_livraison", "est_paye", "reste_a_payer"]
+            colis_list, ["status", "mode_livraison", "est_paye", "reste_a_payer", "mode_paiement", "infos_recepteur"]
         )
 
         # Grouper les notifications
@@ -1405,16 +1445,10 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                     region="mali",
                 )
             except Exception as e:
-                import logging as _log
-
-                _log.getLogger(__name__).error(
-                    f"Erreur notif bulk livraison lot {lot.pk}: {e}"
-                )
+                logger.error(f"Erreur notif bulk livraison lot {lot.pk}: {e}")
 
         if request.headers.get("HX-Request"):
-            from django.http import HttpResponse
             import json
-
             response = HttpResponse("")
             response["HX-Trigger"] = json.dumps(
                 {"colisLivreBulk": {"pks": [c.id for c in colis_list]}}
@@ -1422,6 +1456,44 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             return response
 
         messages.success(request, f"{len(colis_list)} colis livrés avec succès.")
+        return redirect("mali:lot_arrived_detail", pk=lot.pk)
+
+
+class ColisSortieBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+    """Marquer plusieurs colis en SORTIE SOUS GARANTIE"""
+
+    def post(self, request, pk):
+        lot = get_object_or_404(Lot, pk=pk)
+        colis_ids = request.POST.getlist("colis_ids")
+        autorise_par = request.POST.get("sortie_autorisee_par", "")
+
+        if not colis_ids:
+            messages.warning(request, "Aucun colis sélectionné.")
+            return redirect("mali:lot_arrived_detail", pk=lot.pk)
+
+        colis_qs = Colis.objects.filter(id__in=colis_ids, lot=lot, status="ARRIVE")
+        colis_list = list(colis_qs)
+
+        for c in colis_list:
+            c.status = "LIVRE"
+            c.sortie_sous_garantie = True
+            c.sortie_autorisee_par = autorise_par
+            c.est_paye = False
+            c.reste_a_payer = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
+
+        Colis.objects.bulk_update(
+            colis_list, ["status", "sortie_sous_garantie", "sortie_autorisee_par", "est_paye", "reste_a_payer"]
+        )
+
+        if request.headers.get("HX-Request"):
+            import json
+            response = HttpResponse("")
+            response["HX-Trigger"] = json.dumps(
+                {"colisLivreBulk": {"pks": [c.id for c in colis_list]}}
+            )
+            return response
+
+        messages.success(request, f"{len(colis_list)} colis sortis sous garantie.")
         return redirect("mali:lot_arrived_detail", pk=lot.pk)
 
 
@@ -1507,6 +1579,32 @@ class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, V
         messages.success(request, f"Paiement encaissé pour le colis {colis.reference}.")
 
         # Redirection vers la liste des paiements en attente (ou la page précédente)
+        return redirect("mali:colis_attente_paiement")
+
+
+class ColisEncaissementBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+    """Encaisser plusieurs colis en masse"""
+
+    def post(self, request):
+        colis_ids = request.POST.getlist("colis_ids")
+        mode_paiement = request.POST.get("mode_paiement", "ESPECE")
+        if not colis_ids:
+            messages.warning(request, "Aucun colis sélectionné.")
+            return redirect("mali:colis_attente_paiement")
+
+        colis_qs = Colis.objects.filter(id__in=colis_ids, status="LIVRE", est_paye=False)
+        colis_list = list(colis_qs)
+
+        now = timezone.now()
+        for c in colis_list:
+            c.est_paye = True
+            c.reste_a_payer = 0
+            c.mode_paiement = mode_paiement
+            c.updated_at = now
+
+        Colis.objects.bulk_update(colis_list, ["est_paye", "reste_a_payer", "mode_paiement", "updated_at"])
+
+        messages.success(request, f"{len(colis_list)} paiements encaissés avec succès ({mode_paiement}).")
         return redirect("mali:colis_attente_paiement")
 
 
@@ -1809,9 +1907,9 @@ from .forms import ColisUpdateMaliForm
 
 
 class ColisUpdateMaliView(
-    LoginRequiredMixin, DestinationAgentRequiredMixin, UpdateView
+    LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView
 ):
-    """Permet à l'agent Mali de corriger le poids, le CBM ou le prix d'un colis."""
+    """Permet à l'administrateur Mali de corriger le poids, le CBM ou le prix d'un colis."""
 
     model = Colis
     form_class = ColisUpdateMaliForm
@@ -1819,18 +1917,15 @@ class ColisUpdateMaliView(
 
     def get_success_url(self):
         messages.success(
-            self.request, f"Colis {self.object.reference} mis à jour avec succès."
+            self.request, f"Le carton {self.object.reference} a été corrigé avec succès."
         )
         return reverse("mali:lot_transit_detail", kwargs={"pk": self.object.lot.pk})
 
     def form_valid(self, form):
-        # Recalculer le prix_transport et prix_final
-        colis = form.instance
-        if colis.type_colis == "MANUEL" and colis.prix_kilo_manuel:
-            colis.prix_transport = colis.poids * colis.prix_kilo_manuel
-
-        # Le hook save() du modèle Colis contient déjà la logique de calcul de prix final
-
+        colis = form.save(commit=False)
+        # Recalculer les prix via la méthode centrale du modèle
+        colis.recalculate_prices()
+        colis.save()
         return super().form_valid(form)
 
 # --- VUES ADMIN MALI ---
