@@ -5,11 +5,7 @@ from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from django.urls import reverse_lazy
-<<<<<<< HEAD
-from django.db.models import Q, Count, Sum, Value, F, DecimalField, DateField
-=======
-from django.db.models import Q, Count, Sum, Value, F, DecimalField, ExpressionWrapper
->>>>>>> feature-mali-admin-and-cartons
+from django.db.models import Q, Count, Sum, Value, F, DecimalField, DateField, ExpressionWrapper
 from django.db.models.functions import Concat, Coalesce
 from core.mixins import DestinationAgentRequiredMixin, AdminMaliRequiredMixin
 from core.models import Country, Lot, Colis, Client, User, AvanceSalaire
@@ -2390,4 +2386,3 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
         return render(request, "mali/admin/add_colis_to_lot.html", {"lot": lot, "form": form})
 
 
->>>>>>> feature-mali-admin-and-cartons
