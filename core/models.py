@@ -332,10 +332,6 @@ class Colis(TenantAwareModel):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Dates opérationnelles explicites
-    date_livraison = models.DateField(null=True, blank=True)
-    date_encaissement = models.DateField(null=True, blank=True)
-
     def save(self, *args, **kwargs):
         if not self.reference:
             import uuid
