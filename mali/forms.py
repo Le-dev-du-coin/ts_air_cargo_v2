@@ -172,7 +172,7 @@ class MaliAddColisForm(forms.Form):
 class MaliAgentForm(forms.ModelForm):
     acces_systeme = forms.BooleanField(
         required=False,
-        initial=True,
+        initial=False,
         label="Autoriser l'accès au système"
     )
 

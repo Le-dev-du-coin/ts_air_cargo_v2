@@ -2,14 +2,13 @@
 
 {% block title %}{% if object %}Modifier l'agent {{ object.get_full_name }}{% else %}Ajouter un agent Mali{% endif %}{% endblock %}
 
-{% block header %}
-<div class="flex items-center justify-between w-full">
-    <span>{% if object %}Modifier l'agent{% else %}Nouvel Agent Mali{% endif %}</span>
-    <a href="{% url 'mali:admin_agents' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-colors ml-auto">
-        <svg class="-ml-1 mr-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Retour aux agents
-    </a>
-</div>
+{% block header %}{% if object %}Modifier l'agent{% else %}Nouvel Agent Mali{% endif %}{% endblock %}
+
+{% block actions %}
+<a href="{% url 'mali:admin_agents' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+    <svg class="-ml-1 mr-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+    Retour aux agents
+</a>
 {% endblock %}
 {% block mali_content %}
 <div class="max-w-2xl mx-auto space-y-6">
