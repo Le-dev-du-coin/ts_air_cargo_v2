@@ -182,10 +182,9 @@ def get_country_stats(country_code, year=None, month=None):
     stats["nb_lots"] = lots.count()
     stats["nb_colis"] = colis.count()
 
-    # Calcul de la rémunération des agents (uniquement COMMISSION)
+    # Calcul de la rémunération des agents
     agents = User.objects.filter(
         country__code=country_code,
-        remuneration_mode=User.RemunerationMode.COMMISSION,
     ).exclude(role__in=["CLIENT", "GLOBAL_ADMIN"])
     agents_remuneration = []
     total_commissions = 0

@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from django.urls import reverse_lazy
-from django.db.models import Q, Count, Sum, Value, F, DecimalField
+from django.db.models import Q, Count, Sum, Value, F, DecimalField, ExpressionWrapper
 from django.db.models.functions import Concat, Coalesce
 from core.mixins import DestinationAgentRequiredMixin, AdminMaliRequiredMixin
 from core.models import Country, Lot, Colis, Client, User, AvanceSalaire
@@ -13,7 +13,7 @@ from report.models import Depense, TransfertArgent, PaiementAgent
 from django.contrib import messages
 
 from notification.models import ConfigurationNotification
-from .forms import NotificationConfigForm, AvanceSalaireForm
+from .forms import NotificationConfigForm, AvanceSalaireForm, MaliAgentForm
 from chine.views import get_country_stats
 
 import logging
@@ -379,6 +379,14 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
                     filter=Q(colis__status="EXPEDIE", colis__est_paye=True),
                 ),
             )
+            .annotate(
+                benefice_calcule=ExpressionWrapper(
+                    Coalesce(F("total_recettes_transit"), 0.0, output_field=DecimalField()) -
+                    Coalesce(F("frais_transport"), 0.0, output_field=DecimalField()) -
+                    Coalesce(F("frais_douane"), 0.0, output_field=DecimalField()),
+                    output_field=DecimalField()
+                )
+            )
             .filter(nb_colis_transit__gt=0)
             .distinct()
         )
@@ -443,6 +451,14 @@ class LotsArrivesView(LotsEnTransitView):
                     filter=Q(colis__status="ARRIVE", colis__est_paye=True),
                 ),
             )
+            .annotate(
+                benefice_calcule=ExpressionWrapper(
+                    Coalesce(F("total_recettes_arrive"), 0.0, output_field=DecimalField()) -
+                    Coalesce(F("frais_transport"), 0.0, output_field=DecimalField()) -
+                    Coalesce(F("frais_douane"), 0.0, output_field=DecimalField()),
+                    output_field=DecimalField()
+                )
+            )
             .filter(nb_colis_arrive__gt=0)
             .distinct()
         )
@@ -502,6 +518,14 @@ class LotsLivresView(LotsEnTransitView):
                         colis__status__in=["LIVRE", "PERDU"], colis__paye_en_chine=True
                     ),
                 ),
+            )
+            .annotate(
+                benefice_calcule=ExpressionWrapper(
+                    Coalesce(F("total_recettes_livre"), 0.0, output_field=DecimalField()) -
+                    Coalesce(F("frais_transport"), 0.0, output_field=DecimalField()) -
+                    Coalesce(F("frais_douane"), 0.0, output_field=DecimalField()),
+                    output_field=DecimalField()
+                )
             )
             .filter(nb_colis_livre__gt=0)
             .distinct()
@@ -1907,14 +1931,22 @@ class MaliAgentListView(AdminMaliRequiredMixin, ListView):
 class MaliAgentCreateView(AdminMaliRequiredMixin, CreateView):
     model = User
     template_name = "mali/admin/agent_form.html"
-    fields = ["username", "first_name", "last_name", "email", "phone", "password"]
+    form_class = MaliAgentForm
     success_url = reverse_lazy("mali:admin_agents")
 
     def form_valid(self, form):
         user = form.save(commit=False)
         user.role = "AGENT_MALI"
         user.country = self.request.user.country
-        user.set_password(form.cleaned_data["password"])
+        
+        if form.cleaned_data.get("acces_systeme"):
+            user.is_active = True
+        else:
+            user.is_active = False
+
+        if form.cleaned_data.get("password") and not user.pk:
+            user.set_password(form.cleaned_data["password"])
+            
         user.save()
         messages.success(self.request, f"Agent {user.username} créé avec succès.")
         return super().form_valid(form)
@@ -1922,7 +1954,7 @@ class MaliAgentCreateView(AdminMaliRequiredMixin, CreateView):
 class MaliAgentUpdateView(AdminMaliRequiredMixin, UpdateView):
     model = User
     template_name = "mali/admin/agent_form.html"
-    fields = ["first_name", "last_name", "email", "phone", "is_active", "remuneration_mode", "remuneration_value"]
+    form_class = MaliAgentForm
     success_url = reverse_lazy("mali:admin_agents")
 
     def form_valid(self, form):
@@ -2022,11 +2054,34 @@ class MaliCorrectionLotListView(AdminMaliRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = Lot.objects.filter(destination=self.request.user.country).order_by("-date_arrivee", "-created_at")
+        mali = self.request.user.country
+        qs = Lot.objects.filter(destination=mali).order_by("-date_arrivee", "-created_at")
         search = self.request.GET.get("q")
         if search:
             qs = qs.filter(numero__icontains=search)
+        tab = self.request.GET.get("tab", "arrive")
+        if tab == "transit":
+            qs = qs.filter(colis__status="EXPEDIE").distinct()
+        elif tab == "livre":
+            qs = qs.filter(colis__status__in=["LIVRE", "PERDU"]).distinct()
+        else:  # arrive (default)
+            qs = qs.filter(colis__status="ARRIVE").distinct()
         return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["q"] = self.request.GET.get("q", "")
+        context["active_tab"] = self.request.GET.get("tab", "arrive")
+        mali = self.request.user.country
+        # Comptes par statut pour les badges de nav
+        qs_base = Lot.objects.filter(destination=mali)
+        search = self.request.GET.get("q")
+        if search:
+            qs_base = qs_base.filter(numero__icontains=search)
+        context["count_transit"] = qs_base.filter(colis__status="EXPEDIE").distinct().count()
+        context["count_arrive"] = qs_base.filter(colis__status="ARRIVE").distinct().count()
+        context["count_livre"] = qs_base.filter(colis__status__in=["LIVRE", "PERDU"]).distinct().count()
+        return context
 
 class MaliCorrectionLotDetailView(AdminMaliRequiredMixin, DetailView):
     model = Lot
@@ -2044,6 +2099,8 @@ class MaliCorrectionLotDetailView(AdminMaliRequiredMixin, DetailView):
         paginator = Paginator(colis_qs, 50)
         context["colis_list"] = paginator.get_page(self.request.GET.get("page"))
         context["q"] = search or ""
+        # Variable clé : le lot a-t-il des colis déjà ARRIVE ? (indépendant du statut du lot)
+        context["lot_has_arrived_colis"] = self.object.colis.filter(status="ARRIVE").exists()
         return context
 
 class MaliActionRevertView(AdminMaliRequiredMixin, View):

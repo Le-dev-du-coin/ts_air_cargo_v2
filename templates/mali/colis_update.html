@@ -3,135 +3,93 @@
 {% block header %}Modification Colis : {{ object.reference }}{% endblock %}
 
 {% block mali_content %}
-<div class="max-w-2xl mx-auto space-y-6" x-data="{
-    typeColis: '{{ object.type_colis }}',
-    typeTransport: '{{ object.lot.type_transport }}'
-}">
+<div class="max-w-xl mx-auto space-y-6">
 
     <!-- Infos Contextuelles (lecture seule) -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-            <div>
-                <h3 class="text-base font-black text-gray-800">Informations du Colis</h3>
-                <p class="text-xs text-gray-500 mt-0.5">Champs en lecture seule. Seuls <strong>poids</strong> et <strong>prix</strong> sont modifiables.</p>
-            </div>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold
-                {% if object.lot.type_transport == 'CARGO' %}bg-orange-100 text-orange-800
-                {% elif object.lot.type_transport == 'EXPRESS' %}bg-blue-100 text-blue-800
-                {% elif object.lot.type_transport == 'BATEAU' %}bg-teal-100 text-teal-800
-                {% else %}bg-gray-100 text-gray-700{% endif %}">
-                {{ object.lot.get_type_transport_display }}
-            </span>
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
+            <h3 class="text-sm font-black text-gray-700 uppercase tracking-wide">Informations actuelles</h3>
         </div>
         <div class="px-6 py-5 grid grid-cols-2 gap-4 text-sm">
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase mb-1">Lot</p>
-                <p class="font-bold text-indigo-700">{{ object.lot.numero }}</p>
+            <div><p class="text-xs font-bold text-gray-400 uppercase mb-1">Lot</p><p class="font-bold text-indigo-600">{{ object.lot.numero }}</p></div>
+            <div><p class="text-xs font-bold text-gray-400 uppercase mb-1">Client</p><p class="font-semibold text-gray-800">{{ object.client.nom }} {{ object.client.prenom }}</p></div>
+            <div><p class="text-xs font-bold text-gray-400 uppercase mb-1">Type Transport</p>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold
+                    {% if object.lot.type_transport == 'CARGO' %}bg-orange-100 text-orange-800
+                    {% elif object.lot.type_transport == 'EXPRESS' %}bg-blue-100 text-blue-800
+                    {% elif object.lot.type_transport == 'BATEAU' %}bg-teal-100 text-teal-800
+                    {% endif %} uppercase">{{ object.lot.get_type_transport_display }}</span>
             </div>
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase mb-1">Client</p>
-                <p class="font-semibold text-gray-800">{{ object.client.nom }} {{ object.client.prenom }}</p>
-            </div>
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase mb-1">Type de Colis</p>
-                <p class="font-semibold text-gray-800">{{ object.get_type_colis_display }}</p>
-            </div>
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase mb-1">Statut</p>
-                <p class="font-semibold text-gray-800">{{ object.get_status_display }}</p>
-            </div>
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase mb-1">Prix actuel (transport)</p>
-                <p class="font-bold text-green-700">{{ object.prix_transport }} FCFA</p>
-            </div>
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase mb-1">Prix Final actuel</p>
-                <p class="font-bold text-green-700">{{ object.prix_final }} FCFA</p>
-            </div>
+            <div><p class="text-xs font-bold text-gray-400 uppercase mb-1">Statut</p><p class="font-semibold text-gray-800">{{ object.get_status_display }}</p></div>
+            <div><p class="text-xs font-bold text-gray-400 uppercase mb-1">Prix final actuel</p><p class="font-bold text-green-700">{{ object.prix_final|floatformat:0 }} FCFA</p></div>
+            <div><p class="text-xs font-bold text-gray-400 uppercase mb-1">Poids actuel</p><p class="font-semibold text-gray-700">{% if object.poids %}{{ object.poids }} kg{% else %}—{% endif %}</p></div>
         </div>
     </div>
 
-    <!-- Formulaire de Modification -->
+    <!-- Formulaire de modification (3 champs max) -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-6 py-4 bg-indigo-50 border-b border-indigo-100">
             <h3 class="text-base font-black text-indigo-800">Modifier les valeurs</h3>
+            <p class="text-xs text-indigo-500 mt-0.5">Type de colis · Poids · Prix (si Manuel)</p>
         </div>
-        <div class="px-6 py-5">
+        <div class="px-6 py-6">
             <form method="post" class="space-y-5">
                 {% csrf_token %}
 
-                <!-- Poids (visible si transport ≠ BATEAU et type ≠ TELEPHONE) -->
-                {% if object.lot.type_transport != 'BATEAU' and object.type_colis != 'TELEPHONE' %}
+                <!-- Type de Colis -->
                 <div>
-                    <label for="{{ form.poids.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1">
-                        Poids (kg) <span class="text-red-500">*</span>
-                    </label>
+                    <label for="{{ form.type_colis.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1.5">Type de colis</label>
+                    {{ form.type_colis }}
+                    {% if form.type_colis.errors %}<p class="mt-1 text-xs text-red-600">{{ form.type_colis.errors.0 }}</p>{% endif %}
+                    <p class="mt-1 text-xs text-gray-400">Changer le type recalculera le prix si applicable.</p>
+                </div>
+
+                <!-- Poids (si pas Bateau) -->
+                {% if object.lot.type_transport != 'BATEAU' %}
+                <div>
+                    <label for="{{ form.poids.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1.5">Poids (kg)</label>
                     <input type="number" name="poids" id="{{ form.poids.id_for_label }}"
                            value="{{ form.poids.value|default:object.poids }}"
                            step="0.01" min="0"
-                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-bold text-gray-800 px-4 py-3">
+                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-semibold text-gray-800 px-4 py-3">
                     {% if form.poids.errors %}<p class="mt-1 text-xs text-red-600">{{ form.poids.errors.0 }}</p>{% endif %}
                 </div>
+                {% else %}
+                <input type="hidden" name="poids" value="{{ object.poids|default:0 }}">
                 {% endif %}
 
-                <!-- CBM / Volume (visible uniquement si BATEAU) -->
+                <!-- CBM (si Bateau) -->
                 {% if object.lot.type_transport == 'BATEAU' %}
                 <div>
-                    <label for="{{ form.cbm.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1">
-                        Volume CBM (m³) <span class="text-red-500">*</span>
-                    </label>
+                    <label for="{{ form.cbm.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1.5">Volume CBM (m³)</label>
                     <input type="number" name="cbm" id="{{ form.cbm.id_for_label }}"
                            value="{{ form.cbm.value|default:object.cbm }}"
                            step="0.0001" min="0"
-                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-bold text-gray-800 px-4 py-3">
-                    {% if form.cbm.errors %}<p class="mt-1 text-xs text-red-600">{{ form.cbm.errors.0 }}</p>{% endif %}
+                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-semibold text-gray-800 px-4 py-3">
                 </div>
-                {% endif %}
-
-                <!-- Nombre de Pièces (visible si TELEPHONE) -->
-                {% if object.type_colis == 'TELEPHONE' %}
-                <div>
-                    <label for="{{ form.nombre_pieces.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1">
-                        Nombre de Pièces <span class="text-red-500">*</span>
-                    </label>
-                    <input type="number" name="nombre_pieces" id="{{ form.nombre_pieces.id_for_label }}"
-                           value="{{ form.nombre_pieces.value|default:object.nombre_pieces }}"
-                           min="1"
-                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-bold text-gray-800 px-4 py-3">
-                </div>
-                {% endif %}
-
-                <!-- Prix Kilo Manuel (si type MANUEL) -->
-                {% if object.type_colis == 'MANUEL' %}
-                <div>
-                    <label for="{{ form.prix_kilo_manuel.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1">
-                        Prix / Kilo Manuel (FCFA) <span class="text-yellow-600 text-xs">(recalcul automatique)</span>
-                    </label>
-                    <input type="number" name="prix_kilo_manuel" id="{{ form.prix_kilo_manuel.id_for_label }}"
-                           value="{{ form.prix_kilo_manuel.value|default:object.prix_kilo_manuel }}"
-                           step="0.1" min="0"
-                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-bold text-gray-800 px-4 py-3">
-                </div>
-                {% endif %}
-
-                <!-- Champs cachés nécessaires pour le formulaire -->
-                {# On doit toujours passer les champs du formulaire même non affichés #}
-                {% if object.lot.type_transport == 'BATEAU' or object.type_colis == 'TELEPHONE' %}
-                <input type="hidden" name="poids" value="{{ object.poids }}">
-                {% endif %}
-                {% if object.lot.type_transport != 'BATEAU' %}
+                {% else %}
                 <input type="hidden" name="cbm" value="{{ object.cbm|default:0 }}">
                 {% endif %}
-                {% if object.type_colis != 'TELEPHONE' %}
-                <input type="hidden" name="nombre_pieces" value="{{ object.nombre_pieces|default:1 }}">
-                {% endif %}
+
+                <!-- Prix Kilo Manuel (seulement si MANUEL) -->
+                <div id="prix-manuel-block" {% if object.type_colis != 'MANUEL' %}style="display:none"{% endif %}>
+                    <label for="{{ form.prix_kilo_manuel.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1.5">
+                        Prix / kilo (FCFA) <span class="text-yellow-600 font-normal text-xs">— recalcul automatique</span>
+                    </label>
+                    <input type="number" name="prix_kilo_manuel" id="{{ form.prix_kilo_manuel.id_for_label }}"
+                           value="{{ form.prix_kilo_manuel.value|default:object.prix_kilo_manuel|default:'' }}"
+                           step="0.1" min="0"
+                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-semibold text-gray-800 px-4 py-3">
+                </div>
                 {% if object.type_colis != 'MANUEL' %}
-                <input type="hidden" name="prix_kilo_manuel" value="{{ object.prix_kilo_manuel|default:'' }}">
+                <input type="hidden" name="prix_kilo_manuel" value="">
                 {% endif %}
-                <input type="hidden" name="type_colis" value="{{ object.type_colis }}">
+
+                <!-- Champs cachés obligatoires pour le formulaire -->
+                <input type="hidden" name="nombre_pieces" value="{{ object.nombre_pieces|default:1 }}">
 
                 <!-- Boutons -->
-                <div class="flex items-center justify-end space-x-3 pt-2 border-t border-gray-100">
+                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-gray-100">
                     <a href="javascript:history.back()" class="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                         Annuler
                     </a>
@@ -143,9 +101,19 @@
             </form>
         </div>
     </div>
-
-    <p class="text-center text-xs text-gray-400 italic">
-        💡 Le prix final est automatiquement recalculé après enregistrement selon les règles du lot.
-    </p>
+    <p class="text-center text-xs text-gray-400 italic">Le prix final est recalculé automatiquement après enregistrement.</p>
 </div>
+
+<script>
+// Afficher/masquer le bloc prix manuel selon le type de colis sélectionné
+document.addEventListener('DOMContentLoaded', function() {
+    const select = document.getElementById('{{ form.type_colis.id_for_label }}');
+    const prix_block = document.getElementById('prix-manuel-block');
+    if (select && prix_block) {
+        select.addEventListener('change', function() {
+            prix_block.style.display = this.value === 'MANUEL' ? '' : 'none';
+        });
+    }
+});
+</script>
 {% endblock %}

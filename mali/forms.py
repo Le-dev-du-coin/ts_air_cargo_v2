@@ -117,6 +117,9 @@ class AvanceSalaireForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.country:
             self.fields['agent'].queryset = User.objects.filter(country=self.country).exclude(role='CLIENT')
+        
+        # Afficher Nom + Prénom simple au lieu du username
+        self.fields['agent'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}".strip() or obj.username
 
 
 class MaliAddColisForm(forms.Form):
@@ -166,3 +169,44 @@ class MaliAddColisForm(forms.Form):
             from core.models import Client
             self.fields['client'].queryset = Client.objects.filter(country=country)
 
+class MaliAgentForm(forms.ModelForm):
+    acces_systeme = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Autoriser l'accès au système"
+    )
+
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email", "phone", "username", "password", "remuneration_mode", "remuneration_value", "is_active"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["username"].required = False
+        self.fields["password"].required = False
+
+        if self.instance and self.instance.pk:
+            self.fields["acces_systeme"].initial = self.instance.is_active
+
+    def clean(self):
+        import uuid
+        cleaned_data = super().clean()
+        acces_systeme = cleaned_data.get("acces_systeme")
+        username = cleaned_data.get("username")
+        password = cleaned_data.get("password")
+
+        if acces_systeme:
+            if not self.instance.pk:
+                if not username:
+                    self.add_error("username", "Le nom d'utilisateur est obligatoire pour un accès système.")
+                if not password:
+                    self.add_error("password", "Le mot de passe est obligatoire pour un accès système.")
+        else:
+            if not self.instance.pk:
+                if not username:
+                    cleaned_data["username"] = f"agent_{uuid.uuid4().hex[:8]}"
+                if not password:
+                    cleaned_data["password"] = User.objects.make_random_password()
+            cleaned_data["is_active"] = False
+
+        return cleaned_data

@@ -155,8 +155,12 @@
                                             <p class="text-xs text-gray-500">{{ item.mode }} : {{ item.valeur|floatformat:0 }} {% if item.mode == 'Commission (%)' %}%{% else %}FCFA{% endif %}</p>
                                         </div>
                                     </div>
-                                    <div class="text-sm font-bold text-gray-900">
-                                        {{ item.montant|floatformat:0|intcomma }} FCFA
+                                    <div class="text-right">
+                                        <div class="text-sm font-bold text-gray-900">{{ item.montant|floatformat:0|intcomma }} FCFA</div>
+                                        <div class="text-xs text-red-500 mt-1" title="Avances / Salaires déjà perçus">- {{ item.avances|floatformat:0|intcomma }} FCFA</div>
+                                        <div class="text-xs font-bold {% if item.reste_a_payer < 0 %}text-red-600{% else %}text-green-600{% endif %} border-t border-gray-200 mt-1 pt-1">
+                                            Reste : {{ item.reste_a_payer|floatformat:0|intcomma }} FCFA
+                                        </div>
                                     </div>
                                 </li>
                                 {% empty %}
@@ -281,8 +285,12 @@
                                             <p class="text-xs text-gray-500">{{ item.mode }} : {{ item.valeur|floatformat:0 }} {% if item.mode == 'Commission (%)' %}%{% else %}FCFA{% endif %}</p>
                                         </div>
                                     </div>
-                                    <div class="text-sm font-bold text-gray-900">
-                                        {{ item.montant|floatformat:0|intcomma }} FCFA
+                                    <div class="text-right">
+                                        <div class="text-sm font-bold text-gray-900">{{ item.montant|floatformat:0|intcomma }} FCFA</div>
+                                        <div class="text-xs text-red-500 mt-1" title="Avances / Salaires déjà perçus">- {{ item.avances|floatformat:0|intcomma }} FCFA</div>
+                                        <div class="text-xs font-bold {% if item.reste_a_payer < 0 %}text-red-600{% else %}text-green-600{% endif %} border-t border-gray-200 mt-1 pt-1">
+                                            Reste : {{ item.reste_a_payer|floatformat:0|intcomma }} FCFA
+                                        </div>
                                     </div>
                                 </li>
                                 {% empty %}
