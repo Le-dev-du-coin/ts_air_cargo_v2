@@ -216,11 +216,7 @@
                                 <option value="SARALI">💳 Sarali</option>
                             </select>
                         </div>
-                        <div class="flex flex-col">
-                            <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Date Encaissement</label>
-                            <input type="date" name="date_encaissement" form="bulk-encaissement-form" required value="{% now 'Y-m-d' %}"
-                                   class="block w-36 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
-                        </div>
+
                         <form method="POST" action="{% url 'mali:colis_encaisser_bulk' %}" id="bulk-encaissement-form" class="mt-4">
                             {% csrf_token %}
                             <template x-for="id in selectedIds" :key="id">
