@@ -1,0 +1,96 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block title %}Outils de Correction - Admin Mali{% endblock %}
+{% block header %}Correction d'Erreurs par Lots{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-6">
+    <!-- Search Bar -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+        <form method="GET" class="flex gap-4">
+            <div class="relative flex-1">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input type="text" name="q" value="{{ request.GET.q|default:'' }}"
+                       placeholder="Rechercher par numéro de lot..."
+                       class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:bg-white transition-all text-sm">
+            </div>
+            <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-xl text-white bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-100 transition-all">
+                Rechercher
+            </button>
+        </form>
+    </div>
+
+    <!-- Lot Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {% for lot in lots_list %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-orange-200 hover:shadow-md transition-all overflow-hidden flex flex-col">
+            <!-- Card Header (Statut) -->
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div>
+                    <p class="text-sm font-black text-indigo-700 tracking-wide uppercase">{{ lot.numero }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ lot.destination }} • {{ lot.get_type_transport_display }}</p>
+                </div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold
+                    {% if lot.status == 'LIVRE' %}bg-blue-100 text-blue-700
+                    {% elif lot.status == 'ARRIVE' %}bg-green-100 text-green-700
+                    {% elif lot.status == 'FERME' or lot.status == 'EN_TRANSIT' %}bg-orange-100 text-orange-700
+                    {% elif lot.status == 'OUVERT' %}bg-gray-100 text-gray-600
+                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                    {{ lot.get_status_display }}
+                </span>
+            </div>
+
+            <!-- Card Body (Infos) -->
+            <div class="px-5 py-4 flex-1 space-y-3">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Arrivée</span>
+                    <span class="font-semibold text-gray-800">{{ lot.date_arrivee|date:"d M Y"|default:"—" }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Expédition</span>
+                    <span class="font-semibold text-gray-800">{{ lot.date_expedition|date:"d M Y"|default:"—" }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Colis</span>
+                    <span class="font-bold text-indigo-600">{{ lot.colis.count }} unité(s)</span>
+                </div>
+            </div>
+
+            <!-- Card Footer (Action) -->
+            <div class="px-5 py-4 border-t border-gray-100 bg-gray-50/30">
+                <a href="{% url 'mali:admin_correction_lot_detail' lot.pk %}"
+                   class="w-full inline-flex justify-center items-center px-4 py-2.5 text-sm font-bold rounded-xl text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 transition-all">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    Voir & Corriger
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-3 py-12 text-center text-gray-400">
+            <svg class="h-12 w-12 mx-auto text-gray-200 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            <p class="font-medium">Aucun lot disponible pour la correction.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex items-center justify-between bg-white px-5 py-4 rounded-xl shadow-sm border border-gray-100">
+        <div class="text-sm text-gray-500">Page {{ page_obj.number }} sur {{ paginator.num_pages }}</div>
+        <div class="flex space-x-2">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">← Précédent</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">Suivant →</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

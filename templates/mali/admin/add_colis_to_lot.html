@@ -1,0 +1,88 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block title %}Ajouter un colis - Lot {{ lot.numero }} - Admin Mali{% endblock %}
+{% block header %}Ajouter un colis manquant — Lot {{ lot.numero }}{% endblock %}
+
+{% block mali_content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Contexte du Lot -->
+    <div class="bg-amber-50 border border-amber-300 rounded-2xl px-5 py-4 flex items-start space-x-3">
+        <svg class="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div>
+            <p class="text-sm font-bold text-amber-800">Ajout d'un colis manquant dans le lot <span class="uppercase">{{ lot.numero }}</span></p>
+            <p class="text-xs text-amber-700 mt-1">Ce colis sera marqué <strong>«&nbsp;Ajouté Mali&nbsp;🇲🇱»</strong> et une notification WhatsApp sera envoyée au client. Il sera comptabilisé normalement.</p>
+        </div>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
+            <h3 class="text-base font-black text-gray-800">Informations du colis</h3>
+        </div>
+        <div class="px-6 py-6">
+            <form method="post" class="space-y-5">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <!-- Client -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.client.label }} <span class="text-red-500">*</span></label>
+                    {{ form.client }}
+                    {% if form.client.errors %}<p class="mt-1 text-xs text-red-600">{{ form.client.errors.0 }}</p>{% endif %}
+                </div>
+
+                <!-- Type de Colis -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.type_colis.label }}</label>
+                    {{ form.type_colis }}
+                </div>
+
+                <!-- Poids -->
+                {% if lot.type_transport != 'BATEAU' %}
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.poids.label }}</label>
+                    {{ form.poids }}
+                </div>
+                {% else %}
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.cbm.label }}</label>
+                    {{ form.cbm }}
+                </div>
+                {% endif %}
+
+                <!-- Nombre de Pièces -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.nombre_pieces.label }}</label>
+                    {{ form.nombre_pieces }}
+                </div>
+
+                <!-- Prix Final -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.prix_final.label }} <span class="text-red-500">*</span></label>
+                    {{ form.prix_final }}
+                    {% if form.prix_final.errors %}<p class="mt-1 text-xs text-red-600">{{ form.prix_final.errors.0 }}</p>{% endif %}
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.description.label }}</label>
+                    {{ form.description }}
+                </div>
+
+                <!-- Boutons -->
+                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-gray-100">
+                    <a href="{% url 'mali:admin_correction_lot_detail' lot.pk %}" class="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-colors">Annuler</a>
+                    <button type="submit" class="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-bold rounded-xl text-white bg-amber-600 hover:bg-amber-700 shadow-sm transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Ajouter le colis
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

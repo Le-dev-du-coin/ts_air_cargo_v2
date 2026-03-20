@@ -8,12 +8,13 @@ from django.urls import reverse_lazy
 from django.db.models import Q, Count, Sum, Value, F, DecimalField
 from django.db.models.functions import Concat, Coalesce
 from core.mixins import DestinationAgentRequiredMixin, AdminMaliRequiredMixin
-from core.models import Country, Lot, Colis, Client, User
-from report.models import Depense
+from core.models import Country, Lot, Colis, Client, User, AvanceSalaire
+from report.models import Depense, TransfertArgent, PaiementAgent
 from django.contrib import messages
 
 from notification.models import ConfigurationNotification
-from .forms import NotificationConfigForm
+from .forms import NotificationConfigForm, AvanceSalaireForm
+from chine.views import get_country_stats
 
 import logging
 
@@ -769,8 +770,8 @@ class LotArriveDetailView(LotDetailView):
         context["total_poids"] = aggregates["total_poids"] or 0
         context["total_montant_colis"] = aggregates["total_montant"] or 0
 
-        # Filtrage des colis listés
-        colis_qs = self.object.colis.filter(status="ARRIVE")
+        # Filtrage des colis listés (ARRIVE + LIVRE pour la pagination visible)
+        colis_qs = self.object.colis.all()
         qc = self.request.GET.get("qc")
         if qc:
             colis_qs = colis_qs.annotate(
@@ -785,8 +786,10 @@ class LotArriveDetailView(LotDetailView):
 
         from django.core.paginator import Paginator
 
-        paginator = Paginator(colis_qs.order_by("-created_at"), 20)
+        # Trier: les colis ARRIVE en premier (livrables), puis les LIVRE
+        paginator = Paginator(colis_qs.order_by("status", "-created_at"), 20)
         context["colis_list"] = paginator.get_page(self.request.GET.get("page"))
+        context["qc"] = qc or ""
         context["is_arrive_mode"] = True
         return context
 
@@ -1841,10 +1844,52 @@ class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         mali = self.request.user.country
+        now = timezone.now()
         
         # Stats globales
         context["total_agents"] = User.objects.filter(country=mali, role="AGENT_MALI").count()
-        context["total_colis_mois"] = Colis.objects.filter(lot__destination=mali, created_at__month=timezone.now().month).count()
+        context["total_colis_mois"] = Colis.objects.filter(lot__destination=mali, created_at__month=now.month).count()
+        
+        # Lots par statut
+        context["lots_en_cours"] = Lot.objects.filter(destination=mali, status=Lot.Status.OUVERT).count()
+        context["lots_en_route"] = Lot.objects.filter(destination=mali, status=Lot.Status.FERME).count() # Fermé = en cours d'expédition/transit
+        context["lots_recus"] = Lot.objects.filter(destination=mali, status=Lot.Status.ARRIVE).count()
+        
+        # Finances - Recettes du mois
+        # On se base sur les colis livrés ce mois-ci
+        from django.db.models import Sum, F
+        
+        colis_livres = Colis.objects.filter(
+            lot__destination=mali,
+            status="LIVRE",
+            updated_at__year=now.year,
+            updated_at__month=now.month
+        ).exclude(paye_en_chine=True) # On ignore ceux payés en Chine
+
+        recette_brute = sum(c.prix_final - c.reste_a_payer - getattr(c, 'montant_jc', 0) for c in colis_livres)
+        context["recettes_mois"] = recette_brute
+
+        # Dépenses
+        dep = Depense.objects.filter(pays=mali, date__year=now.year, date__month=now.month)
+        total_depenses = dep.aggregate(t=Sum("montant"))["t"] or 0
+        context["depenses_mois"] = total_depenses
+
+        # Transferts (sortants du Mali)
+        transf = TransfertArgent.objects.filter(pays_expediteur=mali, date__year=now.year, date__month=now.month)
+        total_transferts = transf.aggregate(t=Sum("montant"))["t"] or 0
+        context["transferts_mois"] = total_transferts
+
+        # RH / Salaires & Avances
+        av = AvanceSalaire.objects.filter(agent__country=mali, date__year=now.year, date__month=now.month)
+        total_avances = av.aggregate(t=Sum("montant"))["t"] or 0
+        
+        salaires = PaiementAgent.objects.filter(agent__country=mali, date_paiement__year=now.year, date_paiement__month=now.month)
+        total_salaires = salaires.aggregate(t=Sum("montant"))["t"] or 0
+        
+        context["rh_mois"] = total_avances + total_salaires
+
+        # Caisse nette de l'agence
+        context["caisse_nette"] = recette_brute - total_depenses - total_transferts - context["rh_mois"]
         
         # Dernières erreurs potentielles (ex: colis livrés aujourd'hui)
         context["recent_deliveries"] = Colis.objects.filter(lot__destination=mali, status="LIVRE").order_by("-updated_at")[:10]
@@ -1877,25 +1922,129 @@ class MaliAgentCreateView(AdminMaliRequiredMixin, CreateView):
 class MaliAgentUpdateView(AdminMaliRequiredMixin, UpdateView):
     model = User
     template_name = "mali/admin/agent_form.html"
-    fields = ["first_name", "last_name", "email", "phone", "is_active"]
+    fields = ["first_name", "last_name", "email", "phone", "is_active", "remuneration_mode", "remuneration_value"]
     success_url = reverse_lazy("mali:admin_agents")
 
     def form_valid(self, form):
         messages.success(self.request, "Profil agent mis à jour.")
         return super().form_valid(form)
 
-class MaliCorrectionListView(AdminMaliRequiredMixin, ListView):
-    model = Colis
-    template_name = "mali/admin/correction_list.html"
-    context_object_name = "colis_list"
-    paginate_by = 50
+class MaliAgentRemunerationView(AdminMaliRequiredMixin, TemplateView):
+    template_name = "mali/admin/remuneration_list.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
+        try:
+            selected_year = int(self.request.GET.get("year", now.year))
+            selected_month = int(self.request.GET.get("month", now.month))
+        except ValueError:
+            selected_year = now.year
+            selected_month = now.month
+
+        context["selected_year"] = selected_year
+        context["selected_month"] = selected_month
+        context["years"] = range(2025, now.year + 2)
+        context["months"] = [
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
+        ]
+
+        # Stats du Mali pour la liste des agents
+        stats_ml = get_country_stats("ML", selected_year, selected_month)
+        context["agents_data"] = stats_ml.get("agents_remuneration", [])
+
+        # Liste des paiements
+        context["paiements"] = PaiementAgent.objects.filter(
+            agent__country=self.request.user.country,
+            agent__role="AGENT_MALI",
+            periode_annee=selected_year,
+            periode_mois=selected_month,
+        ).order_by("-date_paiement")
+
+        # Liste des avances
+        context["avances"] = AvanceSalaire.objects.filter(
+            agent__country=self.request.user.country,
+            agent__role="AGENT_MALI",
+            date__year=selected_year,
+            date__month=selected_month,
+        ).order_by("-date")
+
+        return context
+
+class MaliAgentAvanceCreateView(AdminMaliRequiredMixin, CreateView):
+    model = AvanceSalaire
+    form_class = AvanceSalaireForm
+    template_name = "mali/admin/avance_form.html"
+    success_url = reverse_lazy("mali:admin_remunerations")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['country'] = self.request.user.country
+        return kwargs
+
+    def form_valid(self, form):
+        avance = form.save(commit=False)
+        avance.save()
+        messages.success(self.request, f"Avance de {avance.montant} ajoutée pour l'agent {avance.agent.username}.")
+        return super().form_valid(form)
+
+class MaliAgentAvanceUpdateView(AdminMaliRequiredMixin, UpdateView):
+    model = AvanceSalaire
+    form_class = AvanceSalaireForm
+    template_name = "mali/admin/avance_form.html"
+    success_url = reverse_lazy("mali:admin_remunerations")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['country'] = self.request.user.country
+        return kwargs
+
+    def form_valid(self, form):
+        avance = form.save(commit=False)
+        avance.save()
+        messages.success(self.request, f"Avance de {avance.montant} mise à jour pour l'agent {avance.agent.username}.")
+        return super().form_valid(form)
+
+class MaliAgentAvanceDeleteView(AdminMaliRequiredMixin, View):
+    def post(self, request, pk):
+        avance = get_object_or_404(AvanceSalaire, pk=pk, agent__country=request.user.country)
+        avance.delete()
+        messages.success(request, "L'avance a été supprimée avec succès.")
+        return redirect("mali:admin_remunerations")
+
+class MaliCorrectionLotListView(AdminMaliRequiredMixin, ListView):
+    model = Lot
+    template_name = "mali/admin/correction_lot_list.html"
+    context_object_name = "lots_list"
+    paginate_by = 20
 
     def get_queryset(self):
-        qs = Colis.objects.filter(lot__destination=self.request.user.country).order_by("-updated_at")
+        qs = Lot.objects.filter(destination=self.request.user.country).order_by("-date_arrivee", "-created_at")
         search = self.request.GET.get("q")
         if search:
-            qs = apply_flexible_search(qs, search, ["reference", "client__nom", "client__telephone"])
+            qs = qs.filter(numero__icontains=search)
         return qs
+
+class MaliCorrectionLotDetailView(AdminMaliRequiredMixin, DetailView):
+    model = Lot
+    template_name = "mali/admin/correction_lot_detail.html"
+    context_object_name = "lot"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        colis_qs = self.object.colis.all().order_by("-updated_at")
+        search = self.request.GET.get("q")
+        if search:
+            colis_qs = apply_flexible_search(colis_qs, search, ["reference", "client__nom", "client__telephone"])
+        
+        from django.core.paginator import Paginator
+        paginator = Paginator(colis_qs, 50)
+        context["colis_list"] = paginator.get_page(self.request.GET.get("page"))
+        context["q"] = search or ""
+        return context
 
 class MaliActionRevertView(AdminMaliRequiredMixin, View):
     def post(self, request, pk):
@@ -1905,14 +2054,89 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
         if action == "revert_to_transit" and colis.status == "ARRIVE":
             # Repasser en EXPEDIE (transit)
             colis.status = "EXPEDIE"
+            colis.date_livraison = None
+            colis.date_encaissement = None
+            colis.est_paye = False
+            colis.reste_a_payer = 0
+            colis.montant_jc = 0
+            colis.sortie_sous_garantie = False
+            colis.sortie_autorisee_par = ""
             colis.save()
             messages.success(request, f"Le carton {colis.reference} est repassé en TRANSIT.")
             
         elif action == "revert_to_arrive" and colis.status == "LIVRE":
-            # Annulation encaissement si existant
+            # Annuler la livraison et l'encaissement et repasser en ARRIVE
             colis.status = "ARRIVE"
+            colis.date_livraison = None
+            colis.date_encaissement = None
             colis.est_paye = False
+            colis.reste_a_payer = 0
+            colis.montant_jc = 0
+            colis.sortie_sous_garantie = False
+            colis.sortie_autorisee_par = ""
             colis.save()
-            messages.warning(request, f"Le carton {colis.reference} est repassé en ARRIVÉ. Le paiement a été annulé.")
+            messages.warning(request, f"Le carton {colis.reference} est repassé en ARRIVÉ. Les données de livraison et de paiement ont été effacées.")
+
+        # Revert complet d'un colis perdu
+        elif action == "revert_perdu" and colis.status == "PERDU":
+            colis.status = "ARRIVE" # Par défaut on repasse à arrivé
+            colis.save()
+            messages.success(request, f"Le carton {colis.reference} n'est plus marqué comme PERDU. Il est maintenant ARRIVÉ.")
+
+        # Revert encaissement partiel ou modification paiement tout en restant en attente etc n'est pas nécessaire si on reverse à Arrivé, ça annule tout.
             
-        return redirect("mali:admin_correction_list")
+        return redirect("mali:admin_correction_lot_detail", pk=colis.lot.pk)
+
+
+class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
+    """Permet à l'Admin Mali d'ajouter un colis manquant dans un lot arrivé.
+    Ces colis seront marqués 'ajoute_par_mali=True' et auront un badge spécial."""
+
+    def get(self, request, lot_pk):
+        from .forms import MaliAddColisForm
+        lot = get_object_or_404(Lot, pk=lot_pk, destination=request.user.country)
+        form = MaliAddColisForm(country=request.user.country)
+        return render(request, "mali/admin/add_colis_to_lot.html", {"lot": lot, "form": form})
+
+    def post(self, request, lot_pk):
+        from .forms import MaliAddColisForm
+        lot = get_object_or_404(Lot, pk=lot_pk, destination=request.user.country)
+        form = MaliAddColisForm(request.POST, country=request.user.country)
+
+        if form.is_valid():
+            data = form.cleaned_data
+            colis = Colis(
+                lot=lot,
+                client=data["client"],
+                type_colis=data["type_colis"],
+                poids=data.get("poids") or 0,
+                cbm=data.get("cbm") or 0,
+                nombre_pieces=data.get("nombre_pieces") or 1,
+                prix_final=data["prix_final"],
+                prix_transport=data["prix_final"],  # On garde le prix saisi
+                description=data.get("description", ""),
+                status=Colis.Status.ARRIVE,
+                ajoute_par_mali=True,
+            )
+            colis.save()
+
+            # Essaie d'envoyer la notification WhatsApp si configurée
+            try:
+                from notification.tasks import send_whatsapp_notification
+                send_whatsapp_notification.delay(
+                    colis_pk=colis.pk,
+                    event_type="ARRIVE",
+                    phone=colis.client.telephone,
+                )
+            except Exception:
+                pass  # Notification non bloquante
+
+            messages.success(
+                request,
+                f"✅ Colis {colis.reference} ajouté avec succès dans le lot {lot.numero}. [Ajouté Mali]"
+            )
+            return redirect("mali:admin_correction_lot_detail", pk=lot.pk)
+
+        return render(request, "mali/admin/add_colis_to_lot.html", {"lot": lot, "form": form})
+
+
