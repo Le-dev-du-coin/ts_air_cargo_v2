@@ -98,26 +98,59 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                             {% if colis.status == 'ARRIVE' %}
-                            <form action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" class="inline" onsubmit="return confirm('Voulez-vous annuler l\'arrivée et remettre ce carton en TRANSIT ?');">
+                            <form id="revert-transit-{{ colis.pk }}" action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" class="inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="revert_to_transit">
-                                <button type="submit" class="text-yellow-600 hover:text-yellow-700 bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-100 transition-all">
-                                    <i class="fas fa-undo mr-1"></i> Remettre TRANSIT
+                                <button type="button" @click="Swal.fire({
+                                    title: 'Remettre en transit ?',
+                                    text: 'Voulez-vous annuler l\'arrivée et remettre ce carton en TRANSIT ?',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#D97706',
+                                    cancelButtonColor: '#6B7280',
+                                    confirmButtonText: 'Oui, remettre en transit',
+                                    cancelButtonText: 'Annuler',
+                                    reverseButtons: true
+                                }).then((result) => { if (result.isConfirmed) document.getElementById('revert-transit-{{ colis.pk }}').submit(); })"
+                                class="text-yellow-600 hover:text-yellow-700 bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-100 transition-all">
+                                    <i class="fas fa-undo mr-1"></i> Remettre en transit
                                 </button>
                             </form>
                             {% elif colis.status == 'LIVRE' %}
-                            <form action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" class="inline" onsubmit="return confirm('Attention: Cela annulera la LIVRAISON et le PAIEMENT. Le carton reviendra en statut ARRIVÉ. Continuer ?');">
+                            <form id="revert-arrive-{{ colis.pk }}" action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" class="inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="revert_to_arrive">
-                                <button type="submit" class="text-orange-600 hover:text-orange-700 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 transition-all">
+                                <button type="button" @click="Swal.fire({
+                                    title: 'Annuler la livraison ?',
+                                    text: 'Attention: Cela annulera la LIVRAISON et le PAIEMENT. Le carton reviendra en statut ARRIVÉ. Continuer ?',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#EA580C',
+                                    cancelButtonColor: '#6B7280',
+                                    confirmButtonText: 'Oui, annuler livraison',
+                                    cancelButtonText: 'Retour',
+                                    reverseButtons: true
+                                }).then((result) => { if (result.isConfirmed) document.getElementById('revert-arrive-{{ colis.pk }}').submit(); })"
+                                class="text-orange-600 hover:text-orange-700 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 transition-all">
                                     <i class="fas fa-undo mr-1"></i> Annuler Livraison
                                 </button>
                             </form>
                             {% elif colis.status == 'PERDU' %}
-                            <form action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" class="inline" onsubmit="return confirm('Ce carton n\'est plus perdu ? Il sera remis en statut ARRIVÉ.');">
+                            <form id="revert-perdu-{{ colis.pk }}" action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" class="inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="revert_perdu">
-                                <button type="submit" class="text-red-600 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 transition-all">
+                                <button type="button" @click="Swal.fire({
+                                    title: 'Annuler la perte ?',
+                                    text: 'Ce carton n\'est plus perdu ? Il sera remis en statut ARRIVÉ.',
+                                    icon: 'info',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#EF4444',
+                                    cancelButtonColor: '#6B7280',
+                                    confirmButtonText: 'Oui, annuler perte',
+                                    cancelButtonText: 'Annuler',
+                                    reverseButtons: true
+                                }).then((result) => { if (result.isConfirmed) document.getElementById('revert-perdu-{{ colis.pk }}').submit(); })"
+                                class="text-red-600 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 transition-all">
                                     <i class="fas fa-undo mr-1"></i> Annuler Perte
                                 </button>
                             </form>

@@ -104,14 +104,23 @@ def get_country_stats(country_code, year=None, month=None):
     transferts = TransfertArgent.objects.filter(pays_expediteur__code=country_code)
 
     if year and month:
-        # Filtrer par date d'expédition pour lots/colis (Fait générateur = Départ du vol/bateau)
-        lots = lots.filter(date_expedition__year=year, date_expedition__month=month)
-        colis = colis.filter(
-            lot__date_expedition__year=year, lot__date_expedition__month=month
-        )
-        # Filtrer par date réelle de saisie pour les dépenses et transferts (Trésorerie)
+        if country_code == "CN":
+            # Chine: Fait générateur = Expédition
+            date_filter_lots = {"date_expedition__year": year, "date_expedition__month": month}
+            date_filter_colis = {"lot__date_expedition__year": year, "lot__date_expedition__month": month}
+        else:
+            # Destinations (Mali, RCI): Fait générateur = Arrivée (ou Création si pas encore d'arrivée)
+            date_filter_lots = {"date_arrivee__year": year, "date_arrivee__month": month}
+            date_filter_colis = {"lot__date_arrivee__year": year, "lot__date_arrivee__month": month}
+
+        lots = lots.filter(**date_filter_lots)
+        colis = colis.filter(**date_filter_colis)
         depenses = depenses.filter(date__year=year, date__month=month)
         transferts = transferts.filter(date__year=year, date__month=month)
+
+    # ... [rest of calculation] ...
+    # (I'll keep the rest as is but I need to make sure I don't break the existing code)
+    # Actually, I should use the specific logic for agents filtering too.
 
     # Calcul des montants avec déduction des jetons cédés (JC)
     montant_brut = colis.aggregate(total=Sum("prix_final"))["total"] or 0
@@ -126,12 +135,6 @@ def get_country_stats(country_code, year=None, month=None):
     stats["autres_depenses"] = depenses.aggregate(total=Sum("montant"))["total"] or 0
     stats["total_transferts"] = transferts.aggregate(total=Sum("montant"))["total"] or 0
 
-    # Pour le dashboard, on combine Transferts et Autres Dépenses dans "Dépenses"
-    # ou on les soustrait simplement du bénéfice.
-    # L'utilisateur a dit "ajouter transfert dans les dépénse".
-    # Je vais mettre à jour "autres_depenses" pour inclure les transferts pour l'affichage simple
-    # Ou garder séparé et sommer pour le bénéfice.
-
     stats["total_depenses_global"] = (
         stats["autres_depenses"] + stats["total_transferts"]
     )
@@ -144,56 +147,38 @@ def get_country_stats(country_code, year=None, month=None):
     )
 
     # ------------------ SEPARATION AVION / BATEAU ------------------
-    # Définition des querysets Avion et Bateau (avant tout usage)
     colis_avion = colis.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
     colis_bateau = colis.filter(lot__type_transport="BATEAU")
     lots_avion = lots.filter(type_transport__in=["CARGO", "EXPRESS"])
     lots_bateau = lots.filter(type_transport="BATEAU")
 
-    # CA Avion
-    montant_brut_avion = colis_avion.aggregate(total=Sum("prix_final"))["total"] or 0
-    total_jc_avion = colis_avion.aggregate(total=Sum("montant_jc"))["total"] or 0
-    stats["ca_avion"] = montant_brut_avion - total_jc_avion
+    stats["ca_avion"] = (colis_avion.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_avion.aggregate(total=Sum("montant_jc"))["total"] or 0)
+    stats["ca_bateau"] = (colis_bateau.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0)
+    
+    stats["benefice_brut_avion"] = stats["ca_avion"] - (lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_avion.aggregate(total=Sum("frais_douane"))["total"] or 0)
+    stats["benefice_brut_bateau"] = stats["ca_bateau"] - (lots_bateau.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_bateau.aggregate(total=Sum("frais_douane"))["total"] or 0)
 
-    # CA Bateau
-    montant_brut_bateau = colis_bateau.aggregate(total=Sum("prix_final"))["total"] or 0
-    total_jc_bateau = colis_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0
-    stats["ca_bateau"] = montant_brut_bateau - total_jc_bateau
-
-    # Coûts Avion
-    cout_transport_avion = (
-        lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0
-    )
-    cout_douane_avion = lots_avion.aggregate(total=Sum("frais_douane"))["total"] or 0
-
-    # Coûts Bateau
-    cout_transport_bateau = (
-        lots_bateau.aggregate(total=Sum("frais_transport"))["total"] or 0
-    )
-    cout_douane_bateau = lots_bateau.aggregate(total=Sum("frais_douane"))["total"] or 0
-
-    # Bénéfice brut Avion et Bateau
-    stats["benefice_brut_avion"] = (
-        stats["ca_avion"] - cout_transport_avion - cout_douane_avion
-    )
-    stats["benefice_brut_bateau"] = (
-        stats["ca_bateau"] - cout_transport_bateau - cout_douane_bateau
-    )
-
-    # Compteurs Expédiés / Livrés
     stats["nb_colis_expedies_avion"] = colis_avion.count()
     stats["nb_colis_expedies_bateau"] = colis_bateau.count()
-
     stats["nb_colis_livres_avion"] = colis_avion.filter(status="LIVRE").count()
     stats["nb_colis_livres_bateau"] = colis_bateau.filter(status="LIVRE").count()
-
     stats["nb_lots"] = lots.count()
     stats["nb_colis"] = colis.count()
 
-    # Calcul de la rémunération des agents
-    agents = User.objects.filter(
-        country__code=country_code,
-    ).exclude(role__in=["CLIENT", "GLOBAL_ADMIN"])
+    # Filtrage des agents par rôle spécifique au pays
+    role_map = {
+        "ML": ["ADMIN_MALI", "AGENT_MALI"],
+        "CI": ["AGENT_RCI"],
+        "CN": ["ADMIN_CHINE", "AGENT_CHINE"],
+    }
+    allowed_roles = role_map.get(country_code, [])
+
+    agents = User.objects.filter(country__code=country_code)
+    if allowed_roles:
+        agents = agents.filter(role__in=allowed_roles)
+    else:
+        agents = agents.exclude(role__in=["CLIENT", "GLOBAL_ADMIN"])
+    
     agents_remuneration = []
     total_commissions = 0
 

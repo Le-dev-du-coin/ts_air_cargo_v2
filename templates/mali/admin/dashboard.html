@@ -154,10 +154,11 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ colis.client.nom }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ colis.date_livraison|date:"d/m/Y" }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <form action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" onsubmit="return confirm('Voulez-vous vraiment annuler la livraison de ce carton ?');">
+                            <form id="revert-form-{{ colis.pk }}" action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" class="inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="revert_to_arrive">
-                                <button type="submit" class="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded-md transition-colors">
+                                <button type="button" @click="confirmAction('Annuler la livraison ?', 'Voulez-vous vraiment annuler la livraison de ce carton ? Il repassera en statut ARRIVÉ.', 'revert-form-{{ colis.pk }}', 'Oui, annuler', '#EF4444')"
+                                        class="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded-md transition-colors">
                                     Remettre en Arrivé
                                 </button>
                             </form>

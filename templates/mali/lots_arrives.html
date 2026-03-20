@@ -46,7 +46,10 @@
                 {% if lot.type_transport == 'CARGO' %}bg-orange-50{% elif lot.type_transport == 'EXPRESS' %}bg-blue-50{% elif lot.type_transport == 'BATEAU' %}bg-teal-50{% else %}bg-gray-50{% endif %}">
                 <div>
                     <p class="text-sm font-black text-indigo-700 tracking-wide uppercase">{{ lot.numero }}</p>
-                    <p class="text-xs text-gray-500 mt-0.5">
+                    <p class="text-xs text-gray-400 font-bold uppercase tracking-tighter">
+                        Exp. {% if lot.date_expedition %}{{ lot.date_expedition|date:"d M Y" }}{% else %}<span class="italic text-[10px]">N/A</span>{% endif %}
+                    </p>
+                    <p class="text-[10px] text-gray-500 mt-0.5">
                         Arr. {% if lot.date_arrivee %}{{ lot.date_arrivee|date:"d M Y" }}{% else %}{{ lot.created_at|date:"d M Y" }}{% endif %}
                     </p>
                 </div>

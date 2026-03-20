@@ -102,9 +102,10 @@
                                         <p class="text-sm font-bold text-orange-600">{{ avance.montant|intcomma }} F</p>
                                         <div class="mt-1 flex space-x-2 justify-end">
                                             <a href="{% url 'mali:admin_avance_edit' avance.id %}" class="text-indigo-600 hover:text-indigo-900 text-xs">Modifier</a>
-                                            <form method="POST" action="{% url 'mali:admin_avance_delete' avance.id %}" class="inline" onsubmit="return confirm('Supprimer cette avance ?');">
+                                            <form id="delete-avance-{{ avance.id }}" method="POST" action="{% url 'mali:admin_avance_delete' avance.id %}" class="inline">
                                                 {% csrf_token %}
-                                                <button type="submit" class="text-red-600 hover:text-red-900 text-xs">Supprimer</button>
+                                                <button type="button" @click="confirmAction('Supprimer l\'avance ?', 'Voulez-vous vraiment supprimer cette avance ?', 'delete-avance-{{ avance.id }}', 'Oui, supprimer', '#EF4444')"
+                                                        class="text-red-600 hover:text-red-900 text-xs">Supprimer</button>
                                             </form>
                                         </div>
                                     </div>

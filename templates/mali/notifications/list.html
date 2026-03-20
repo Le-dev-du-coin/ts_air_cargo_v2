@@ -78,7 +78,7 @@
                 <span x-text="selected.length"></span> notification(s) sélectionnée(s)
             </span>
             <div class="flex gap-2">
-                <form method="post" action="{% url 'mali:notification_list' %}" class="inline">
+                <form id="batch-delete-form" method="post" action="{% url 'mali:notification_list' %}" class="inline">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.GET.urlencode }}">
                     <template x-for="id in selected" :key="id">
@@ -87,7 +87,8 @@
                     <button type="submit" name="action" value="retry" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm">
                         Relancer
                     </button>
-                    <button type="submit" name="action" value="delete" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 shadow-sm ml-2" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ces notifications ?')">
+                    <button type="button" @click="confirmAction('Supprimer la sélection ?', 'Êtes-vous sûr de vouloir supprimer ces notifications ?', 'batch-delete-form', 'Oui, supprimer', '#EF4444')" 
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 shadow-sm ml-2">
                         Supprimer
                     </button>
                 </form>
@@ -147,7 +148,7 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex items-center justify-end space-x-2">
-                            <form method="post" action="{% url 'mali:notification_list' %}" class="inline" @click.stop>
+                            <form id="notif-delete-{{ notif.id }}" method="post" action="{% url 'mali:notification_list' %}" class="inline" @click.stop>
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.GET.urlencode }}">
                                 <input type="hidden" name="notification_id" value="{{ notif.id }}">
@@ -156,7 +157,8 @@
                                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                 </button>
                                 {% endif %}
-                                <button type="submit" name="action" value="delete" class="text-red-600 hover:text-red-900 ml-2 focus:outline-none" onclick="return confirm('Supprimer cette notification ?')" title="Supprimer">
+                                <button type="button" @click="confirmAction('Supprimer ?', 'Supprimer cette notification ?', 'notif-delete-{{ notif.id }}', 'Oui, supprimer', '#EF4444')" 
+                                        class="text-red-600 hover:text-red-900 ml-2 focus:outline-none" title="Supprimer">
                                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
                             </form>

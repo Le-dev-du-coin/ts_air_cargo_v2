@@ -7,9 +7,9 @@
 {% block header %}Pointage Arrivée : Lot {{ lot.numero }}{% endblock %}
 
 {% block actions %}
-    <form action="{% url 'mali:lot_notify_arrivals' pk=lot.pk %}" method="POST" onsubmit="return confirm('Notifier les clients des colis arrivés ?')">
+    <form id="notify-arrivals-form" action="{% url 'mali:lot_notify_arrivals' pk=lot.pk %}" method="POST">
         {% csrf_token %}
-        <button type="submit"
+        <button type="button" @click="confirmAction('Notifier les clients ?', 'Voulez-vous envoyer les notifications WhatsApp aux clients des colis arrivés ?', 'notify-arrivals-form', 'Oui, notifier', '#16A34A')"
            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors shadow-lg">
             <i class="fab fa-whatsapp mr-2 text-lg"></i>
             Notifier les Arrivées
@@ -99,11 +99,11 @@
             colisPayeChine: false,
             colisPhoto: '',
             showZoom: false,
-            openDetail(ref, client, phone, poids, prix, type, description, payeChine, photo) {
+            openDetail(ref, client, phone, poidsvol, prix, type, description, payeChine, photo) {
                 this.colisRef = ref;
                 this.colisClient = client;
                 this.colisPhone = phone;
-                this.colisPoids = poids;
+                this.colisPoids = poidsvol;
                 this.colisPrix = prix;
                 this.colisType = type;
                 this.colisDescription = description;
@@ -191,7 +191,7 @@
                     <div class="flex items-center space-x-4 mb-1">
                         <span class="text-xs font-bold text-gray-500 uppercase">Sélection : </span>
                         <span class="text-sm font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded" x-text="selectedCount + ' colis'"></span>
-                        <span class="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded" x-text="selectedPoids + ' kg'"></span>
+                        <span class="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded" x-text="selectedPoids + ' {% if lot.type_transport == 'BATEAU' %}CBM{% else %}kg{% endif %}'"></span>
                         <span class="text-sm font-black text-green-600 bg-green-50 px-2 py-0.5 rounded" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant) + ' FCFA'"></span>
                     </div>
                     {% if lot.frais_douane %}
@@ -229,7 +229,7 @@
                         </div>
                         <!-- Vignette image cliquable → modal détail -->
                         <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner cursor-pointer"
-                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
+                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} {% if lot.type_transport == 'BATEAU' %}CBM{% else %}kg{% endif %}{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
                             {% if colis.photo %}
                             <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover">
                             {% else %}
@@ -251,7 +251,7 @@
                             </div>
                             <div class="text-sm font-bold text-gray-900 mt-1">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
                             <div class="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">
-                                {% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}
+                                {% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} {% if lot.type_transport == 'BATEAU' %}CBM{% else %}kg{% endif %}{% endif %}
                             </div>
                         </div>
                     </div>
