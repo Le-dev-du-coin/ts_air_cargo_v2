@@ -319,6 +319,15 @@ class Colis(TenantAwareModel):
         help_text=_("Nom du supérieur ou collègue ayant autorisé la sortie"),
     )
 
+    # Colis ajouté manuellement par l'admin Mali (non enregistré côté Chine)
+    ajoute_par_mali = models.BooleanField(
+        default=False,
+        help_text=_("Colis ajouté directement par l'admin Mali dans un lot arrivé"),
+    )
+    # Dates de livraison et d'encaissement
+    date_livraison = models.DateField(null=True, blank=True, help_text=_("Date à laquelle le colis a été livré au client"))
+    date_encaissement = models.DateField(null=True, blank=True, help_text=_("Date à laquelle le paiement a été encaissé"))
+
     reference = models.CharField(max_length=50, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -459,3 +468,18 @@ class BackgroundTask(TenantAwareModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+class AvanceSalaire(models.Model):
+    agent = models.ForeignKey(User, on_delete=models.CASCADE, related_name="avances")
+    montant = models.DecimalField(max_digits=12, decimal_places=2)
+    date = models.DateField(default=timezone.now)
+    motif = models.CharField(max_length=255, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Avance {self.montant} - {self.agent.get_full_name()} ({self.date})"
+
+    class Meta:
+        ordering = ["-date", "-created_at"]

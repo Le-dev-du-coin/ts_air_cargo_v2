@@ -22,7 +22,7 @@ from django.contrib import messages
 logger = logging.getLogger(__name__)
 from django.views.generic import edit as delete
 
-from core.models import Client, Lot, Colis, BackgroundTask, Country
+from core.models import Client, Lot, Colis, BackgroundTask, Country, AvanceSalaire, User as CoreUser
 from report.models import Depense, TransfertArgent, PaiementAgent
 from .forms import ClientForm, LotForm, ColisForm, CountryForm, AgentForm, LotNoteForm
 from .tasks import process_colis_creation
@@ -190,10 +190,9 @@ def get_country_stats(country_code, year=None, month=None):
     stats["nb_lots"] = lots.count()
     stats["nb_colis"] = colis.count()
 
-    # Calcul de la rémunération des agents (uniquement COMMISSION)
+    # Calcul de la rémunération des agents
     agents = User.objects.filter(
         country__code=country_code,
-        remuneration_mode=User.RemunerationMode.COMMISSION,
     ).exclude(role__in=["CLIENT", "GLOBAL_ADMIN"])
     agents_remuneration = []
     total_commissions = 0
@@ -208,21 +207,31 @@ def get_country_stats(country_code, year=None, month=None):
             montant = (base_calcul * agent.remuneration_value) / 100
             total_commissions += montant
 
-        # Calcul du déjà payé sur la période
+        # Calcul du déjà payé sur la période via PaiementAgent
         deja_paye = 0
+        avances_total = 0
         if year and month:
             paiements = PaiementAgent.objects.filter(
                 agent=agent, periode_annee=year, periode_mois=month
             )
             deja_paye = paiements.aggregate(total=Sum("montant"))["total"] or 0
+            
+            # Calcul des avances prises sur ce mois
+            avances = AvanceSalaire.objects.filter(
+                agent=agent, date__year=year, date__month=month
+            )
+            avances_total = avances.aggregate(total=Sum("montant"))["total"] or 0
 
-        reste_a_payer = max(0, float(montant) - float(deja_paye))
+        total_deja_percu = float(deja_paye) + float(avances_total)
+        reste_a_payer = max(0, float(montant) - total_deja_percu)
 
         agents_remuneration.append(
             {
                 "agent": agent,
                 "montant": montant,
-                "deja_paye": deja_paye,
+                "deja_paye": total_deja_percu,  # On l'affiche comme déjà perçu global
+                "paiements_effectues": deja_paye,
+                "avances_total": avances_total,
                 "reste_a_payer": reste_a_payer,
                 "mode": agent.get_remuneration_mode_display(),
                 "valeur": agent.remuneration_value,

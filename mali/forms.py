@@ -1,5 +1,5 @@
 from django import forms
-from core.models import Colis
+from core.models import Colis, AvanceSalaire, User
 from notification.models import ConfigurationNotification
 
 class ColisUpdateMaliForm(forms.ModelForm):
@@ -111,3 +111,113 @@ class NotificationConfigForm(forms.ModelForm):
                 }
             ),
         }
+
+class AvanceSalaireForm(forms.ModelForm):
+    class Meta:
+        model = AvanceSalaire
+        fields = ['agent', 'montant', 'date', 'motif']
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'w-full border-gray-300 rounded-md'}),
+            'montant': forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-md', 'min': '0'}),
+            'motif': forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded-md', 'placeholder': 'Ex: Avance sur salaire...'}),
+            'agent': forms.Select(attrs={'class': 'w-full border-gray-300 rounded-md'})
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.country = kwargs.pop('country', None)
+        super().__init__(*args, **kwargs)
+        if self.country:
+            self.fields['agent'].queryset = User.objects.filter(country=self.country).exclude(role='CLIENT')
+        
+        # Afficher Nom + Prénom simple au lieu du username
+        self.fields['agent'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}".strip() or obj.username
+
+
+class MaliAddColisForm(forms.Form):
+    """Formulaire pour ajouter un colis manquant dans un lot arrivé (Ajout Admin Mali)"""
+    from core.models import Client
+
+    client = forms.ModelChoiceField(
+        queryset=None,  # Sera injecté dans __init__
+        label="Client",
+        widget=forms.Select(attrs={'class': 'w-full border-gray-300 rounded-xl'})
+    )
+    type_colis = forms.ChoiceField(
+        choices=[('STANDARD','Standard'), ('TELEPHONE','Téléphone'), ('ELECTRONIQUE','Électronique'), ('MANUEL','Manuel')],
+        label="Type de colis",
+        widget=forms.Select(attrs={'class': 'w-full border-gray-300 rounded-xl'})
+    )
+    poids = forms.DecimalField(
+        max_digits=10, decimal_places=2, required=False, min_value=0,
+        label="Poids (kg)",
+        widget=forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'step': '0.01', 'placeholder': '0.00'})
+    )
+    cbm = forms.DecimalField(
+        max_digits=10, decimal_places=4, required=False, min_value=0, initial=0,
+        label="Volume CBM (m³) - Bateau uniquement",
+        widget=forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'step': '0.0001', 'placeholder': '0.0000'})
+    )
+    nombre_pieces = forms.IntegerField(
+        min_value=1, initial=1, required=False,
+        label="Nombre de pièces (Téléphone)",
+        widget=forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'min': '1'})
+    )
+    prix_final = forms.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0,
+        label="Prix final (FCFA)",
+        widget=forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': '0'})
+    )
+    description = forms.CharField(
+        required=False, max_length=255,
+        label="Description (optionnel)",
+        widget=forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': 'Décription du colis...'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        country = kwargs.pop('country', None)
+        super().__init__(*args, **kwargs)
+        if country:
+            from core.models import Client
+            self.fields['client'].queryset = Client.objects.filter(country=country)
+
+class MaliAgentForm(forms.ModelForm):
+    acces_systeme = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="Autoriser l'accès au système"
+    )
+
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email", "phone", "username", "password", "remuneration_mode", "remuneration_value", "is_active"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["username"].required = False
+        self.fields["password"].required = False
+
+        if self.instance and self.instance.pk:
+            self.fields["acces_systeme"].initial = self.instance.is_active
+
+    def clean(self):
+        import uuid
+        cleaned_data = super().clean()
+        acces_systeme = cleaned_data.get("acces_systeme")
+        username = cleaned_data.get("username")
+        password = cleaned_data.get("password")
+
+        if acces_systeme:
+            if not self.instance.pk:
+                if not username:
+                    self.add_error("username", "Le nom d'utilisateur est obligatoire pour un accès système.")
+                if not password:
+                    self.add_error("password", "Le mot de passe est obligatoire pour un accès système.")
+        else:
+            if not self.instance.pk:
+                if not username:
+                    cleaned_data["username"] = f"agent_{uuid.uuid4().hex[:8]}"
+                if not password:
+                    cleaned_data["password"] = User.objects.make_random_password()
+            cleaned_data["is_active"] = False
+
+        return cleaned_data

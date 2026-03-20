@@ -1,75 +1,159 @@
 {% extends "mali/base.html" %}
 
-{% block title %}{% if object %}Modifier Agent{% else %}Ajouter Agent{% endif %}{% endblock %}
+{% block title %}{% if object %}Modifier l'agent {{ object.get_full_name }}{% else %}Ajouter un agent Mali{% endif %}{% endblock %}
 
-{% block header %}{% if object %}Modifier Agent : {{ object.username }}{% else %}Nouvel Agent Mali{% endif %}{% endblock %}
+{% block header %}{% if object %}Modifier l'agent{% else %}Nouvel Agent Mali{% endif %}{% endblock %}
 
+{% block actions %}
+<a href="{% url 'mali:admin_agents' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+    <svg class="-ml-1 mr-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+    Retour aux agents
+</a>
+{% endblock %}
 {% block mali_content %}
-<div class="max-w-2xl mx-auto">
-    <form method="POST" class="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 space-y-6">
-        {% csrf_token %}
-        
-        <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-                <label for="{{ form.username.id_for_label }}" class="block text-sm font-bold text-gray-700 uppercase tracking-tight">Nom d'utilisateur</label>
-                {{ form.username }}
-                {% if form.username.errors %}<p class="mt-1 text-xs text-red-500">{{ form.username.errors.0 }}</p>{% endif %}
-            </div>
+<div class="max-w-2xl mx-auto space-y-6">
 
-            <div>
-                <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Prénom</label>
-                {{ form.first_name }}
-            </div>
+    <!-- Info Card -->
+    {% if not object %}
+    <div class="bg-indigo-50 border border-indigo-200 rounded-2xl px-5 py-4 flex items-start space-x-3">
+        <svg class="h-5 w-5 text-indigo-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <p class="text-sm text-indigo-700">L'agent sera automatiquement assigné au <strong>Mali</strong> avec le rôle <strong>Agent Mali</strong>.</p>
+    </div>
+    {% endif %}
 
-            <div>
-                <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Nom</label>
-                {{ form.last_name }}
-            </div>
-
-            <div class="sm:col-span-2">
-                <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">Email</label>
-                {{ form.email }}
-            </div>
-
-            <div class="sm:col-span-2">
-                <label for="{{ form.phone.id_for_label }}" class="block text-sm font-medium text-gray-700">Téléphone</label>
-                {{ form.phone }}
-            </div>
-
-            {% if not object %}
-            <div class="sm:col-span-2">
-                <label for="{{ form.password.id_for_label }}" class="block text-sm font-bold text-gray-700 uppercase tracking-tight">Mot de passe</label>
-                <input type="password" name="password" id="id_password" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-11 border px-3">
-            </div>
-            {% else %}
-            <div class="sm:col-span-2 flex items-center">
-                {{ form.is_active }}
-                <label for="{{ form.is_active.id_for_label }}" class="ml-2 block text-sm font-medium text-gray-700">Compte Actif</label>
-            </div>
-            {% endif %}
+    <!-- Formulaire -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-5 bg-gray-50 border-b border-gray-100">
+            <h3 class="text-base font-black text-gray-800">
+                {% if object %}Informations de l'agent{% else %}Informations du nouvel agent{% endif %}
+            </h3>
         </div>
+        <form method="POST" class="px-6 py-6 space-y-5" x-data="{ acces_systeme: {% if form.acces_systeme.value %}true{% else %}false{% endif %} }">
+            {% csrf_token %}
 
-        <!-- Custom Styling for Form Fields -->
-        <style>
-            input:not([type="checkbox"]):not([type="radio"]), select, textarea {
-                @apply mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-11 border px-3 transition-all duration-200 bg-gray-50 focus:bg-white;
-            }
-        </style>
-        {% for field in form %}
-            {% if field.name != 'is_active' and field.name != 'password' and field.name != 'username' and field.name != 'first_name' and field.name != 'last_name' and field.name != 'email' and field.name != 'phone' %}
+            <!-- Noms et Prénom -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
-                    {{ field }}
+                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Prénom</label>
+                    <input type="text" name="first_name" value="{{ form.first_name.value|default:'' }}"
+                           class="block w-full rounded-xl border border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white sm:text-sm px-4 py-3 transition-all"
+                           placeholder="Prénom de l'agent">
+                    {% if form.first_name.errors %}<p class="mt-1 text-xs text-red-500">{{ form.first_name.errors.0 }}</p>{% endif %}
                 </div>
-            {% endif %}
-        {% endfor %}
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Nom</label>
+                    <input type="text" name="last_name" value="{{ form.last_name.value|default:'' }}"
+                           class="block w-full rounded-xl border border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white sm:text-sm px-4 py-3 transition-all"
+                           placeholder="Nom de famille">
+                    {% if form.last_name.errors %}<p class="mt-1 text-xs text-red-500">{{ form.last_name.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
 
-        <div class="pt-4 flex items-center justify-end space-x-3 border-t border-gray-100">
-            <a href="{% url 'mali:admin_agents' %}" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Annuler</a>
-            <button type="submit" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5">
-                {% if object %}Enregistrer les modifications{% else %}Créer l'agent{% endif %}
-            </button>
-        </div>
-    </form>
+            <!-- Toggle accès système -->
+            <div class="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-200 my-4">
+                <input type="checkbox" id="{{ form.acces_systeme.id_for_label }}" name="{{ form.acces_systeme.name }}" x-model="acces_systeme" class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                <label for="{{ form.acces_systeme.id_for_label }}" class="ml-3 block text-sm font-bold text-gray-700">
+                    L'agent aura accès à son propre espace (connexion avec mot de passe)
+                </label>
+            </div>
+
+            <!-- Block Identifiants (x-show) -->
+            <div x-show="acces_systeme" class="space-y-5" x-transition>
+                <!-- Username (création) -->
+                {% if not object %}
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1.5">
+                        Nom d'utilisateur <span class="text-red-500">*</span>
+                        <span class="font-normal text-gray-400">(identifiant de connexion)</span>
+                    </label>
+                    <input type="text" name="username" value="{{ form.username.value|default:'' }}"
+                           class="block w-full rounded-xl border border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white sm:text-sm px-4 py-3 transition-all font-mono"
+                           placeholder="ex: agent.mali" autocomplete="username">
+                    {% if form.username.errors %}<p class="mt-1 text-xs text-red-500">{{ form.username.errors.0 }}</p>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Email -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1.5">Email</label>
+                <input type="email" name="email" value="{{ form.email.value|default:'' }}"
+                       class="block w-full rounded-xl border border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white sm:text-sm px-4 py-3 transition-all"
+                       placeholder="agent@ts-aircargo.com">
+                {% if form.email.errors %}<p class="mt-1 text-xs text-red-500">{{ form.email.errors.0 }}</p>{% endif %}
+            </div>
+
+            <!-- Téléphone -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1.5">Téléphone</label>
+                <input type="text" name="phone" value="{{ form.phone.value|default:'' }}"
+                       class="block w-full rounded-xl border border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white sm:text-sm px-4 py-3 transition-all"
+                       placeholder="+223XXXXXXXX">
+                {% if form.phone.errors %}<p class="mt-1 text-xs text-red-500">{{ form.phone.errors.0 }}</p>{% endif %}
+            </div>
+
+            <!-- Mot de passe (création uniquement) -->
+            <div x-show="acces_systeme" x-transition>
+                {% if not object %}
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1.5">
+                        Mot de passe <span class="text-red-500">*</span>
+                    </label>
+                    <input type="password" name="password" 
+                           class="block w-full rounded-xl border border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white sm:text-sm px-4 py-3 transition-all"
+                           placeholder="Mot de passe sécurisé" autocomplete="new-password">
+                    {% if form.password.errors %}<p class="mt-1 text-xs text-red-500">{{ form.password.errors.0 }}</p>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Séparateur rémunération (modification uniquement) -->
+            {% if object %}
+            <div class="border-t border-gray-100 pt-5 space-y-5">
+                <h4 class="text-sm font-black text-gray-600 uppercase tracking-wide">Rémunération & Statut</h4>
+
+                <!-- Mode de rémunération -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Mode de rémunération</label>
+                    <select name="remuneration_mode"
+                            class="block w-full rounded-xl border border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white sm:text-sm px-4 py-3 transition-all">
+                        {% for value, label in form.remuneration_mode.field.choices %}
+                        <option value="{{ value }}" {% if form.remuneration_mode.value == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.remuneration_mode.errors %}<p class="mt-1 text-xs text-red-500">{{ form.remuneration_mode.errors.0 }}</p>{% endif %}
+                </div>
+
+                <!-- Valeur de rémunération -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Montant / Taux de rémunération</label>
+                    <input type="number" name="remuneration_value" value="{{ form.remuneration_value.value|default:'' }}" step="0.01" min="0"
+                           class="block w-full rounded-xl border border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white sm:text-sm px-4 py-3 transition-all"
+                           placeholder="Ex: 150000 (salaire) ou 5 (%)">
+                </div>
+
+                <!-- Statut compte -->
+                <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    {{ form.is_active }}
+                    <div>
+                        <label for="{{ form.is_active.id_for_label }}" class="text-sm font-bold text-gray-700 cursor-pointer">Compte actif</label>
+                        <p class="text-xs text-gray-400 mt-0.5">Désactiver empêche l'agent de se connecter.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Boutons -->
+            <div class="pt-4 flex items-center justify-end space-x-3 border-t border-gray-100">
+                <a href="{% url 'mali:admin_agents' %}" class="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-700 border border-gray-300 bg-white hover:bg-gray-50 transition-colors">
+                    Annuler
+                </a>
+                <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-colors">
+                    <svg class="w-4 h-4 mr-1.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    {% if object %}Enregistrer{% else %}Créer l'agent{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

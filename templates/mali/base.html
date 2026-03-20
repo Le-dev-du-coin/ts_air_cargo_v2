@@ -65,7 +65,8 @@
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-green-300 uppercase tracking-wider">Administration</h3></div>
                         <a href="{% url 'mali:admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dashboard Admin</a>
                         <a href="{% url 'mali:admin_agents' %}" class="{% if 'agents' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Gestion Agents</a>
-                        <a href="{% url 'mali:admin_correction_list' %}" class="{% if 'correction' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Outils Correction</a>
+                        <a href="{% url 'mali:admin_remunerations' %}" class="{% if 'remuneration' in request.path or 'avances' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rémunérations</a>
+                        <a href="{% url 'mali:admin_correction_lot_list' %}" class="{% if 'correction' in request.path %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Outils Correction</a>
                         {% endif %}
                     </nav>
                 </div>
@@ -240,7 +241,14 @@
                                     </svg>
                                     Gestion Agents
                                 </a>
-                                <a href="{% url 'mali:admin_correction_list' %}"
+                                <a href="{% url 'mali:admin_remunerations' %}"
+                                    class="{% if 'remuneration' in request.path or 'avances' in request.path %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Rémunérations
+                                </a>
+                                <a href="{% url 'mali:admin_correction_lot_list' %}"
                                     class="{% if 'correction' in request.path %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                                     <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

@@ -1,0 +1,159 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block title %}Rémunération des Agents{% endblock %}
+{% block header %}Rémunération des Agents Mali{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-6">
+
+    <!-- Filtres Modèles (Haut) -->
+    <div class="bg-white p-4 shadow-sm rounded-xl border border-gray-100 flex items-center justify-between">
+        <form method="GET" class="flex space-x-4 items-center">
+            <div class="flex items-center space-x-2">
+                <select name="month" class="block w-full pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-lg">
+                    {% for m, m_name in months %}
+                    <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-center space-x-2">
+                <select name="year" class="block w-full pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-lg">
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                Filtrer
+            </button>
+        </form>
+        <div>
+            <a href="{% url 'mali:admin_avance_add' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Accorder une Avance
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Liste des Agents (2 Colonnes) -->
+        <div class="lg:col-span-2 space-y-4">
+            <h3 class="text-lg font-bold text-gray-900">Salaires et Commissions</h3>
+            
+            <div class="bg-white shadow-sm border border-gray-100 overflow-hidden sm:rounded-xl">
+                <ul class="divide-y divide-gray-100">
+                    {% for data in agents_data %}
+                    <li class="p-5 hover:bg-gray-50 flex flex-col sm:flex-row justify-between sm:items-center transition duration-150">
+                        <div class="flex items-center mb-4 sm:mb-0">
+                            <div class="flex-shrink-0 h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold uppercase text-lg">
+                                {{ data.agent.username|slice:":2" }}
+                            </div>
+                            <div class="ml-4">
+                                <h4 class="text-base font-bold text-gray-900">{{ data.agent.get_full_name|default:data.agent.username }}</h4>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                        {{ data.mode }} ({{ data.valeur }}{% if data.mode == 'Commission (%)' %}%{% else %} FCFA{% endif %})
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col items-end space-y-1 text-right">
+                            <p class="text-sm text-gray-500">Dû Théorique : <strong class="text-gray-900">{{ data.montant|floatformat:0|intcomma }}</strong> FCFA</p>
+                            <p class="text-sm text-gray-500">Paiements : <strong class="text-green-600">{{ data.paiements_effectues|floatformat:0|intcomma }}</strong> FCFA</p>
+                            {% if data.avances_total %}
+                            <p class="text-[11px] text-gray-400">Avances : <span class="text-orange-500 font-semibold">{{ data.avances_total|floatformat:0|intcomma }} FCFA</span></p>
+                            {% endif %}
+                            
+                            <div class="mt-2 pt-2 border-t border-gray-100 w-full flex justify-between items-center sm:justify-end sm:space-x-4">
+                                <span class="text-sm font-bold {% if data.reste_a_payer > 0 %}text-red-600{% else %}text-gray-400{% endif %}">
+                                    Net à payer : {{ data.reste_a_payer|floatformat:0|intcomma }} FCFA
+                                </span>
+                            </div>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="p-8 text-center text-gray-500">Aucun agent trouvé pour ce calcul.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Avances (1 Colonne) -->
+        <div class="lg:col-span-1 space-y-6">
+            
+            <!-- Liste Avances -->
+            <div>
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Avances sur Salaire ({{ selected_month }}/{{ selected_year }})</h3>
+                <div class="bg-white shadow-sm border border-gray-100 rounded-xl p-4">
+                    <div class="flow-root">
+                        <ul class="-my-4 divide-y divide-gray-100">
+                            {% for avance in avances %}
+                            <li class="py-4">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <p class="text-sm text-gray-900 font-semibold">{{ avance.agent.get_full_name|default:avance.agent.username }}</p>
+                                        <p class="text-xs text-gray-500">{{ avance.date|date:"d M Y" }} {% if avance.motif %}- {{ avance.motif }}{% endif %}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm font-bold text-orange-600">{{ avance.montant|intcomma }} F</p>
+                                        <div class="mt-1 flex space-x-2 justify-end">
+                                            <a href="{% url 'mali:admin_avance_edit' avance.id %}" class="text-indigo-600 hover:text-indigo-900 text-xs">Modifier</a>
+                                            <form method="POST" action="{% url 'mali:admin_avance_delete' avance.id %}" class="inline" onsubmit="return confirm('Supprimer cette avance ?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="text-red-600 hover:text-red-900 text-xs">Supprimer</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                            {% empty %}
+                            <li class="py-4 text-center text-sm text-gray-500">Aucune avance pour cette période.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historique Paiements -->
+            <div>
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Paiements Effectués ({{ selected_month }}/{{ selected_year }})</h3>
+                <div class="bg-white shadow-sm border border-gray-100 rounded-xl p-4">
+                    <div class="flow-root">
+                        <ul class="-my-4 divide-y divide-gray-100">
+                            {% for pt in paiements %}
+                            <li class="py-4">
+                                <div class="flex items-center space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="h-8 w-8 rounded-full bg-green-50 flex items-center justify-center">
+                                            <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate">
+                                            {{ pt.agent.username }}
+                                        </p>
+                                        <p class="text-xs text-gray-500">
+                                            {{ pt.date_paiement|date:"d/m/y" }} via {{ pt.get_methode_display }}
+                                        </p>
+                                    </div>
+                                    <div class="text-sm font-bold text-green-600">
+                                        {{ pt.montant|intcomma }} F
+                                    </div>
+                                </div>
+                            </li>
+                            {% empty %}
+                            <li class="py-4 text-center text-sm text-gray-500">Aucun paiement enregistré pour ce mois.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
