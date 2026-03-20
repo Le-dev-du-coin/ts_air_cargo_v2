@@ -214,7 +214,7 @@
         <div class="bg-white shadow rounded-lg border border-gray-100">
             <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                 <h3 class="text-lg leading-6 font-medium text-gray-900">Activité du Jour</h3>
-                <p class="mt-1 text-sm text-gray-500">Derniers colis pointés et livrés aujourd'hui</p>
+                <p class="mt-1 text-sm text-gray-500">Derniers colis livrés ou encaissés aujourd'hui</p>
             </div>
             <ul class="divide-y divide-gray-200">
                 {% for colis in activites_recentes %}
@@ -241,7 +241,7 @@
                             </span>
                             {% endif %}
                             <span class="text-xs font-medium text-gray-400">
-                                {{ colis.created_at|date:"H:i" }}
+                                {{ colis.updated_at|date:"H:i" }}
                             </span>
                         </div>
                     </div>
@@ -255,7 +255,7 @@
         <div class="bg-white shadow rounded-lg border border-gray-100">
             <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                 <h3 class="text-lg leading-6 font-medium text-gray-900">Activité du Jour</h3>
-                <p class="mt-1 text-sm text-gray-500">Derniers colis pointés et livrés aujourd'hui</p>
+                <p class="mt-1 text-sm text-gray-500">Derniers colis livrés ou encaissés aujourd'hui</p>
             </div>
             <div class="px-4 py-16 text-center">
                 <div class="inline-flex items-center justify-center p-4 bg-gray-50 rounded-full mb-4">

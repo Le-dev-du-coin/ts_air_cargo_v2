@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from django.urls import reverse_lazy
-from django.db.models import Q, Count, Sum, Value, F, DecimalField
+from django.db.models import Q, Count, Sum, Value, F, DecimalField, DateField
 from django.db.models.functions import Concat, Coalesce
 from core.mixins import DestinationAgentRequiredMixin, AdminMaliRequiredMixin
 from core.models import Country, Lot, Colis, Client, User
@@ -16,6 +16,7 @@ from notification.models import ConfigurationNotification
 from .forms import NotificationConfigForm
 
 import logging
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -75,16 +76,17 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         context["recettes_mois"] = recettes_mois
 
         # Poids total des colis livrés (mois en cours)
-        total_poids_mois = colis_livres_mois_qs.aggregate(
-            total=Sum("poids")
-        )["total"] or 0
+        total_poids_mois = (
+            colis_livres_mois_qs.aggregate(total=Sum("poids"))["total"] or 0
+        )
         context["total_poids_mois"] = total_poids_mois
 
         # 2. Dépenses (mois)
-        depenses_classiques_mois_qs = Depense.objects.filter(
-            pays=mali, date__year=today.year, date__month=today.month,
-            is_china_indicative=False
+        depenses_base_mois_qs = Depense.objects.filter(
+            Q(pays=mali) | Q(is_china_indicative=True),
+            date__year=today.year, date__month=today.month
         )
+        depenses_classiques_mois_qs = depenses_base_mois_qs.filter(is_china_indicative=False)
         depenses_classiques_mois = (
             depenses_classiques_mois_qs.aggregate(total=Sum("montant"))["total"] or 0
         )
@@ -150,7 +152,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
 
         # 8. Encaissements du Jour (Montant total des livraisons du jour)
         encaissements = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", updated_at__date=today
+            lot__destination=mali, status="LIVRE", date_encaissement=today
         ).aggregate(total=Sum("prix_final"))
         context["encaissements_jour"] = encaissements["total"] or 0
 
@@ -161,12 +163,13 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         # Activité récente (derniers colis pointés/livrés aujourd'hui)
         context["activites_recentes"] = (
             Colis.objects.filter(
-                lot__destination=mali,
-                status__in=["ARRIVE", "LIVRE", "PERDU"],
-                updated_at__date=today,
+                Q(lot__destination=mali),
+                Q(status__in=["ARRIVE", "LIVRE", "PERDU"]),
+                Q(date_livraison=today) | Q(date_encaissement=today),
             )
             .select_related("client", "lot")
-            .order_by("-updated_at")[:10]
+            .annotate(sort_date=Coalesce("date_livraison", "updated_at", output_field=DateField()))
+            .order_by("-sort_date", "-updated_at")[:10]
         )
 
         return context
@@ -211,15 +214,17 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
                 lot__destination=mali,
                 status="LIVRE",
                 est_paye=True,
-                updated_at__date__lt=today,  # Avant aujourd'hui
+                date_encaissement__lt=today,  # Avant aujourd'hui
             ).aggregate(total=Sum(F("prix_final") - F("montant_jc")))["total"]
             or 0
         )
 
         depenses_globales = (
-            Depense.objects.filter(pays=mali, date__lt=today, is_china_indicative=False).aggregate(
-                total=Sum("montant")
-            )["total"]
+            Depense.objects.filter(
+                Q(pays=mali) | Q(is_china_indicative=True),
+                date__lt=today, 
+                is_china_indicative=False
+            ).aggregate(total=Sum("montant"))["total"]
             or 0
         )
 
@@ -237,7 +242,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
 
         # --- 2. ACTIVITÉ DU JOUR (Cargo, Express, Bateau) ---
         colis_livres_jour = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", updated_at__date=today
+            lot__destination=mali, status="LIVRE", date_encaissement=today
         ).select_related("client", "lot")
 
         # Séparation par type de transport (via le Lot)
@@ -252,10 +257,11 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             or 0
         )
         poids_cargo = colis_cargo.aggregate(total=Sum("poids"))["total"] or 0
-        
+
         context["colis_cargo_list"] = colis_cargo.annotate(
-            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
-        ).order_by("-updated_at")
+            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+            sort_date=Coalesce("date_livraison", "updated_at", output_field=DateField())
+        ).order_by("-sort_date", "-updated_at")
         context["recette_cargo_jour"] = recette_cargo
         context["poids_cargo_jour"] = poids_cargo
 
@@ -268,10 +274,11 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             or 0
         )
         poids_express = colis_express.aggregate(total=Sum("poids"))["total"] or 0
-        
+
         context["colis_express_list"] = colis_express.annotate(
-            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
-        ).order_by("-updated_at")
+            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+            sort_date=Coalesce("date_livraison", "updated_at", output_field=DateField())
+        ).order_by("-sort_date", "-updated_at")
         context["recette_express_jour"] = recette_express
         context["poids_express_jour"] = poids_express
 
@@ -285,10 +292,11 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         )
         poids_bateau = colis_bateau.aggregate(total=Sum("poids"))["total"] or 0
         cbm_bateau = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
-        
+
         context["colis_bateau_list"] = colis_bateau.annotate(
-            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
-        ).order_by("-updated_at")
+            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+            sort_date=Coalesce("date_livraison", "updated_at", output_field=DateField())
+        ).order_by("-sort_date", "-updated_at")
         context["recette_bateau_jour"] = recette_bateau
         context["poids_bateau_jour"] = poids_bateau
         context["cbm_bateau_jour"] = cbm_bateau
@@ -297,7 +305,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         context["total_recettes_jour"] = (
             recette_cargo + recette_express + recette_bateau
         )
-        
+
         # Poids Total Jour (Kilos livrés du jour)
         context["total_poids_jour"] = poids_cargo + poids_express + poids_bateau
 
@@ -307,35 +315,52 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         )
 
         # --- 3. DÉPENSES & TRANSFERTS DU JOUR ---
-        # Dépenses - On exclut les dépenses indicatives Chine du solde Mali
-        depenses_jour_qs = Depense.objects.filter(pays=mali, date=today).order_by(
-            "-created_at"
-        )
-        
+        # Dépenses - On inclut les dépenses indicatives Chine (même avec pays=Chine)
+        depenses_jour_qs = Depense.objects.filter(
+            Q(pays=mali) | Q(is_china_indicative=True),
+            date=today
+        ).order_by("-created_at")
+
         # Dépenses Jour (Réelles Mali)
-        context["depenses_jour_reelles"] = depenses_jour_qs.filter(is_china_indicative=False)
-        total_depenses_mali = context["depenses_jour_reelles"].aggregate(total=Sum("montant"))["total"] or 0
-        
+        context["depenses_jour_reelles"] = depenses_jour_qs.filter(
+            is_china_indicative=False
+        )
+        total_depenses_mali = (
+            context["depenses_jour_reelles"].aggregate(total=Sum("montant"))["total"]
+            or 0
+        )
+
         # Dépenses Jour (Indicatives Chine)
-        context["depenses_indicatives_jour"] = depenses_jour_qs.filter(is_china_indicative=True)
-        context["total_depenses_indicatives"] = context["depenses_indicatives_jour"].aggregate(total=Sum("montant"))["total"] or 0
+        context["depenses_indicatives_jour"] = depenses_jour_qs.filter(
+            is_china_indicative=True
+        )
+        context["total_depenses_indicatives"] = (
+            context["depenses_indicatives_jour"].aggregate(total=Sum("montant"))[
+                "total"
+            ]
+            or 0
+        )
 
         # Transferts (considérés comme dépenses jour)
         transferts_jour_qs = TransfertArgent.objects.filter(
             pays_expediteur=mali, date=today
         ).order_by("-created_at")
-        
+
         total_transferts = (
             transferts_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
         )
 
         context["depenses_jour_list"] = depenses_jour_qs
         context["transferts_jour_list"] = transferts_jour_qs
-        
+
         # Séparation des transferts pour l'affichage
-        context["transferts_chine_list"] = transferts_jour_qs.filter(destinataire="CHINE")
-        context["transferts_gaoussou_list"] = transferts_jour_qs.filter(destinataire="GAOUSSOU")
-        
+        context["transferts_chine_list"] = transferts_jour_qs.filter(
+            destinataire="CHINE"
+        )
+        context["transferts_gaoussou_list"] = transferts_jour_qs.filter(
+            destinataire="GAOUSSOU"
+        )
+
         # Sorties Jour réelles (pour solde caisse)
         context["total_sorties_jour"] = total_depenses_mali + total_transferts
         context["total_depenses_only"] = total_depenses_mali
@@ -517,10 +542,10 @@ class LotsLivresView(LotsEnTransitView):
         year = self.request.GET.get("year")
         if month and year:
             queryset = queryset.filter(
-                colis__updated_at__month=month, colis__updated_at__year=year
+                colis__date_livraison__month=month, colis__date_livraison__year=year
             )
         elif year:
-            queryset = queryset.filter(colis__updated_at__year=year)
+            queryset = queryset.filter(colis__date_livraison__year=year)
 
         query = self.request.GET.get("q")
         if query:
@@ -566,28 +591,18 @@ class ColisSortieGarantieView(
 
         if self.filter_year:
             try:
-                queryset = queryset.filter(updated_at__year=int(self.filter_year))
+                queryset = queryset.filter(date_encaissement__year=int(self.filter_year))
             except (ValueError, TypeError):
                 pass
         if self.filter_month:
             try:
-                queryset = queryset.filter(updated_at__month=int(self.filter_month))
+                queryset = queryset.filter(date_encaissement__month=int(self.filter_month))
             except (ValueError, TypeError):
                 pass
 
-        # Filtre textuel
-        query = self.request.GET.get("q")
-        if query:
-            queryset = queryset.annotate(
-                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
-            ).filter(
-                Q(reference__icontains=query)
-                | Q(client__nom__icontains=query)
-                | Q(nom_complet__icontains=query)
-                | Q(sortie_autorisee_par__icontains=query)
-            )
-
-        return queryset.order_by("-updated_at")
+        return queryset.annotate(
+            sort_date=Coalesce("date_livraison", "updated_at", output_field=DateField())
+        ).order_by("-sort_date", "-updated_at")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -615,14 +630,14 @@ class ColisSortieGarantieView(
 
         # Stats mois en cours
         stats_month = base_qs.filter(
-            updated_at__year=now.year, updated_at__month=now.month
+            date_encaissement__year=now.year, date_encaissement__month=now.month
         ).aggregate(
             count=Count("id"),
             montant=Sum(F("prix_final") - F("montant_jc")),
         )
 
         # Stats année en cours
-        stats_year = base_qs.filter(updated_at__year=now.year).aggregate(
+        stats_year = base_qs.filter(date_encaissement__year=now.year).aggregate(
             count=Count("id"),
             montant=Sum(F("prix_final") - F("montant_jc")),
         )
@@ -833,7 +848,7 @@ class LotLivreDetailView(LotDetailView):
 
         from django.core.paginator import Paginator
 
-        paginator = Paginator(colis_qs.order_by("-updated_at"), 20)
+        paginator = Paginator(colis_qs.annotate(sort_date=Coalesce("date_livraison", "updated_at", output_field=DateField())).order_by("-sort_date", "-updated_at"), 20)
         context["colis_list"] = paginator.get_page(self.request.GET.get("page"))
         context["is_livre_mode"] = True
         return context
@@ -1238,7 +1253,10 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
         colis.commentaire_livraison = request.POST.get("commentaire", "")
 
         # Gestion Sortie sous Garantie (Peut être forcé par le bouton dédié ou coché manuellement)
-        if request.POST.get("sortie_sous_garantie") == "on" or request.POST.get("is_sortie") == "true":
+        if (
+            request.POST.get("sortie_sous_garantie") == "on"
+            or request.POST.get("is_sortie") == "true"
+        ):
             colis.sortie_sous_garantie = True
             colis.sortie_autorisee_par = request.POST.get("sortie_autorisee_par", "")
         else:
@@ -1265,16 +1283,21 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
                 try:
                     rp = request.POST.get("reste_a_payer", "0")
                     colis.reste_a_payer = float(rp) if rp else 0
-                    colis.est_paye = (colis.reste_a_payer <= 0)
+                    colis.est_paye = colis.reste_a_payer <= 0
                 except ValueError:
                     colis.reste_a_payer = 0
                     colis.est_paye = False
-            else: # ATTENTE ou autre
+            else:  # ATTENTE ou autre
                 colis.est_paye = False
-                colis.reste_a_payer = max(0, (colis.prix_final or 0) - (colis.montant_jc or 0))
+                colis.reste_a_payer = max(
+                    0, (colis.prix_final or 0) - (colis.montant_jc or 0)
+                )
 
         colis.mode_paiement = request.POST.get("mode_paiement")
         colis.status = "LIVRE"
+        colis.date_livraison = request.POST.get("date_livraison") or timezone.now().date()
+        if colis.est_paye or status_paiement == "PARTIEL":
+            colis.date_encaissement = request.POST.get("date_encaissement") or timezone.now().date()
         colis.save()
 
         # Notification... (unchanged logic)
@@ -1335,11 +1358,15 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
     def post(self, request, pk):
         lot = get_object_or_404(Lot, pk=pk)
         colis_ids = request.POST.getlist("colis_ids")
-        
+
         status_paiement = request.POST.get("status_paiement", "ATTENTE")
         mode_paiement = request.POST.get("mode_paiement", "ESPECE")
         mode_livraison = request.POST.get("mode_livraison", "AGENCE")
         infos_recepteur = request.POST.get("infos_recepteur", "")
+        
+        # New date fields
+        date_livraison = request.POST.get("date_livraison") or timezone.now().date()
+        date_encaissement = request.POST.get("date_encaissement")
 
         if not colis_ids:
             messages.warning(request, "Aucun colis sélectionné pour la livraison.")
@@ -1357,21 +1384,33 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         # Calcul pour paiement partiel global
         if status_paiement == "PARTIEL":
             try:
-                montant_encaisse_global = float(request.POST.get("montant_encaisse", 0))
-            except ValueError:
-                montant_encaisse_global = 0
-            
-            total_net_selection = sum((c.prix_final or 0) - (c.montant_jc or 0) for c in colis_list if not c.paye_en_chine)
-            reste_global = max(0, total_net_selection - montant_encaisse_global)
+                montant_encaisse_global = Decimal(
+                    request.POST.get("montant_encaisse", "0") or "0"
+                )
+            except Exception:
+                montant_encaisse_global = Decimal("0")
+
+            total_net_selection = sum(
+                (c.prix_final or Decimal("0")) - (c.montant_jc or Decimal("0"))
+                for c in colis_list
+                if not c.paye_en_chine
+            )
+            reste_global = max(
+                Decimal("0"), total_net_selection - montant_encaisse_global
+            )
         else:
-            total_net_selection = 0
-            reste_global = 0
+            total_net_selection = Decimal("0")
+            reste_global = Decimal("0")
 
         for c in colis_list:
             c.status = "LIVRE"
             c.mode_livraison = mode_livraison
             c.mode_paiement = mode_paiement
             c.infos_recepteur = infos_recepteur
+            
+            # Application des dates
+            if date_livraison:
+                c.date_livraison = date_livraison
             
             if c.paye_en_chine:
                 c.est_paye = True
@@ -1382,19 +1421,39 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                     c.reste_a_payer = 0
                 elif status_paiement == "PARTIEL":
                     # Distribution proportionnelle du reste
-                    if total_net_selection > 0:
-                        part_colis = (c.prix_final or 0) - (c.montant_jc or 0)
+                    if total_net_selection > Decimal("0"):
+                        part_colis = (c.prix_final or Decimal("0")) - (
+                            c.montant_jc or Decimal("0")
+                        )
                         share = part_colis / total_net_selection
-                        c.reste_a_payer = round(reste_global * share)
+                        c.reste_a_payer = (reste_global * share).quantize(Decimal("1"))
                     else:
-                        c.reste_a_payer = 0
-                    c.est_paye = (c.reste_a_payer <= 0)
-                else: # ATTENTE
+                        c.reste_a_payer = Decimal("0")
+                    c.est_paye = c.reste_a_payer <= Decimal("0")
+                else:  # ATTENTE
                     c.est_paye = False
-                    c.reste_a_payer = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
+                    c.reste_a_payer = max(
+                        Decimal("0"),
+                        (c.prix_final or Decimal("0")) - (c.montant_jc or Decimal("0")),
+                    )
+                
+                # Assign date_encaissement if paid fully or partially
+                if c.est_paye or status_paiement == "PARTIEL":
+                    if date_encaissement:
+                        c.date_encaissement = date_encaissement
 
         Colis.objects.bulk_update(
-            colis_list, ["status", "mode_livraison", "est_paye", "reste_a_payer", "mode_paiement", "infos_recepteur"]
+            colis_list,
+            [
+                "status",
+                "mode_livraison",
+                "est_paye",
+                "reste_a_payer",
+                "mode_paiement",
+                "infos_recepteur",
+                "date_livraison",
+                "date_encaissement",
+            ],
         )
 
         # Grouper les notifications
@@ -1449,6 +1508,7 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
 
         if request.headers.get("HX-Request"):
             import json
+
             response = HttpResponse("")
             response["HX-Trigger"] = json.dumps(
                 {"colisLivreBulk": {"pks": [c.id for c in colis_list]}}
@@ -1466,6 +1526,7 @@ class ColisSortieBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, Vie
         lot = get_object_or_404(Lot, pk=pk)
         colis_ids = request.POST.getlist("colis_ids")
         autorise_par = request.POST.get("sortie_autorisee_par", "")
+        date_livraison = request.POST.get("date_livraison") or timezone.now().date()
 
         if not colis_ids:
             messages.warning(request, "Aucun colis sélectionné.")
@@ -1478,15 +1539,25 @@ class ColisSortieBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, Vie
             c.status = "LIVRE"
             c.sortie_sous_garantie = True
             c.sortie_autorisee_par = autorise_par
+            c.date_livraison = date_livraison
             c.est_paye = False
             c.reste_a_payer = max(0, (c.prix_final or 0) - (c.montant_jc or 0))
 
         Colis.objects.bulk_update(
-            colis_list, ["status", "sortie_sous_garantie", "sortie_autorisee_par", "est_paye", "reste_a_payer"]
+            colis_list,
+            [
+                "status",
+                "sortie_sous_garantie",
+                "sortie_autorisee_par",
+                "date_livraison",
+                "est_paye",
+                "reste_a_payer",
+            ],
         )
 
         if request.headers.get("HX-Request"):
             import json
+
             response = HttpResponse("")
             response["HX-Trigger"] = json.dumps(
                 {"colisLivreBulk": {"pks": [c.id for c in colis_list]}}
@@ -1542,7 +1613,7 @@ class ColisAttentePaiementView(
                     output_field=DecimalField(),
                 )
             )
-            .order_by("-updated_at")
+            .annotate(sort_date=Coalesce("date_livraison", "updated_at", output_field=DateField())).order_by("-sort_date", "-updated_at")
         )
 
         query = self.request.GET.get("q")
@@ -1572,8 +1643,14 @@ class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, V
         # Marquer comme payé et solder le reste à payer
         colis.est_paye = True
         colis.reste_a_payer = 0
-        # Force update of updated_at to ensure it counts for TODAY's report
-        colis.updated_at = timezone.now()
+        
+        # Date d'encaissement (depuis POST ou aujourd'hui)
+        date_enc = request.POST.get("date_encaissement")
+        if date_enc:
+            colis.date_encaissement = date_enc
+        else:
+            colis.date_encaissement = timezone.now().date()
+
         colis.save()
 
         messages.success(request, f"Paiement encaissé pour le colis {colis.reference}.")
@@ -1582,17 +1659,23 @@ class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, V
         return redirect("mali:colis_attente_paiement")
 
 
-class ColisEncaissementBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+class ColisEncaissementBulkView(
+    LoginRequiredMixin, DestinationAgentRequiredMixin, View
+):
     """Encaisser plusieurs colis en masse"""
 
     def post(self, request):
         colis_ids = request.POST.getlist("colis_ids")
         mode_paiement = request.POST.get("mode_paiement", "ESPECE")
+        date_encaissement = request.POST.get("date_encaissement") or timezone.now().date()
+        
         if not colis_ids:
             messages.warning(request, "Aucun colis sélectionné.")
             return redirect("mali:colis_attente_paiement")
 
-        colis_qs = Colis.objects.filter(id__in=colis_ids, status="LIVRE", est_paye=False)
+        colis_qs = Colis.objects.filter(
+            id__in=colis_ids, status="LIVRE", est_paye=False
+        )
         colis_list = list(colis_qs)
 
         now = timezone.now()
@@ -1600,11 +1683,17 @@ class ColisEncaissementBulkView(LoginRequiredMixin, DestinationAgentRequiredMixi
             c.est_paye = True
             c.reste_a_payer = 0
             c.mode_paiement = mode_paiement
-            c.updated_at = now
+            c.date_encaissement = date_encaissement
+            c.updated_at = timezone.now()
 
-        Colis.objects.bulk_update(colis_list, ["est_paye", "reste_a_payer", "mode_paiement", "updated_at"])
+        Colis.objects.bulk_update(
+            colis_list, ["est_paye", "reste_a_payer", "mode_paiement", "date_encaissement", "updated_at"]
+        )
 
-        messages.success(request, f"{len(colis_list)} paiements encaissés avec succès ({mode_paiement}).")
+        messages.success(
+            request,
+            f"{len(colis_list)} paiements encaissés avec succès ({mode_paiement}).",
+        )
         return redirect("mali:colis_attente_paiement")
 
 
@@ -1644,11 +1733,11 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                 lot__destination__code="ML",
                 status="LIVRE",
                 est_paye=True,
-                updated_at__date=today,
+                date_encaissement=today,
             )
             .select_related("client", "lot")
             .annotate(net_price=F("prix_final") - F("montant_jc"))
-            .order_by("-updated_at")
+            .order_by("-date_livraison")
         )
 
         # Filtrage par type
@@ -1673,16 +1762,18 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                     lot__destination__code="ML",
                     status="LIVRE",
                     est_paye=True,
-                    updated_at__date__lt=today,
-                ).aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"]
+                    date_encaissement__lt=today,
+                ).aggregate(
+                    total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+                )[
+                    "total"
+                ]
                 or 0
             )
             # Dépenses cumulées Mali uniquement
             depenses_globales_veille = (
                 Depense.objects.filter(
-                    pays__code="ML", 
-                    date__lt=today,
-                    is_china_indicative=False
+                    pays__code="ML", date__lt=today, is_china_indicative=False
                 ).aggregate(total=Sum("montant"))["total"]
                 or 0
             )
@@ -1701,9 +1792,7 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             # Dépenses Jour Mali uniquement
             total_depenses = (
                 Depense.objects.filter(
-                    pays__code="ML", 
-                    date=today,
-                    is_china_indicative=False
+                    pays__code="ML", date=today, is_china_indicative=False
                 ).aggregate(total=Sum("montant"))["total"]
                 or 0
             )
@@ -1906,9 +1995,7 @@ from django.views.generic import UpdateView
 from .forms import ColisUpdateMaliForm
 
 
-class ColisUpdateMaliView(
-    LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView
-):
+class ColisUpdateMaliView(LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView):
     """Permet à l'administrateur Mali de corriger le poids, le CBM ou le prix d'un colis."""
 
     model = Colis
@@ -1917,7 +2004,8 @@ class ColisUpdateMaliView(
 
     def get_success_url(self):
         messages.success(
-            self.request, f"Le carton {self.object.reference} a été corrigé avec succès."
+            self.request,
+            f"Le carton {self.object.reference} a été corrigé avec succès.",
         )
         return reverse("mali:lot_transit_detail", kwargs={"pk": self.object.lot.pk})
 
@@ -1928,7 +2016,9 @@ class ColisUpdateMaliView(
         colis.save()
         return super().form_valid(form)
 
+
 # --- VUES ADMIN MALI ---
+
 
 class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
     template_name = "mali/admin/dashboard.html"
@@ -1936,15 +2026,23 @@ class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         mali = self.request.user.country
-        
+
         # Stats globales
-        context["total_agents"] = User.objects.filter(country=mali, role="AGENT_MALI").count()
-        context["total_colis_mois"] = Colis.objects.filter(lot__destination=mali, created_at__month=timezone.now().month).count()
-        
-        # Dernières erreurs potentielles (ex: colis livrés aujourd'hui)
-        context["recent_deliveries"] = Colis.objects.filter(lot__destination=mali, status="LIVRE").order_by("-updated_at")[:10]
-        
+        context["total_agents"] = User.objects.filter(
+            country=mali, role="AGENT_MALI"
+        ).count()
+        context["total_colis_mois"] = Colis.objects.filter(
+            lot__destination=mali, created_at__month=timezone.now().month
+        ).count()
+
+        context["recent_deliveries"] = Colis.objects.filter(
+            lot__destination=mali, status="LIVRE"
+        ).annotate(
+            sort_date=Coalesce("date_livraison", "updated_at", output_field=DateField())
+        ).order_by("-sort_date", "-updated_at")[:10]
+
         return context
+
 
 class MaliAgentListView(AdminMaliRequiredMixin, ListView):
     model = User
@@ -1953,6 +2051,7 @@ class MaliAgentListView(AdminMaliRequiredMixin, ListView):
 
     def get_queryset(self):
         return User.objects.filter(country=self.request.user.country, role="AGENT_MALI")
+
 
 class MaliAgentCreateView(AdminMaliRequiredMixin, CreateView):
     model = User
@@ -1969,6 +2068,7 @@ class MaliAgentCreateView(AdminMaliRequiredMixin, CreateView):
         messages.success(self.request, f"Agent {user.username} créé avec succès.")
         return super().form_valid(form)
 
+
 class MaliAgentUpdateView(AdminMaliRequiredMixin, UpdateView):
     model = User
     template_name = "mali/admin/agent_form.html"
@@ -1979,6 +2079,7 @@ class MaliAgentUpdateView(AdminMaliRequiredMixin, UpdateView):
         messages.success(self.request, "Profil agent mis à jour.")
         return super().form_valid(form)
 
+
 class MaliCorrectionListView(AdminMaliRequiredMixin, ListView):
     model = Colis
     template_name = "mali/admin/correction_list.html"
@@ -1986,28 +2087,38 @@ class MaliCorrectionListView(AdminMaliRequiredMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        qs = Colis.objects.filter(lot__destination=self.request.user.country).order_by("-updated_at")
+        qs = Colis.objects.filter(lot__destination=self.request.user.country).order_by(
+            "-updated_at"
+        )
         search = self.request.GET.get("q")
         if search:
-            qs = apply_flexible_search(qs, search, ["reference", "client__nom", "client__telephone"])
+            qs = apply_flexible_search(
+                qs, search, ["reference", "client__nom", "client__telephone"]
+            )
         return qs
+
 
 class MaliActionRevertView(AdminMaliRequiredMixin, View):
     def post(self, request, pk):
         colis = get_object_or_404(Colis, pk=pk, lot__destination=request.user.country)
         action = request.POST.get("action")
-        
+
         if action == "revert_to_transit" and colis.status == "ARRIVE":
             # Repasser en EXPEDIE (transit)
             colis.status = "EXPEDIE"
             colis.save()
-            messages.success(request, f"Le carton {colis.reference} est repassé en TRANSIT.")
-            
+            messages.success(
+                request, f"Le carton {colis.reference} est repassé en TRANSIT."
+            )
+
         elif action == "revert_to_arrive" and colis.status == "LIVRE":
             # Annulation encaissement si existant
             colis.status = "ARRIVE"
             colis.est_paye = False
             colis.save()
-            messages.warning(request, f"Le carton {colis.reference} est repassé en ARRIVÉ. Le paiement a été annulé.")
-            
+            messages.warning(
+                request,
+                f"Le carton {colis.reference} est repassé en ARRIVÉ. Le paiement a été annulé.",
+            )
+
         return redirect("mali:admin_correction_list")

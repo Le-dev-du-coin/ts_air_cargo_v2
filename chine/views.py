@@ -161,16 +161,24 @@ def get_country_stats(country_code, year=None, month=None):
     stats["ca_bateau"] = montant_brut_bateau - total_jc_bateau
 
     # Coûts Avion
-    cout_transport_avion = lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0
+    cout_transport_avion = (
+        lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0
+    )
     cout_douane_avion = lots_avion.aggregate(total=Sum("frais_douane"))["total"] or 0
 
     # Coûts Bateau
-    cout_transport_bateau = lots_bateau.aggregate(total=Sum("frais_transport"))["total"] or 0
+    cout_transport_bateau = (
+        lots_bateau.aggregate(total=Sum("frais_transport"))["total"] or 0
+    )
     cout_douane_bateau = lots_bateau.aggregate(total=Sum("frais_douane"))["total"] or 0
 
     # Bénéfice brut Avion et Bateau
-    stats["benefice_brut_avion"] = stats["ca_avion"] - cout_transport_avion - cout_douane_avion
-    stats["benefice_brut_bateau"] = stats["ca_bateau"] - cout_transport_bateau - cout_douane_bateau
+    stats["benefice_brut_avion"] = (
+        stats["ca_avion"] - cout_transport_avion - cout_douane_avion
+    )
+    stats["benefice_brut_bateau"] = (
+        stats["ca_bateau"] - cout_transport_bateau - cout_douane_bateau
+    )
 
     # Compteurs Expédiés / Livrés
     stats["nb_colis_expedies_avion"] = colis_avion.count()
@@ -329,12 +337,14 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         return context
 
 
-
-class TransportStatsDetailView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateView):
+class TransportStatsDetailView(
+    LoginRequiredMixin, AdminChineRequiredMixin, TemplateView
+):
     """
     Page de détails des statistiques Avion vs Bateau par pays (Mali & CI).
     Accessible uniquement par les ADMIN_CHINE.
     """
+
     template_name = "chine/transport_stats.html"
 
     def get_context_data(self, **kwargs):
@@ -353,9 +363,18 @@ class TransportStatsDetailView(LoginRequiredMixin, AdminChineRequiredMixin, Temp
         context["current_year"] = now.year
         context["years"] = list(range(now.year, now.year - 4, -1))
         context["months"] = [
-            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
-            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
-            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
+            (1, "Janvier"),
+            (2, "Février"),
+            (3, "Mars"),
+            (4, "Avril"),
+            (5, "Mai"),
+            (6, "Juin"),
+            (7, "Juillet"),
+            (8, "Août"),
+            (9, "Septembre"),
+            (10, "Octobre"),
+            (11, "Novembre"),
+            (12, "Décembre"),
         ]
 
         context["stats_ml"] = get_country_stats("ML", selected_year, selected_month)
@@ -1709,6 +1728,7 @@ class ChinaDepenseCreateView(
 
     def form_valid(self, form):
         form.instance.enregistre_par = self.request.user
+        form.instance.is_china_indicative = True
         messages.success(self.request, "Dépense ajoutée avec succès.")
         return super().form_valid(form)
 

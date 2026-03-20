@@ -512,6 +512,20 @@
                             </select>
                         </div>
 
+                        <!-- Dates -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-black text-gray-700 uppercase mb-1">Date de livraison</label>
+                                <input type="date" name="date_livraison" required value="{% now 'Y-m-d' %}"
+                                       class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
+                            </div>
+                            <div x-show="bulkPaiement !== 'ATTENTE'">
+                                <label class="block text-xs font-black text-gray-700 uppercase mb-1">Date d'encaissement</label>
+                                <input type="date" name="date_encaissement" required value="{% now 'Y-m-d' %}"
+                                       class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
+                            </div>
+                        </div>
+
                         <!-- Statut Paiement -->
                         <div class="grid grid-cols-2 gap-4">
                             <div class="col-span-2">
@@ -575,9 +589,9 @@
                         </svg>
                     </div>
                     <div class="mt-3 text-center sm:mt-5">
-                        <h3 class="text-lg leading-6 font-bold text-gray-900 uppercase tracking-tight">Sortie sous Garantie (Masse)</h3>
+                        <h3 class="text-lg leading-6 font-bold text-gray-900 uppercase tracking-tight">Livraison sous Garantie (Masse)</h3>
                         <div class="mt-2 text-sm text-gray-500">
-                            Autoriser la sortie sans paiement immédiat pour <span class="font-black text-amber-600" x-text="selectedCount"></span> colis.
+                            Autoriser la livraison sans paiement immédiat pour <span class="font-black text-amber-600" x-text="selectedCount"></span> colis.
                         </div>
                     </div>
                 </div>
@@ -587,10 +601,17 @@
                         <input type="hidden" name="colis_ids" :value="id">
                     </template>
                     
-                    <div class="mt-4">
-                        <label class="block text-xs font-black text-gray-700 uppercase mb-2">Autorisée par (Nom) *</label>
-                        <input type="text" name="sortie_autorisee_par" required placeholder="Ex: Responsable Agence"
-                               class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-bold">
+                    <div class="mt-4 space-y-4">
+                        <div>
+                            <label class="block text-xs font-black text-gray-700 uppercase mb-1">Date de sortie / livraison</label>
+                            <input type="date" name="date_livraison" required value="{% now 'Y-m-d' %}"
+                                   class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-black text-gray-700 uppercase mb-1">Autorisé par (Garant)</label>
+                            <input type="text" name="sortie_autorisee_par" required placeholder="Nom du responsable"
+                                   class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-bold">
+                        </div>
                     </div>
 
                     <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">

@@ -122,7 +122,9 @@ class Lot(TenantAwareModel):
     )
     nb_colis = models.PositiveIntegerField(
         default=0,
-        help_text=_("Nombre de colis groupés dans ce lot (ex: 33 colis pour 415 cartons)"),
+        help_text=_(
+            "Nombre de colis groupés dans ce lot (ex: 33 colis pour 415 cartons)"
+        ),
     )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.OUVERT
@@ -257,7 +259,8 @@ class Colis(TenantAwareModel):
     # Livraison & Paiement
     est_paye = models.BooleanField(default=False)
     paye_en_chine = models.BooleanField(
-        default=False, help_text=_("Indique si le colis a été encaissé par l'agence en Chine")
+        default=False,
+        help_text=_("Indique si le colis a été encaissé par l'agence en Chine"),
     )
     reste_a_payer = models.DecimalField(
         max_digits=12,
@@ -320,6 +323,10 @@ class Colis(TenantAwareModel):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Dates opérationnelles explicites
+    date_livraison = models.DateField(null=True, blank=True)
+    date_encaissement = models.DateField(null=True, blank=True)
+
     def save(self, *args, **kwargs):
         if not self.reference:
             import uuid
@@ -332,14 +339,13 @@ class Colis(TenantAwareModel):
 
     def recalculate_prices(self):
         """
-        Recalcule le prix_transport et le prix_final en fonction du lot, 
+        Recalcule le prix_transport et le prix_final en fonction du lot,
         du type de colis et des tarifs en vigueur.
         """
         # Recherche du tarif pour la destination et le type de transport du lot
         try:
             tarif = Tarif.objects.get(
-                destination=self.lot.destination,
-                type_transport=self.lot.type_transport
+                destination=self.lot.destination, type_transport=self.lot.type_transport
             )
         except Tarif.DoesNotExist:
             tarif = None
@@ -350,8 +356,7 @@ class Colis(TenantAwareModel):
             # Pour le téléphone, on utilise le tarif spécifique téléphone s'il existe
             try:
                 tarif_tel = Tarif.objects.get(
-                    destination=self.lot.destination,
-                    type_transport="TELEPHONE"
+                    destination=self.lot.destination, type_transport="TELEPHONE"
                 )
                 self.prix_transport = self.nombre_pieces * tarif_tel.prix_piece
             except Tarif.DoesNotExist:

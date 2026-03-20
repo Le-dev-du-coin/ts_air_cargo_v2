@@ -123,7 +123,8 @@
                         <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Reste</th>
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Paiement</th>
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Statut</th>
-                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Date Action</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Livraison</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Encaissement</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 bg-white">
@@ -190,7 +191,10 @@
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-xs text-gray-500">
-                            {{ colis.updated_at|date:"d/m/Y H:i" }}
+                            {{ colis.date_livraison|default:colis.updated_at|date:"d/m/Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-xs text-gray-500">
+                            {{ colis.date_encaissement|date:"d/m/Y"|default:"-" }}
                         </td>
                     </tr>
                     {% endfor %}

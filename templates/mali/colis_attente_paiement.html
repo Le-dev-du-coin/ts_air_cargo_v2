@@ -74,7 +74,6 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Livraison</th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant Dû</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -98,7 +97,7 @@
                             <div class="text-sm text-gray-500">{{ colis.client.telephone }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ colis.updated_at|date:"d/m/Y H:i" }}
+                            {{ colis.date_livraison|default:colis.updated_at|date:"d/m/Y" }}
                             {% if colis.mode_livraison == 'DOMICILE' %}
                                 <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                     Domicile
@@ -107,15 +106,6 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-red-600">
                             {{ colis.montant_du|fcfa }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <form method="POST" action="{% url 'mali:colis_encaisser' pk=colis.pk %}" class="inline-block form-encaisser-{{ colis.pk }}">
-                                {% csrf_token %}
-                                <button type="button" onclick="confirmerEncaissement('{{ colis.pk }}', '{{ colis.reference }}', {{ colis.montant_du|default:0|unlocalize }})" 
-                                        class="text-green-600 hover:text-green-900 font-bold bg-green-50 px-3 py-1 rounded-md border border-green-200 hover:bg-green-100 transition-colors">
-                                    Encaisser
-                                </button>
-                            </form>
                         </td>
                     </tr>
                     {% empty %}
@@ -212,13 +202,26 @@
                         </p>
                     </div>
                     <div class="order-3 mt-2 flex-shrink-0 w-full sm:order-2 sm:mt-0 sm:w-auto flex items-center space-x-2">
-                        <select name="mode_paiement" form="bulk-encaissement-form"
-                                class="block w-40 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
-                            <option value="ESPECE" selected>💵 Espèce</option>
-                            <option value="ORANGE_MONEY">📱 Orange Money</option>
-                            <option value="SARALI">💳 Sarali</option>
-                        </select>
-                        <form method="POST" action="{% url 'mali:colis_encaisser_bulk' %}" id="bulk-encaissement-form">
+                        <div class="flex flex-col">
+                            <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Date Encaissement</label>
+                            <input type="date" name="date_encaissement" form="bulk-encaissement-form" required value="{% now 'Y-m-d' %}"
+                                   class="block w-36 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                        </div>
+                        <div class="flex flex-col">
+                            <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Mode</label>
+                            <select name="mode_paiement" form="bulk-encaissement-form"
+                                    class="block w-32 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                                <option value="ESPECE" selected>💵 Espèce</option>
+                                <option value="ORANGE_MONEY">📱 Orange Money</option>
+                                <option value="SARALI">💳 Sarali</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col">
+                            <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Date Encaissement</label>
+                            <input type="date" name="date_encaissement" form="bulk-encaissement-form" required value="{% now 'Y-m-d' %}"
+                                   class="block w-36 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                        </div>
+                        <form method="POST" action="{% url 'mali:colis_encaisser_bulk' %}" id="bulk-encaissement-form" class="mt-4">
                             {% csrf_token %}
                             <template x-for="id in selectedIds" :key="id">
                                 <input type="hidden" name="colis_ids" :value="id">
@@ -239,23 +242,6 @@
 {% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    function confirmerEncaissement(pk, reference, montant) {
-        Swal.fire({
-            title: 'Confirmer l\'encaissement ?',
-            text: `Colis ${reference}. Montant à encaisser : ${new Intl.NumberFormat('fr-FR').format(montant)} FCFA`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#16a34a', // Green-600
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Oui, encaisser',
-            cancelButtonText: 'Annuler'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                document.querySelector(`.form-encaisser-${pk}`).submit();
-            }
-        })
-    }
-
     function confirmerEncaissementBulk() {
         const count = document.querySelectorAll('input[name="colis_ids"]:checked').length;
         if (count === 0) return;
