@@ -7,6 +7,13 @@
 <div class="flex flex-col md:flex-row md:items-center gap-4">
     <!-- Filtre Mois/Année -->
     <form method="get" class="flex items-center bg-white rounded-lg border border-gray-300 shadow-sm overflow-hidden">
+        <select name="day" class="pl-3 pr-8 py-2 text-sm border-0 focus:ring-0 bg-transparent">
+            <option value="">Jour (Tous)</option>
+            {% for i in "12345678910111213141516171819202122232425262728293031"|make_list %}
+                <option value="{{ forloop.counter }}" {% if current_day == forloop.counter %}selected{% endif %}>{{ forloop.counter }}</option>
+            {% endfor %}
+        </select>
+        <div class="w-px h-6 bg-gray-200"></div>
         <select name="month" class="pl-3 pr-8 py-2 text-sm border-0 focus:ring-0 bg-transparent">
             {% for m_num, m_name in months %}
                 <option value="{{ m_num }}" {% if current_month == m_num %}selected{% endif %}>{{ m_name }}</option>
@@ -18,7 +25,7 @@
                 <option value="{{ y }}" {% if current_year == y %}selected{% endif %}>{{ y }}</option>
             {% endfor %}
         </select>
-        <button type="submit" class="bg-gray-50 px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 border-l border-gray-200 transition-colors uppercase tracking-wider">
+        <button type="submit" class="bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 border-l border-gray-200 transition-colors uppercase tracking-wider">
             Filtrer
         </button>
     </form>
@@ -188,7 +195,7 @@
                         <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Précédent</a>
                     {% endif %}
                     {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Suivant</a>
+                        <a href="?page={{ page_obj.next_page_number }}&day={{ current_day|default:'' }}&month={{ current_month|default:'' }}&year={{ current_year }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Suivant</a>
                     {% endif %}
                 </div>
                 <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
@@ -209,7 +216,7 @@
                             {% endif %}
                             
                             {% if page_obj.has_next %}
-                                <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <a href="?page={{ page_obj.next_page_number }}&day={{ current_day|default:'' }}&month={{ current_month|default:'' }}&year={{ current_year }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                     <span class="sr-only">Suivant</span>
                                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />

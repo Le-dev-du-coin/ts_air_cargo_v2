@@ -1448,7 +1448,7 @@ class NotificationListView(LoginRequiredMixin, TaskMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        queryset = Notification.objects.all().order_by("-date_creation")
+        queryset = Notification.objects.filter(region="chine").order_by("-date_creation")
 
         # Filtres
         status = self.request.GET.get("status")

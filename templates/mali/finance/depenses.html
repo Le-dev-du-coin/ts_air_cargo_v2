@@ -83,12 +83,24 @@
     </div>
 </div>
 
-<!-- Filtres Mois/Année -->
+<!-- Filtres Date -->
 <div class="bg-white shadow rounded-lg mb-6 p-4">
-    <form method="get" class="flex gap-4 items-end">
+    <form method="get" class="flex flex-wrap gap-4 items-end">
+        <div>
+            <label for="day" class="block text-sm font-medium text-gray-700">Jour</label>
+            <select name="day" id="day" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-md">
+                <option value="">Tous</option>
+                {% for i in "12345678910111213141516171819202122232425262728293031"|make_list %}
+                    <option value="{{ forloop.counter }}" {% if current_day == forloop.counter %}selected{% endif %}>
+                        {{ forloop.counter }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
         <div>
             <label for="month" class="block text-sm font-medium text-gray-700">Mois</label>
             <select name="month" id="month" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-md">
+                <option value="">Tous</option>
                 {% for m in "123456789101112"|make_list %}
                     <option value="{{ forloop.counter }}" {% if current_month == forloop.counter %}selected{% endif %}>
                         {{ forloop.counter }}
@@ -104,9 +116,10 @@
                 <option value="2026" {% if current_year == 2026 %}selected{% endif %}>2026</option>
             </select>
         </div>
-        <button type="submit" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium">
-            Filtrer
+        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md text-sm font-black transition-all shadow-sm">
+            FILTRER
         </button>
+        <a href="{% url 'mali:depenses_list' %}" class="text-gray-500 hover:text-gray-700 text-sm pb-2 underline font-medium">Réinitialiser</a>
     </form>
 </div>
 
@@ -249,7 +262,7 @@
                             {% endif %}
                             
                             {% if page_obj.has_next %}
-                                <a href="?page={{ page_obj.next_page_number }}&month={{ current_month }}&year={{ current_year }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <a href="?page={{ page_obj.next_page_number }}&day={{ current_day|default:'' }}&month={{ current_month|default:'' }}&year={{ current_year }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                     <span class="sr-only">Suivant</span>
                                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />

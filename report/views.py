@@ -19,16 +19,39 @@ class DepenseListView(LoginRequiredMixin, ListView):
         qs = super().get_queryset()
         user = self.request.user
 
-        # Filtre par mois/année (par défaut mois courant)
-        today = timezone.now()
-        self.year = int(self.request.GET.get("year", today.year))
-        self.month = int(self.request.GET.get("month", today.month))
-        qs = qs.filter(date__year=self.year, date__month=self.month)
+        # Filtre par jour/mois/année (par défaut aujourd'hui)
+        today = timezone.now().date()
+        
+        # On récupère les paramètres de l'URL
+        day_param = self.request.GET.get("day")
+        month_param = self.request.GET.get("month")
+        year_param = self.request.GET.get("year")
+
+        if not day_param and not month_param and not year_param:
+            # Défaut : Aujourd'hui (Jour/Mois/Année)
+            self.day = today.day
+            self.month = today.month
+            self.year = today.year
+            qs = qs.filter(date=today)
+        else:
+            # Filtrage selon ce qui est fourni
+            self.year = int(year_param) if year_param else today.year
+            if day_param:
+                self.day = int(day_param)
+                self.month = int(month_param) if month_param else today.month
+                qs = qs.filter(date__year=self.year, date__month=self.month, date__day=self.day)
+            elif month_param:
+                self.day = None
+                self.month = int(month_param)
+                qs = qs.filter(date__year=self.year, date__month=self.month)
+            else:
+                self.day = None
+                self.month = None
+                qs = qs.filter(date__year=self.year)
 
         # Filtrer par pays de l'utilisateur (si applicable)
         if hasattr(user, "country") and user.country:
             if user.country.code == "ML":
-                # Mali voit ses dépenses + les indicatives Chine (globales)
                 qs = qs.filter(Q(pays=user.country) | Q(is_china_indicative=True))
             else:
                 qs = qs.filter(pays=user.country)
@@ -59,16 +82,26 @@ class DepenseListView(LoginRequiredMixin, ListView):
 
         context["current_year"] = self.year
         context["current_month"] = self.month
+        context["current_day"] = getattr(self, "day", None)
 
-        # Ajout du total des transferts
-        transferts_mois = TransfertArgent.objects.filter(
-            date__year=self.year, date__month=self.month
-        )
+        # Ajout du total des transferts sur la même période
+        transferts_periode = TransfertArgent.objects.all()
         if hasattr(user, "country") and user.country:
-            transferts_mois = transferts_mois.filter(pays_expediteur=user.country)
+            transferts_periode = transferts_periode.filter(pays_expediteur=user.country)
 
-        context["total_transferts_mois"] = (
-            transferts_mois.aggregate(Sum("montant"))["montant__sum"] or 0
+        if context["current_day"]:
+            transferts_periode = transferts_periode.filter(
+                date__year=self.year, date__month=self.month, date__day=self.day
+            )
+        elif self.month:
+            transferts_periode = transferts_periode.filter(
+                date__year=self.year, date__month=self.month
+            )
+        else:
+            transferts_periode = transferts_periode.filter(date__year=self.year)
+
+        context["total_transferts_periode"] = (
+            transferts_periode.aggregate(Sum("montant"))["montant__sum"] or 0
         )
 
         from core.models import Country
@@ -143,21 +176,20 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
             self.request.user.country if hasattr(self.request.user, "country") else None
         )
 
-        # 1. Recettes (Colis livrés ET payés — status LIVRE obligatoire)
-        colis_qs = Colis.objects.filter(
-            status="LIVRE",
-            est_paye=True,
-            date_encaissement__year=year,
-            date_encaissement__month=month,
+        # 1. Recettes (Colis livrés — incluant repli historique)
+        # On calcule ce qui a été réellement encaissé (Prix final - JC - Reste à payer)
+        colis_qs = Colis.objects.filter(status="LIVRE").filter(
+            Q(date_encaissement__year=year, date_encaissement__month=month) |
+            Q(date_encaissement__isnull=True, date_livraison__year=year, date_livraison__month=month) |
+            Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__year=year, updated_at__month=month)
         )
 
         if country:
-            # Filtrer les colis dont le lot est à destination du pays de l'agent
             colis_qs = colis_qs.filter(lot__destination=country)
 
-        # Calcul montant net (Prix final - JC)
+        # Calcul montant net réellement encaissé
         recettes_agg = colis_qs.aggregate(
-            total_net=Sum(F("prix_final") - F("montant_jc"))
+            total_net=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
         )
         total_recettes = recettes_agg["total_net"] or 0
 
@@ -227,22 +259,40 @@ class TransfertListView(LoginRequiredMixin, ListView):
         if hasattr(self.request.user, "country") and self.request.user.country:
             qs = qs.filter(pays_expediteur=self.request.user.country)
 
-        # Filtre par mois/année (par défaut mois courant)
-        today = timezone.now()
-        try:
-            self.year = int(self.request.GET.get("year", today.year))
-            self.month = int(self.request.GET.get("month", today.month))
-        except (ValueError, TypeError):
-            self.year = today.year
-            self.month = today.month
+        # Filtre par jour/mois/année (par défaut aujourd'hui)
+        today = timezone.now().date()
+        
+        day_param = self.request.GET.get("day")
+        month_param = self.request.GET.get("month")
+        year_param = self.request.GET.get("year")
 
-        qs = qs.filter(date__year=self.year, date__month=self.month)
+        if not day_param and not month_param and not year_param:
+            self.day = today.day
+            self.month = today.month
+            self.year = today.year
+            qs = qs.filter(date=today)
+        else:
+            self.year = int(year_param) if year_param else today.year
+            if day_param:
+                self.day = int(day_param)
+                self.month = int(month_param) if month_param else today.month
+                qs = qs.filter(date__year=self.year, date__month=self.month, date__day=self.day)
+            elif month_param:
+                self.day = None
+                self.month = int(month_param)
+                qs = qs.filter(date__year=self.year, date__month=self.month)
+            else:
+                self.day = None
+                self.month = None
+                qs = qs.filter(date__year=self.year)
+
         return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["current_year"] = self.year
         context["current_month"] = self.month
+        context["current_day"] = getattr(self, "day", None)
 
         # Totaux basés sur le queryset filtré
         qs_all = self.get_queryset()
@@ -318,23 +368,27 @@ class RapportExportView(LoginRequiredMixin, View):
         country = request.user.country if hasattr(request.user, "country") else None
 
         # --- Récupération des données (Similaire à RapportFinancierView) ---
-        # 1. Recettes (Colis livrés ET payés — status LIVRE obligatoire)
-        colis_qs = Colis.objects.filter(
-            status="LIVRE",
-            est_paye=True,
-            date_encaissement__year=year,
-            date_encaissement__month=month,
+        # 1. Recettes (Colis livrés — incluant repli historique)
+        # On calcule ce qui a été réellement encaissé (Prix final - JC - Reste à payer)
+        colis_qs = Colis.objects.filter(status="LIVRE").filter(
+            Q(date_encaissement__year=year, date_encaissement__month=month) |
+            Q(date_encaissement__isnull=True, date_livraison__year=year, date_livraison__month=month) |
+            Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__year=year, updated_at__month=month)
         )
         if country:
             colis_qs = colis_qs.filter(lot__destination=country)
 
         recettes_agg = colis_qs.aggregate(
-            total_net=Sum(F("prix_final") - F("montant_jc"))
+            total_net=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
         )
         total_recettes = recettes_agg["total_net"] or 0
 
-        # 2. Dépenses
-        depenses_qs = Depense.objects.filter(date__year=year, date__month=month)
+        # 2. Dépenses (Mali uniquement - Exclut indicatif Chine)
+        depenses_qs = Depense.objects.filter(
+            date__year=year, 
+            date__month=month,
+            is_china_indicative=False
+        )
         if country:
             depenses_qs = depenses_qs.filter(pays=country)
 

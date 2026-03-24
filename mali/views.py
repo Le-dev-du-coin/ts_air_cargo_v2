@@ -214,17 +214,19 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             Colis.objects.filter(
                 lot__destination=mali,
                 status="LIVRE",
-                est_paye=True,
-                date_encaissement__lt=today,  # Avant aujourd'hui
-            ).aggregate(total=Sum(F("prix_final") - F("montant_jc")))["total"]
+            ).filter(
+                Q(date_encaissement__lt=today) |
+                Q(date_encaissement__isnull=True, date_livraison__lt=today) |
+                Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date__lt=today)
+            ).aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"]
             or 0
         )
 
         depenses_globales = (
             Depense.objects.filter(
-                Q(pays=mali) | Q(is_china_indicative=True),
-                date__lt=today, 
-                is_china_indicative=False
+                pays=mali,
+                is_china_indicative=False,
+                date__lt=today
             ).aggregate(total=Sum("montant"))["total"]
             or 0
         )
@@ -242,8 +244,14 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         )
 
         # --- 2. ACTIVITÉ DU JOUR (Cargo, Express, Bateau) ---
+        # On définit le périmètre du jour : date_encaissement OU repli historique
         colis_livres_jour = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", date_encaissement=today
+            lot__destination=mali, 
+            status="LIVRE"
+        ).filter(
+            Q(date_encaissement=today) |
+            Q(date_encaissement__isnull=True, date_livraison=today) |
+            Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date=today)
         ).select_related("client", "lot")
 
         # Séparation par type de transport (via le Lot)
@@ -454,7 +462,7 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
 
 class LotsArrivesView(LotsEnTransitView):
     """Vue historique des lots arrivés au Mali (statut ARRIVE ou LIVRE)"""
-
+    paginate_by = 10
     template_name = "mali/lots_arrives.html"
 
     def get_queryset(self):
@@ -519,7 +527,7 @@ class LotsArrivesView(LotsEnTransitView):
 
 class LotsLivresView(LotsEnTransitView):
     """Historique des lots ayant des colis LIVRÉS ou PERDUS"""
-
+    paginate_by = 10
     template_name = "mali/lots_livres.html"
 
     def get_queryset(self):
@@ -1393,7 +1401,7 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         
         # New date fields
         date_livraison = request.POST.get("date_livraison") or timezone.now().date()
-        date_encaissement = request.POST.get("date_encaissement")
+        date_encaissement = request.POST.get("date_encaissement") or timezone.now().date()
 
         if not colis_ids:
             messages.warning(request, "Aucun colis sélectionné pour la livraison.")
@@ -1754,17 +1762,19 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         elif report_type == "bateau":
             titre_rapport = "Rapport Journalier - BATEAU"
 
-        # Base QuerySet : Colis livrés et payés aujourd'hui au Mali
+        # Base QuerySet : Colis livrés aujourd'hui au Mali (incluant repli historique)
         colis_qs = (
             Colis.objects.filter(
                 lot__destination__code="ML",
-                status="LIVRE",
-                est_paye=True,
-                date_encaissement=today,
+                status="LIVRE"
+            ).filter(
+                Q(date_encaissement=today) |
+                Q(date_encaissement__isnull=True, date_livraison=today) |
+                Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date=today)
             )
             .select_related("client", "lot")
-            .annotate(net_price=F("prix_final") - F("montant_jc"))
-            .order_by("-date_livraison")
+            .annotate(net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+            .order_by("-date_livraison", "-updated_at")
         )
 
         # Filtrage par type
@@ -1783,24 +1793,27 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         solde_veille = 0
 
         if report_type == "global":
-            # Solde Veille
+            # Solde Veille cumulé (Recettes - Dépenses - Transferts jusqu'à hier)
             recettes_globales_veille = (
                 Colis.objects.filter(
                     lot__destination__code="ML",
                     status="LIVRE",
-                    est_paye=True,
-                    date_encaissement__lt=today,
+                ).filter(
+                    Q(date_encaissement__lt=today) |
+                    Q(date_encaissement__isnull=True, date_livraison__lt=today) |
+                    Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date__lt=today)
                 ).aggregate(
                     total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
-                )[
-                    "total"
-                ]
+                )["total"]
                 or 0
             )
-            # Dépenses cumulées Mali uniquement
+
+            # Dépenses cumulées Mali uniquement (Exclut indicatif Chine)
             depenses_globales_veille = (
                 Depense.objects.filter(
-                    pays__code="ML", date__lt=today, is_china_indicative=False
+                    pays__code="ML", 
+                    is_china_indicative=False, 
+                    date__lt=today
                 ).aggregate(total=Sum("montant"))["total"]
                 or 0
             )

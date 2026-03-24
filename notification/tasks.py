@@ -92,7 +92,7 @@ def send_parcel_reminders_periodic():
     colis_to_remind = (
         Colis.objects.filter(
             status="ARRIVE",
-            updated_at__lte=threshold_date,
+            lot__date_arrivee__lte=threshold_date,
         )
         .exclude(
             client__user_id__in=clients_recemment_notifies,
@@ -321,15 +321,17 @@ def send_daily_report_mali():
         # --- Colis livrés aujourd'hui ---
         colis_livres = Colis.objects.filter(
             lot__destination=mali,
-            status="LIVRE",
-            est_paye=True,
-            updated_at__date=today,
+            status="LIVRE"
+        ).filter(
+            Q(date_encaissement=today) |
+            Q(date_encaissement__isnull=True, date_livraison=today) |
+            Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date=today)
         )
 
         def stat(qs):
             nb = qs.count()
             ca = (
-                qs.aggregate(total=Sum(F("prix_final") - F("montant_jc")))["total"] or 0
+                qs.aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"] or 0
             )
             return nb, ca
 
@@ -367,9 +369,11 @@ def send_daily_report_mali():
             Colis.objects.filter(
                 lot__destination=mali,
                 status="LIVRE",
-                est_paye=True,
-                updated_at__date__lt=today,
-            ).aggregate(total=Sum(F("prix_final") - F("montant_jc")))["total"]
+            ).filter(
+                Q(date_encaissement__lt=today) |
+                Q(date_encaissement__isnull=True, date_livraison__lt=today) |
+                Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date__lt=today)
+            ).aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"]
             or 0
         )
         try:
@@ -451,7 +455,7 @@ def cleanup_old_notifications_periodic():
 
     try:
         deleted_count, _ = Notification.objects.filter(
-            statut__in=["envoye", "echec_permanent"], created_at__lte=threshold_date
+            statut="envoye", created_at__lte=threshold_date
         ).delete()
 
         logger.info(
