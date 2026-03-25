@@ -8,12 +8,12 @@ from django.urls import reverse, reverse_lazy
 from django.db.models import Q, Count, Sum, Value, F, DecimalField, DateField, ExpressionWrapper
 from django.db.models.functions import Concat, Coalesce
 from core.mixins import DestinationAgentRequiredMixin, AdminMaliRequiredMixin
-from core.models import Country, Lot, Colis, Client, User, AvanceSalaire
+from core.models import Country, Lot, Colis, Client, User, AvanceSalaire, ClientLotTarif
 from report.models import Depense, TransfertArgent, PaiementAgent
 from django.contrib import messages
 
 from notification.models import ConfigurationNotification
-from .forms import NotificationConfigForm, AvanceSalaireForm, MaliAgentForm
+from .forms import NotificationConfigForm, AvanceSalaireForm, MaliAgentForm, MaliClientLotTarifForm
 from chine.views import get_country_stats
 
 import logging
@@ -2020,53 +2020,149 @@ class ColisUpdateMaliView(LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView
 # --- VUES ADMIN MALI ---
 
 
-class MaliDouaneGestionView(AdminMaliRequiredMixin, ListView):
+class MaliDouaneGestionView(AdminMaliRequiredMixin, TemplateView):
     """
     Gestion des frais de douane : cumule les frais de douane des lots Mali
     et déduit les transferts envoyés à GAOUSSOU.
+    Gère la pagination pour les lots et les transferts.
     """
 
-    model = Lot
     template_name = "mali/admin/gestion_douane.html"
-    context_object_name = "lots"
-
-    def get_queryset(self):
-        return Lot.objects.filter(destination__code="ML").order_by(
-            "-date_arrivee", "-created_at"
-        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Calcul du total des frais de douane (Lots Mali)
-        total_douane = (
-            self.get_queryset().aggregate(total=Sum("frais_douane"))["total"] or 0
-        )
+        from django.core.paginator import Paginator
 
-        # Récupération des transferts vers GAOUSSOU depuis le Mali
-        transferts_gaoussou = TransfertArgent.objects.filter(
+        # 1. Querysets complets pour les calculs
+        lots_qs = Lot.objects.filter(destination__code="ML").order_by(
+            "-date_arrivee", "-created_at"
+        )
+        transferts_qs = TransfertArgent.objects.filter(
             pays_expediteur__code="ML", destinataire="GAOUSSOU"
         ).order_by("-date", "-created_at")
 
-        # On déduit les transferts RECU (considérés comme payés)
+        # 2. Pagination des Lots
+        paginator_lots = Paginator(lots_qs, 15)
+        page_lots_num = self.request.GET.get("page_lots")
+        lots_page = paginator_lots.get_page(page_lots_num)
+
+        # 3. Pagination des Transferts
+        paginator_trans = Paginator(transferts_qs, 10)
+        page_trans_num = self.request.GET.get("page_trans")
+        trans_page = paginator_trans.get_page(page_trans_num)
+
+        # 4. Calculs financiers
+        total_douane = lots_qs.aggregate(total=Sum("frais_douane"))["total"] or 0
         total_paye = (
-            transferts_gaoussou.filter(statut="RECU").aggregate(total=Sum("montant"))[
+            transferts_qs.filter(statut="RECU").aggregate(total=Sum("montant"))["total"]
+            or 0
+        )
+        total_en_attente = (
+            transferts_qs.filter(statut="EN_ATTENTE").aggregate(total=Sum("montant"))[
                 "total"
             ]
             or 0
         )
-        total_en_attente = (
-            transferts_gaoussou.filter(statut="EN_ATTENTE").aggregate(
-                total=Sum("montant")
-            )["total"]
-            or 0
-        )
 
-        context["total_douane"] = total_douane
-        context["total_paye"] = total_paye
-        context["total_en_attente"] = total_en_attente
-        context["reste_a_payer"] = total_douane - total_paye
-        context["transferts_gaoussou"] = transferts_gaoussou
+        context.update(
+            {
+                "lots": lots_page,
+                "transferts_gaoussou": trans_page,
+                "total_douane": total_douane,
+                "total_paye": total_paye,
+                "total_en_attente": total_en_attente,
+                "reste_a_payer": total_douane - total_paye,
+            }
+        )
         return context
+
+
+class MaliClientLotTarifCreateView(AdminMaliRequiredMixin, CreateView):
+    """
+    Attribue un tarif spécial à un client pour un lot spécifique.
+    Recalcule automatiquement les prix de tous les colis du client dans ce lot.
+    """
+
+    model = ClientLotTarif
+    form_class = MaliClientLotTarifForm
+    template_name = "mali/admin/client_lot_tarif_form.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        self.lot = get_object_or_404(Lot, pk=self.kwargs.get("lot_pk"))
+        
+        if self.lot.type_transport == "BATEAU":
+            messages.error(self.request, "La tarification spéciale n'est pas disponible pour les lots de type BATEAU.")
+            # On pourrait lever une exception ou rediriger, mais ici on va juste informer via le contexte si besoin
+        
+        kwargs["lot"] = self.lot
+        return kwargs
+
+    def form_valid(self, form):
+        form.instance.admin_mali = self.request.user
+        # Plus besoin de forcer form.instance.lot si on veut que ce soit global, 
+        # mais on peut le garder optionnel ou le mettre à None.
+        # Ici on va garder le tarif global (sans lot spécifique dans la recherche)
+        
+        # Gérer l'unicité (Update si existe déjà pour ce client vers cette destination)
+        existing = ClientLotTarif.objects.filter(
+            client=form.instance.client, 
+            destination=self.request.user.country
+        ).first()
+        
+        if existing:
+            existing.prix_kilo = form.instance.prix_kilo
+            existing.admin_mali = self.request.user
+            existing.destination = self.request.user.country
+            existing.save()
+            tarif = existing
+        else:
+            form.instance.destination = self.request.user.country
+            tarif = form.save()
+
+        # Recalculer les prix de TOUS les colis du client vers CETTE destination
+        from core.models import Colis
+        colis_list = Colis.objects.filter(client=tarif.client, lot__destination=tarif.destination)
+        count = colis_list.count()
+        for colis in colis_list:
+            colis.recalculate_prices()
+            colis.save()
+
+        messages.success(
+            self.request,
+            f"Le tarif GLOBAL de {tarif.prix_kilo} FCFA/kg a été appliqué aux {count} colis de {tarif.client} dans le système.",
+        )
+        # Redirection vers la même page pour voir la liste mise à jour
+        return redirect("mali:admin_client_lot_tarif", lot_pk=self.lot.pk)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        self.lot = getattr(self, "lot", get_object_or_404(Lot, pk=self.kwargs.get("lot_pk")))
+        context["lot"] = self.lot
+        # Liste des tarifs existants pour le pays de l'admin (Clients du Mali)
+        context["existing_tarifs"] = ClientLotTarif.objects.filter(
+            destination=self.request.user.country,
+            client__country=self.request.user.country
+        ).select_related("client")
+        return context
+
+class MaliClientLotTarifDeleteView(AdminMaliRequiredMixin, View):
+    def post(self, request, lot_pk, pk):
+        tarif = get_object_or_404(ClientLotTarif, pk=pk, destination=request.user.country)
+        client = tarif.client
+        
+        # Supprimer le tarif
+        tarif.delete()
+        
+        # Recalculer les prix pour ce client dans TOUT le système (reviendra au tarif standard)
+        from core.models import Colis
+        colis_list = Colis.objects.filter(client=client, lot__destination=request.user.country)
+        for colis in colis_list:
+            colis.recalculate_prices()
+            colis.save()
+            
+        messages.warning(request, f"La convention tarifaire pour {client} a été supprimée. Les prix de tous ses colis vers {request.user.country} ont été rétablis au tarif standard.")
+        return redirect("mali:admin_client_lot_tarif", lot_pk=lot_pk)
 
 
 class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
@@ -2301,12 +2397,29 @@ class MaliCorrectionLotDetailView(AdminMaliRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        colis_qs = self.object.colis.all().order_by("-updated_at")
+        from django.db.models import Prefetch
+
+        colis_qs = (
+            self.object.colis.select_related("client")
+            .prefetch_related(
+                Prefetch(
+                    "client__tarifs_speciaux",
+                    queryset=ClientLotTarif.objects.all(),
+                    to_attr="special_agreement",
+                )
+            )
+            .all()
+            .order_by("-updated_at")
+        )
+
         search = self.request.GET.get("q")
         if search:
-            colis_qs = apply_flexible_search(colis_qs, search, ["reference", "client__nom", "client__telephone"])
-        
+            colis_qs = apply_flexible_search(
+                colis_qs, search, ["reference", "client__nom", "client__telephone"]
+            )
+
         from django.core.paginator import Paginator
+
         paginator = Paginator(colis_qs, 50)
         context["colis_list"] = paginator.get_page(self.request.GET.get("page"))
         context["q"] = search or ""

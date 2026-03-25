@@ -1,0 +1,170 @@
+{% extends "mali/base.html" %}
+
+{% block title %}Tarif Spécial - Admin Mali{% endblock %}
+{% block header %}Attribuer un Tarif Spécial : Lot {{ lot.numero }}{% endblock %}
+
+{% block mali_content %}
+<div class="max-w-xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 bg-indigo-50 border-b border-indigo-100">
+            <h3 class="text-base font-black text-indigo-800">Convention de Prix Globale</h3>
+            <p class="text-xs text-indigo-500 mt-0.5">Applique un prix au kilo fixe pour TOUS les colis du client dans le système.</p>
+        </div>
+        
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+            
+            <div>
+                <label for="{{ form.client.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1.5">Client</label>
+                {{ form.client }}
+                {% if form.client.errors %}<p class="mt-1 text-xs text-red-600">{{ form.client.errors.0 }}</p>{% endif %}
+                <p class="mt-1 text-[10px] text-gray-400">Recherchez un client pour lui attribuer un tarif spécial permanent.</p>
+            </div>
+
+            <div>
+                <label for="{{ form.prix_kilo.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1.5">Prix au Kilo (FCFA)</label>
+                {{ form.prix_kilo }}
+                {% if form.prix_kilo.errors %}<p class="mt-1 text-xs text-red-600">{{ form.prix_kilo.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 flex gap-3">
+                <svg class="h-5 w-5 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <p class="text-xs text-amber-800 leading-relaxed">
+                    <strong>Attention :</strong> La validation mettra à jour le prix de <strong>tous les colis</strong> de ce client (en transit, arrivés, livrés).
+                </p>
+            </div>
+
+            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-100">
+                <a href="{% url 'mali:admin_correction_lot_detail' lot.pk %}" class="px-5 py-2.5 border border-gray-300 text-sm font-bold rounded-xl text-gray-700 hover:bg-gray-50 transition-colors">
+                    Annuler
+                </a>
+                <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors">
+                    Appliquer le tarif
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Liste des conventions existantes -->
+    <div class="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <h3 class="text-sm font-black text-gray-900 uppercase tracking-wider">Conventions Globales (Mali)</h3>
+            <span class="text-[10px] text-gray-400">Ces tarifs s'appliquent à TOUS les colis du client.</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Client</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tarif (kg)</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Par</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for tarif in existing_tarifs %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-bold text-gray-900">{{ tarif.client.nom }} {{ tarif.client.prenom }}</div>
+                            <div class="text-[10px] text-gray-500">{{ tarif.client.telephone }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-100 text-indigo-800">
+                                {{ tarif.prix_kilo|floatformat:0 }} FCFA
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                            {{ tarif.admin_mali.username }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                            <button type="button" 
+                                    onclick="populateForm('{{ tarif.client.id }}', '{{ tarif.prix_kilo|floatformat:0 }}')"
+                                    class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-lg transition-colors" title="Modifier">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                            <form action="{% url 'mali:admin_client_lot_tarif_delete' lot.pk tarif.pk %}" method="post" class="inline" onsubmit="return confirm('Supprimer cette convention ? Les prix des colis de ce client repasseront au tarif standard.')">
+                                {% csrf_token %}
+                                <button type="submit" class="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-lg transition-colors" title="Supprimer">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-8 text-center text-sm text-gray-400">
+                            Aucune convention tarifaire active pour vos clients.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.populateForm = function(clientId, prix) {
+        try {
+            console.log('Populate Form - Start', {clientId, prix});
+            
+            // 1. Mise à jour de TomSelect
+            if (window.tomSelectClient) {
+                console.log('Using TomSelect to set value:', clientId);
+                window.tomSelectClient.setValue(String(clientId));
+            } else {
+                console.warn('TomSelect not found, using native select');
+                const select = document.getElementById('id_client');
+                if (select) {
+                    select.value = clientId;
+                    select.dispatchEvent(new Event('change'));
+                }
+            }
+
+            // 2. Mise à jour du champ Prix
+            const prixInput = document.getElementById('id_prix_kilo') || document.querySelector('input[name="prix_kilo"]');
+            if (prixInput) {
+                prixInput.value = prix;
+                console.log('Price set to:', prix);
+            } else {
+                alert('Erreur: Le champ Prix est introuvable dans la page.');
+            }
+
+            // 3. Scroll & Notification
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Formulaire prêt',
+                text: 'Les informations du client ont été chargées. Vous pouvez modifier le prix.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
+            
+        } catch (err) {
+            console.error('Critical Error in populateForm:', err);
+            alert('Une erreur technique est survenue lors de la modification. Veuillez actualiser la page.');
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const clientSelect = document.getElementById('id_client');
+        if (clientSelect) {
+            if (window.tomSelectClient) {
+                window.tomSelectClient.destroy();
+            }
+            window.tomSelectClient = new TomSelect('#id_client', {
+                create: false,
+                sortField: {
+                    field: "text",
+                    direction: "asc"
+                },
+                placeholder: "Rechercher un client...",
+                allowEmptyOption: true,
+            });
+        }
+    });
+</script>
+{% endblock %}

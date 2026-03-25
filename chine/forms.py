@@ -302,6 +302,7 @@ class ColisForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.lot = kwargs.pop("lot", None)
         super().__init__(*args, **kwargs)
         self.fields["description"].required = False
         # Ne pas marquer photo comme required car compressed_photo peut être utilisé
@@ -328,6 +329,12 @@ class ColisForm(forms.ModelForm):
         for dec_field in ["cbm", "poids"]:
             if cleaned_data.get(dec_field) is None:
                 cleaned_data[dec_field] = 0
+
+        # Vérification du poids minimum pour Cargo/Express (0.1 kg)
+        poids = cleaned_data.get("poids", 0)
+        if self.lot and self.lot.type_transport in ["CARGO", "EXPRESS"]:
+            if poids < 0.1:
+                self.add_error("poids", "Le poids minimum pour le Cargo ou l'Express est de 0.1 kg.")
 
         if cleaned_data.get("nombre_pieces") is None:
             cleaned_data["nombre_pieces"] = 1

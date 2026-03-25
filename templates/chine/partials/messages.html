@@ -10,5 +10,10 @@
         <p class="text-sm font-medium">{{ success_message }}</p>
     </div>
     {% endif %}
+    {% if error_message %}
+    <div class="rounded-md p-4 mb-4 bg-red-50 text-red-700 border border-red-200 shadow-sm transition-all duration-300">
+        <p class="text-sm font-medium">{{ error_message|safe }}</p>
+    </div>
+    {% endif %}
 </div>
 {% endif %}

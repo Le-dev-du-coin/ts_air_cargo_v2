@@ -1252,6 +1252,32 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
     def get_success_url(self):
         return reverse_lazy("chine:task_list")
 
+    def form_invalid(self, form):
+        if self.request.headers.get("HX-Request"):
+            from django.shortcuts import render
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    error_messages.append(f"{error}")
+            
+            error_msg = "<br>".join(error_messages)
+            
+            response = render(
+                self.request,
+                "chine/partials/messages.html",
+                {"error_message": error_msg},
+            )
+            # Retour 200 pour que HTMX remplace le bloc sans bloquer le spinner
+            return response
+            
+        from django.contrib import messages
+        messages.error(self.request, "Veuillez corriger les erreurs dans le formulaire.")
+        from django.urls import reverse_lazy
+        from django.shortcuts import redirect
+        return redirect(
+            reverse_lazy("chine:lot_detail", kwargs={"pk": self.kwargs["lot_id"]})
+        )
+
     def form_valid(self, form):
         lot = get_object_or_404(Lot, pk=self.kwargs["lot_id"])
 

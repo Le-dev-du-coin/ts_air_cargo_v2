@@ -39,6 +39,8 @@ from .views import (
     MaliAgentAvanceDeleteView,
     MaliColisAddToArrivalView,
     MaliDouaneGestionView,
+    MaliClientLotTarifCreateView,
+    MaliClientLotTarifDeleteView,
 )
 from report.views import (
     DepenseListView,
@@ -177,4 +179,6 @@ urlpatterns = [
     path("admin/avances/<int:pk>/delete/", MaliAgentAvanceDeleteView.as_view(), name="admin_avance_delete"),
     path("admin/douane/", MaliDouaneGestionView.as_view(), name="admin_douane_gestion"),
     path("admin/correction/<int:lot_pk>/add-colis/", MaliColisAddToArrivalView.as_view(), name="admin_lot_add_colis"),
+    path("admin/client-lot-tarif/<int:lot_pk>/", MaliClientLotTarifCreateView.as_view(), name="admin_client_lot_tarif"),
+    path("admin/client-lot-tarif/<int:lot_pk>/<int:pk>/delete/", MaliClientLotTarifDeleteView.as_view(), name="admin_client_lot_tarif_delete"),
 ]

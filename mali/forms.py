@@ -1,5 +1,5 @@
 from django import forms
-from core.models import Colis, AvanceSalaire, User
+from core.models import Colis, AvanceSalaire, User, ClientLotTarif
 from notification.models import ConfigurationNotification
 
 class ColisUpdateMaliForm(forms.ModelForm):
@@ -224,3 +224,30 @@ class MaliAgentForm(forms.ModelForm):
             cleaned_data["is_active"] = False
 
         return cleaned_data
+
+
+class MaliClientLotTarifForm(forms.ModelForm):
+    class Meta:
+        model = ClientLotTarif
+        fields = ["client", "prix_kilo"]
+        widgets = {
+            "client": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800"
+                }
+            ),
+            "prix_kilo": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800",
+                    "step": "1",
+                    "min": "0",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        lot = kwargs.pop("lot", None)
+        super().__init__(*args, **kwargs)
+        if lot:
+            from core.models import Client
+            self.fields["client"].queryset = Client.objects.filter(country=lot.destination)

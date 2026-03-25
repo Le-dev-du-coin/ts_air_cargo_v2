@@ -147,11 +147,11 @@
                         <form id="colis-form" 
                               x-ref="colisForm"
                               hx-post="{% url 'chine:colis_add' lot.pk %}" 
+                              hx-trigger="valid-submit"
                               hx-target="#colis-message-area"
                               hx-indicator="#colis-spinner"
                               enctype="multipart/form-data" 
-                              class="space-y-4"
-                              @submit="handleFormSubmit($event)">
+                              class="space-y-4">
                             {% csrf_token %}
 
                              <!-- Client & Description -->
@@ -276,7 +276,7 @@
                                 <input type="hidden" id="compressed_photo" name="compressed_photo" x-model="compressedBlobBase64">
                             </div>
                             <div class="pt-4 flex items-center gap-3">
-                                <button type="submit"
+                                <button type="button" @click="handleFormSubmit()"
                                     class="flex-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     Ajouter au Lot
                                 </button>
@@ -471,7 +471,7 @@
                                     return this.specialTarifs[this.clientId];
                                 },
 
-                                handleFormSubmit(event) {
+                                handleFormSubmit() {
                                     // Sauvegarder client sélectionné
                                     if(typeof tomSelectClient !== 'undefined') {
                                         this.lastClient = tomSelectClient.getValue();
@@ -481,13 +481,12 @@
                                     if (this.transportType !== 'BATEAU' && this.type_colis !== 'TELEPHONE') {
                                         const p = parseFloat(this.poids) || 0;
                                         if (p <= 0) {
-                                            event.preventDefault();
                                             Swal.fire({
                                                 icon: 'warning',
                                                 title: 'Attention',
                                                 text: "Le poids doit être supérieur à 0 kg."
                                             });
-                                            return false;
+                                            return;
                                         }
                                     }
                                     
@@ -500,15 +499,16 @@
                                     const hasFilePhoto = photoInput && photoInput.files && photoInput.files.length > 0;
                                     
                                     if (!hasWebcamPhoto && !hasFilePhoto) {
-                                        event.preventDefault();
                                         Swal.fire({
                                             icon: 'warning',
                                             title: 'Photo requise',
                                             text: "Veuillez capturer une photo avec la webcam ou uploader un fichier avant d'ajouter le carton."
                                         });
-                                        return false;
+                                        return;
                                     }
-                                    // Don't prevent default - let HTMX handle it
+                                    
+                                    // Validation front passée, on autorise HTMX à soumettre
+                                    this.$refs.colisForm.dispatchEvent(new Event('valid-submit'));
                                 },
 
                                 resetForm() {

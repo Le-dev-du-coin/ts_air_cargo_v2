@@ -190,6 +190,38 @@ class Lot(TenantAwareModel):
         )
 
 
+class ClientLotTarif(models.Model):
+    """
+    Tarif spécial (conventionnel) négocié pour un client sur un lot spécifique.
+    Ce tarif prime sur les tarifs standards et manuels.
+    """
+
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name="tarifs_speciaux"
+    )
+    lot = models.ForeignKey(
+        Lot, on_delete=models.CASCADE, related_name="tarifs_speciaux", null=True, blank=True
+    )
+    destination = models.ForeignKey(
+        "core.Country", on_delete=models.CASCADE, null=True, blank=True, related_name="tarifs_speciaux_recus"
+    )
+    prix_kilo = models.DecimalField(
+        max_digits=10, decimal_places=2, help_text=_("Prix au kilo négocié")
+    )
+    admin_mali = models.ForeignKey(
+        User, on_delete=models.PROTECT, help_text=_("Admin ayant validé le tarif")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("client", "lot")
+        verbose_name = "Tarif Spécial Client/Lot"
+        verbose_name_plural = "Tarifs Spéciaux Client/Lot"
+
+    def __str__(self):
+        return f"{self.client} - Lot {self.lot.numero} : {self.prix_kilo} FCFA/kg"
+
+
 class Colis(TenantAwareModel):
     class Meta:
         verbose_name = _("Carton")
@@ -340,6 +372,9 @@ class Colis(TenantAwareModel):
             uid = str(uuid.uuid4()).split("-")[0].upper()
             self.reference = f"TS-{uid}"
 
+        # Recalculer les prix automatiquement
+        self.recalculate_prices()
+
         super().save(*args, **kwargs)
 
     def recalculate_prices(self):
@@ -347,7 +382,18 @@ class Colis(TenantAwareModel):
         Recalcule le prix_transport et le prix_final en fonction du lot,
         du type de colis et des tarifs en vigueur.
         """
-        # Recherche du tarif pour la destination et le type de transport du lot
+        # 1. Vérifier s'il existe un tarif spécial (conventionnel) pour ce client vers cette destination (global)
+        special_tarif = ClientLotTarif.objects.filter(
+            client=self.client, destination=self.lot.destination
+        ).first()
+
+        if special_tarif and self.lot.type_transport != "BATEAU":
+            # Si un tarif spécial est défini (Cargo/Express uniquement), il s'applique en priorité
+            self.prix_transport = (self.poids or 0) * special_tarif.prix_kilo
+            self.prix_final = self.prix_transport
+            return
+
+        # 2. Recherche du tarif standard pour la destination et le type de transport du lot
         try:
             tarif = Tarif.objects.get(
                 destination=self.lot.destination, type_transport=self.lot.type_transport

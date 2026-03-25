@@ -49,6 +49,24 @@ class Migration(migrations.Migration):
                         help_text="Colis ajouté directement par l'admin Mali dans un lot arrivé",
                     ),
                 ),
+                migrations.AddField(
+                    model_name="colis",
+                    name="date_encaissement",
+                    field=models.DateField(
+                        blank=True,
+                        help_text="Date à laquelle le paiement a été encaissé",
+                        null=True,
+                    ),
+                ),
+                migrations.AddField(
+                    model_name="colis",
+                    name="date_livraison",
+                    field=models.DateField(
+                        blank=True,
+                        help_text="Date à laquelle le colis a été livré au client",
+                        null=True,
+                    ),
+                ),
             ],
         ),
     ]

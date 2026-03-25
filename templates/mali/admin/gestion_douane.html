@@ -47,7 +47,7 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                 <h3 class="font-black text-gray-800 uppercase tracking-tight">Détail des Frais par Lot</h3>
-                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">{{ lots.count }} lots</span>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">Page {{ lots.number }}/{{ lots.paginator.num_pages }}</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -78,6 +78,22 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Pagination Lots -->
+            {% if lots.has_other_pages %}
+            <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] text-gray-700 font-bold uppercase">Page {{ lots.number }} / {{ lots.paginator.num_pages }}</p>
+                </div>
+                <div class="flex space-x-2">
+                    {% if lots.has_previous %}
+                    <a href="?page_lots={{ lots.previous_page_number }}&page_trans={{ transferts_gaoussou.number }}" class="p-1 px-2 bg-white border rounded text-[10px] hover:bg-gray-100 font-bold tracking-tighter transition-colors">« PRÉC</a>
+                    {% endif %}
+                    {% if lots.has_next %}
+                    <a href="?page_lots={{ lots.next_page_number }}&page_trans={{ transferts_gaoussou.number }}" class="p-1 px-2 bg-white border rounded text-[10px] hover:bg-gray-100 font-bold tracking-tighter transition-colors">SUIV »</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Liste des Transferts Gaussou -->
@@ -115,6 +131,22 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Pagination Transferts -->
+            {% if transferts_gaoussou.has_other_pages %}
+            <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] text-gray-700 font-bold uppercase">Page {{ transferts_gaoussou.number }} / {{ transferts_gaoussou.paginator.num_pages }}</p>
+                </div>
+                <div class="flex space-x-2">
+                    {% if transferts_gaoussou.has_previous %}
+                    <a href="?page_trans={{ transferts_gaoussou.previous_page_number }}&page_lots={{ lots.number }}" class="p-1 px-2 bg-white border rounded text-[10px] hover:bg-gray-100 font-bold tracking-tighter transition-colors">« PRÉC</a>
+                    {% endif %}
+                    {% if transferts_gaoussou.has_next %}
+                    <a href="?page_trans={{ transferts_gaoussou.next_page_number }}&page_lots={{ lots.number }}" class="p-1 px-2 bg-white border rounded text-[10px] hover:bg-gray-100 font-bold tracking-tighter transition-colors">SUIV »</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
