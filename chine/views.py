@@ -226,8 +226,8 @@ def get_country_stats(country_code, year=None, month=None):
     stats["agents_remuneration"] = agents_remuneration
     stats["total_commissions"] = total_commissions
 
-    # Mise en cache pour 1 heure (3600 secondes) pour optimiser les chargements admin_chine
-    cache.set(cache_key, stats, timeout=3600)
+    # Mise en cache pour 1 minute (60 secondes) pour permettre une vérification plus rapide en admin
+    cache.set(cache_key, stats, timeout=60)
 
     return stats
 

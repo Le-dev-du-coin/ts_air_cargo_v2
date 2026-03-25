@@ -9,31 +9,34 @@ class ColisUpdateMaliForm(forms.ModelForm):
         widgets = {
             "type_colis": forms.Select(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800"
                 }
             ),
             "nombre_pieces": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800",
                     "min": "1",
                 }
             ),
             "poids": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800",
                     "step": "0.01",
+                    "min": "0",
                 }
             ),
             "cbm": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800",
                     "step": "0.0001",
+                    "min": "0",
                 }
             ),
             "prix_kilo_manuel": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800",
                     "step": "0.1",
+                    "min": "0",
                 }
             ),
         }

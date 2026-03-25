@@ -48,27 +48,18 @@
                 {% if object.lot.type_transport != 'BATEAU' %}
                 <div>
                     <label for="{{ form.poids.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1.5">Poids (kg)</label>
-                    <input type="number" name="poids" id="{{ form.poids.id_for_label }}"
-                           value="{{ form.poids.value|default:object.poids }}"
-                           step="0.01" min="0"
-                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-semibold text-gray-800 px-4 py-3">
+                    {{ form.poids }}
                     {% if form.poids.errors %}<p class="mt-1 text-xs text-red-600">{{ form.poids.errors.0 }}</p>{% endif %}
                 </div>
-                {% else %}
-                <input type="hidden" name="poids" value="{{ object.poids|default:0 }}">
                 {% endif %}
 
                 <!-- CBM (si Bateau) -->
                 {% if object.lot.type_transport == 'BATEAU' %}
                 <div>
                     <label for="{{ form.cbm.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1.5">Volume CBM (m³)</label>
-                    <input type="number" name="cbm" id="{{ form.cbm.id_for_label }}"
-                           value="{{ form.cbm.value|default:object.cbm }}"
-                           step="0.0001" min="0"
-                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-semibold text-gray-800 px-4 py-3">
+                    {{ form.cbm }}
+                    {% if form.cbm.errors %}<p class="mt-1 text-xs text-red-600">{{ form.cbm.errors.0 }}</p>{% endif %}
                 </div>
-                {% else %}
-                <input type="hidden" name="cbm" value="{{ object.cbm|default:0 }}">
                 {% endif %}
 
                 <!-- Prix Kilo Manuel (seulement si MANUEL) -->
@@ -76,17 +67,14 @@
                     <label for="{{ form.prix_kilo_manuel.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-1.5">
                         Prix / kilo (FCFA) <span class="text-yellow-600 font-normal text-xs">— recalcul automatique</span>
                     </label>
-                    <input type="number" name="prix_kilo_manuel" id="{{ form.prix_kilo_manuel.id_for_label }}"
-                           value="{{ form.prix_kilo_manuel.value|default:object.prix_kilo_manuel|default:'' }}"
-                           step="0.1" min="0"
-                           class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-semibold text-gray-800 px-4 py-3">
+                    {{ form.prix_kilo_manuel }}
+                    {% if form.prix_kilo_manuel.errors %}<p class="mt-1 text-xs text-red-600">{{ form.prix_kilo_manuel.errors.0 }}</p>{% endif %}
                 </div>
-                {% if object.type_colis != 'MANUEL' %}
-                <input type="hidden" name="prix_kilo_manuel" value="">
-                {% endif %}
 
                 <!-- Champs cachés obligatoires pour le formulaire -->
-                <input type="hidden" name="nombre_pieces" value="{{ object.nombre_pieces|default:1 }}">
+                {{ form.nombre_pieces.as_hidden }}
+                {% if object.lot.type_transport == 'BATEAU' %}{{ form.poids.as_hidden }}{% endif %}
+                {% if object.lot.type_transport != 'BATEAU' %}{{ form.cbm.as_hidden }}{% endif %}
 
                 <!-- Boutons -->
                 <div class="flex items-center justify-end space-x-3 pt-3 border-t border-gray-100">

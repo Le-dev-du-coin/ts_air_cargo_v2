@@ -28,11 +28,10 @@ class DepenseListView(LoginRequiredMixin, ListView):
         year_param = self.request.GET.get("year")
 
         if not day_param and not month_param and not year_param:
-            # Défaut : Aujourd'hui (Jour/Mois/Année)
-            self.day = today.day
-            self.month = today.month
-            self.year = today.year
-            qs = qs.filter(date=today)
+            # Plus de défaut à Aujourd'hui, on affiche tout par défaut
+            self.day = None
+            self.month = None
+            self.year = None
         else:
             # Filtrage selon ce qui est fourni
             self.year = int(year_param) if year_param else today.year
@@ -267,10 +266,9 @@ class TransfertListView(LoginRequiredMixin, ListView):
         year_param = self.request.GET.get("year")
 
         if not day_param and not month_param and not year_param:
-            self.day = today.day
-            self.month = today.month
-            self.year = today.year
-            qs = qs.filter(date=today)
+            self.day = None
+            self.month = None
+            self.year = None
         else:
             self.year = int(year_param) if year_param else today.year
             if day_param:

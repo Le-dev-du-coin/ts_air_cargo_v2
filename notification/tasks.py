@@ -307,7 +307,7 @@ def send_daily_report_mali():
         return "Rapport non envoyé : aucun numéro d'admin Mali configuré."
 
     try:
-        from django.db.models import Sum, F
+        from django.db.models import Sum, F, Q
         from core.models import Country, Colis
 
         today = timezone.now().date()

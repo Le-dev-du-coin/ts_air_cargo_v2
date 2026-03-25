@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.db.models import Q, Count, Sum, Value, F, DecimalField, DateField, ExpressionWrapper
 from django.db.models.functions import Concat, Coalesce
 from core.mixins import DestinationAgentRequiredMixin, AdminMaliRequiredMixin
@@ -1137,66 +1137,7 @@ class LotArriveView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
         return redirect("mali:lot_transit_detail", pk=lot.pk)
 
 
-class NotifyArrivalsView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
-    """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
-
-    def post(self, request, pk):
-        lot = get_object_or_404(Lot, pk=pk)
-
-        # Trouver les colis ARRIVE dans ce lot qui n'ont pas encore été notifiés par WhatsApp
-        colis_to_notify = lot.colis.filter(
-            status="ARRIVE", whatsapp_notified=False
-        ).select_related("client", "client__user")
-
-        if not colis_to_notify.exists():
-            messages.warning(request, "Aucun nouveau colis pointé à notifier.")
-            return redirect("mali:lot_transit_detail", pk=pk)
-
-        # Grouper par client
-        by_client = {}
-        for c in colis_to_notify:
-            if not c.client or not c.client.user:
-                continue
-            if c.client.id not in by_client:
-                by_client[c.client.id] = {"user": c.client.user, "colis": []}
-            by_client[c.client.id]["colis"].append(c)
-
-        count_clients = 0
-        from notification.tasks import send_notification_async
-
-        for cid, data in by_client.items():
-            user = data["user"]
-            colis_list = data["colis"]
-            nb = len(colis_list)
-            refs = ", ".join([c.reference for c in colis_list])
-
-            message = (
-                f"📦 *Colis Arrivé(s) au Mali*\n\n"
-                f"Bonjour {user.get_full_name() or user.username},\n"
-                f"Vos colis suivants sont disponibles à l'agence :\n"
-                f"Ref(s): *{refs}*\n\n"
-                f"Merci de passer pour le retrait."
-            )
-
-            send_notification_async.delay(
-                user_id=user.id,
-                message=message,
-                categorie="colis_arrive",
-                titre=f"Arrivée de {nb} colis",
-                region="mali",
-            )
-
-            # Marquer comme notifié
-            lot.colis.filter(id__in=[c.id for c in colis_list]).update(
-                whatsapp_notified=True
-            )
-            count_clients += 1
-
-        messages.success(request, f"Notifications envoyées à {count_clients} clients.")
-        return redirect("mali:lot_transit_detail", pk=pk)
-
-
-class NotifyArrivalsView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+class NotifyArrivalsView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
     """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
 
     def post(self, request, pk):
@@ -1915,7 +1856,7 @@ class LotTransitPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View)
 
 
 class NotificationConfigView(
-    LoginRequiredMixin, DestinationAgentRequiredMixin, UpdateView
+    LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView
 ):
     """
     Permet à l'agent Mali de configurer les rappels automatiques.
@@ -2019,7 +1960,7 @@ class MaliNotificationListView(
 
 
 class MaliRetryNotificationsView(
-    LoginRequiredMixin, DestinationAgentRequiredMixin, View
+    LoginRequiredMixin, AdminMaliRequiredMixin, View
 ):
     """Relance toutes les notifications en échec pour la région Mali"""
 
@@ -2047,17 +1988,85 @@ class ColisUpdateMaliView(LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView
             self.request,
             f"Le carton {self.object.reference} a été corrigé avec succès.",
         )
-        return reverse("mali:lot_transit_detail", kwargs={"pk": self.object.lot.pk})
+        return reverse("mali:admin_correction_lot_detail", kwargs={"pk": self.object.lot.pk})
 
     def form_valid(self, form):
+        # On sauvegarde les anciennes valeurs pour recalculer le reste à payer si besoin
+        old_colis = self.get_object()
+        deja_paye = old_colis.prix_final - old_colis.reste_a_payer
+
+        # Sauvegarde du formulaire (sans commit pour ajuster le type)
         colis = form.save(commit=False)
+        
+        # Si un prix au kilo manuel est saisi, on force le type MANUEL
+        if colis.prix_kilo_manuel:
+            colis.type_colis = "MANUEL"
+            
         # Recalculer les prix via la méthode centrale du modèle
         colis.recalculate_prices()
+        
+        # Ajuster le reste à payer en fonction du nouveau prix
+        # On repart du prix final et on enlève ce qui a déjà été payé
+        colis.reste_a_payer = colis.prix_final - deja_paye
+        
+        # Si le reste à payer devient négatif (baisse de prix), on le remet à 0
+        if colis.reste_a_payer < 0:
+            colis.reste_a_payer = 0
+            
         colis.save()
         return super().form_valid(form)
 
 
 # --- VUES ADMIN MALI ---
+
+
+class MaliDouaneGestionView(AdminMaliRequiredMixin, ListView):
+    """
+    Gestion des frais de douane : cumule les frais de douane des lots Mali
+    et déduit les transferts envoyés à GAOUSSOU.
+    """
+
+    model = Lot
+    template_name = "mali/admin/gestion_douane.html"
+    context_object_name = "lots"
+
+    def get_queryset(self):
+        return Lot.objects.filter(destination__code="ML").order_by(
+            "-date_arrivee", "-created_at"
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Calcul du total des frais de douane (Lots Mali)
+        total_douane = (
+            self.get_queryset().aggregate(total=Sum("frais_douane"))["total"] or 0
+        )
+
+        # Récupération des transferts vers GAOUSSOU depuis le Mali
+        transferts_gaoussou = TransfertArgent.objects.filter(
+            pays_expediteur__code="ML", destinataire="GAOUSSOU"
+        ).order_by("-date", "-created_at")
+
+        # On déduit les transferts RECU (considérés comme payés)
+        total_paye = (
+            transferts_gaoussou.filter(statut="RECU").aggregate(total=Sum("montant"))[
+                "total"
+            ]
+            or 0
+        )
+        total_en_attente = (
+            transferts_gaoussou.filter(statut="EN_ATTENTE").aggregate(
+                total=Sum("montant")
+            )["total"]
+            or 0
+        )
+
+        context["total_douane"] = total_douane
+        context["total_paye"] = total_paye
+        context["total_en_attente"] = total_en_attente
+        context["reste_a_payer"] = total_douane - total_paye
+        context["transferts_gaoussou"] = transferts_gaoussou
+        return context
 
 
 class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):

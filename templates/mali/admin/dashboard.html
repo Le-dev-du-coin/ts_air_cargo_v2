@@ -8,24 +8,44 @@
 {% block mali_content %}
 <div class="space-y-6">
     <!-- Warning / Error Action Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="bg-orange-50 rounded-xl shadow-sm p-6 border border-orange-100 flex items-center justify-between">
             <div>
                 <p class="text-sm font-bold text-orange-800 uppercase tracking-wider">Outil de Correction</p>
-                <p class="text-sm text-orange-600 mt-1">Annuler des statuts complets de lots ou corriger des erreurs de validation.</p>
+                <p class="text-xs text-orange-600 mt-1">Annuler des statuts ou corriger des erreurs.</p>
             </div>
-            <a href="{% url 'mali:admin_correction_lot_list' %}" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg text-sm transition-colors shadow-sm">
-                Gérer les Corrections
+            <a href="{% url 'mali:admin_correction_lot_list' %}" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg text-xs transition-colors shadow-sm">
+                Gérer
             </a>
         </div>
         
         <div class="bg-indigo-50 rounded-xl shadow-sm p-6 border border-indigo-100 flex items-center justify-between">
             <div>
                 <p class="text-sm font-bold text-indigo-800 uppercase tracking-wider">Rémunérations & RH</p>
-                <p class="text-sm text-indigo-600 mt-1">Gérer les salaires, commissions et accorder des avances.</p>
+                <p class="text-xs text-indigo-600 mt-1">Salaires et avances agents.</p>
             </div>
-            <a href="{% url 'mali:admin_remunerations' %}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors shadow-sm">
-                Accéder aux Rémunérations
+            <a href="{% url 'mali:admin_remunerations' %}" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-xs transition-colors shadow-sm">
+                Accéder
+            </a>
+        </div>
+
+        <div class="bg-indigo-50 rounded-xl shadow-sm p-6 border border-indigo-100 flex items-center justify-between">
+            <div>
+                <p class="text-sm font-bold text-indigo-800 uppercase tracking-wider">Douane & Gaussou</p>
+                <p class="text-xs text-indigo-600 mt-1">Cumul des frais et suivi des paiements.</p>
+            </div>
+            <a href="{% url 'mali:admin_douane_gestion' %}" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-xs transition-colors shadow-sm">
+                Gérer
+            </a>
+        </div>
+
+        <div class="bg-green-50 rounded-xl shadow-sm p-6 border border-green-100 flex items-center justify-between">
+            <div>
+                <p class="text-sm font-bold text-green-800 uppercase tracking-wider">Configuration Rappels</p>
+                <p class="text-xs text-green-600 mt-1">Paramétrer les messages et délais WhatsApp.</p>
+            </div>
+            <a href="{% url 'mali:notifications_config' %}" class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg text-xs transition-colors shadow-sm">
+                Configurer
             </a>
         </div>
     </div>
