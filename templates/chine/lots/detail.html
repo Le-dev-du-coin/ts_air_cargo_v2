@@ -347,7 +347,11 @@
                                         this.$refs.video.srcObject = this.stream;
                                     } catch (err) {
                                         console.error("Webcam error:", err);
-                                        alert("Impossible d'accéder à la caméra.");
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Erreur',
+                                            text: "Impossible d'accéder à la caméra."
+                                        });
                                         this.showWebcam = false;
                                     }
                                 },
@@ -424,7 +428,7 @@
                                 }
                             }));
 
-                            Alpine.data('colisCalculator', (tarifs) => ({
+                            Alpine.data('colisCalculator', (tarifs, specialTarifs) => ({
                                 type_colis: 'STANDARD',
                                 poids: '',
                                 prix_kilo_manuel: '',
@@ -432,20 +436,59 @@
                                 cbm: '',
                                 transportType: '{{ lot.type_transport }}',
                                 tarifs: tarifs,
+                                specialTarifs: specialTarifs || {},
                                 lastClient: null,
+                                clientId: '',
                                 
                                 init() {
+                                    this.$watch('clientId', () => this.calculate());
                                     this.$watch('cbm', () => this.calculate());
                                     this.$watch('poids', () => this.calculate());
                                     this.$watch('type_colis', () => this.calculate());
                                     this.$watch('prix_kilo_manuel', () => this.calculate());
                                     this.$watch('nombre_pieces', () => this.calculate());
                                 },
+                                
+                                initTomSelect(el) {
+                                    if (!el) return;
+                                    if (tomSelectClient) tomSelectClient.destroy();
+                                    tomSelectClient = new TomSelect(el, {
+                                        create: false,
+                                        placeholder: "Rechercher par nom ou téléphone...",
+                                        allowEmptyOption: true,
+                                        onChange: (value) => {
+                                            this.clientId = value;
+                                        }
+                                    });
+                                    this.clientId = tomSelectClient.getValue();
+                                },
+
+                                hasSpecialTarif() {
+                                    return this.clientId && (this.clientId in this.specialTarifs);
+                                },
+
+                                getSpecialTarif() {
+                                    return this.specialTarifs[this.clientId];
+                                },
 
                                 handleFormSubmit(event) {
                                     // Sauvegarder client sélectionné
                                     if(typeof tomSelectClient !== 'undefined') {
                                         this.lastClient = tomSelectClient.getValue();
+                                    }
+                                    
+                                    // VALIDATION POIDS > 0
+                                    if (this.transportType !== 'BATEAU' && this.type_colis !== 'TELEPHONE') {
+                                        const p = parseFloat(this.poids) || 0;
+                                        if (p <= 0) {
+                                            event.preventDefault();
+                                            Swal.fire({
+                                                icon: 'warning',
+                                                title: 'Attention',
+                                                text: "Le poids doit être supérieur à 0 kg."
+                                            });
+                                            return false;
+                                        }
                                     }
                                     
                                     // VALIDATION PHOTO OBLIGATOIRE
@@ -458,7 +501,11 @@
                                     
                                     if (!hasWebcamPhoto && !hasFilePhoto) {
                                         event.preventDefault();
-                                        alert('⚠️ Photo obligatoire !\n\nVeuillez capturer une photo avec la webcam ou uploader un fichier avant d\'ajouter le carton.');
+                                        Swal.fire({
+                                            icon: 'warning',
+                                            title: 'Photo requise',
+                                            text: "Veuillez capturer une photo avec la webcam ou uploader un fichier avant d'ajouter le carton."
+                                        });
                                         return false;
                                     }
                                     // Don't prevent default - let HTMX handle it
@@ -520,11 +567,20 @@
                                         }
                                     } else {
                                         const p = parseFloat(this.poids) || 0;
-                                        const prixKilo = (this.tarifs && this.tarifs[this.transportType]) ? this.tarifs[this.transportType].prix_kilo : 0;
+                                        let prixKilo = 0;
+                                        
+                                        if (this.hasSpecialTarif()) {
+                                            prixKilo = this.getSpecialTarif();
+                                        } else {
+                                            prixKilo = (this.tarifs && this.tarifs[this.transportType]) ? this.tarifs[this.transportType].prix_kilo : 0;
+                                        }
                                         prix = p * prixKilo;
                                     }
                                     
-                                    document.getElementById('id_prix_final').value = Math.ceil(prix);
+                                    const prixFinalInput = document.getElementById('id_prix_final');
+                                    if (prixFinalInput) {
+                                        prixFinalInput.value = Math.ceil(prix);
+                                    }
                                 }
                             }))
                         });
