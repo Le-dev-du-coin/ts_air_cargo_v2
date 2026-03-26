@@ -420,6 +420,25 @@ class MonthlyArchivesView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateV
         context["stats_ml"] = get_country_stats("ML", selected_year, selected_month)
         context["stats_ci"] = get_country_stats("CI", selected_year, selected_month)
 
+        from report.models import TransfertArgent
+        from django.db.models import Sum
+
+        # Transferts vers la Chine
+        context["transferts_chine_recu"] = TransfertArgent.objects.filter(
+            destinataire="CHINE", date__year=selected_year, date__month=selected_month, statut="RECU"
+        ).aggregate(total=Sum("montant"))["total"] or 0
+        context["transferts_chine_attente"] = TransfertArgent.objects.filter(
+            destinataire="CHINE", date__year=selected_year, date__month=selected_month, statut="EN_ATTENTE"
+        ).aggregate(total=Sum("montant"))["total"] or 0
+
+        # Transferts vers Gaoussou (Frais Douane Mali)
+        context["transferts_gaoussou_recu"] = TransfertArgent.objects.filter(
+            destinataire="GAOUSSOU", date__year=selected_year, date__month=selected_month, statut="RECU"
+        ).aggregate(total=Sum("montant"))["total"] or 0
+        context["transferts_gaoussou_attente"] = TransfertArgent.objects.filter(
+            destinataire="GAOUSSOU", date__year=selected_year, date__month=selected_month, statut="EN_ATTENTE"
+        ).aggregate(total=Sum("montant"))["total"] or 0
+
         # Listes pour les sélecteurs
         context["years"] = range(2023, now.year + 2)
         context["months"] = [
