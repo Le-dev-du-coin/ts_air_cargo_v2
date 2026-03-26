@@ -2222,18 +2222,34 @@ class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
         context["lots_recus"] = Lot.objects.filter(destination=mali, status=Lot.Status.ARRIVE).count()
         
         # Finances - Recettes du mois
-        colis_livres = Colis.objects.filter(
+        from django.db.models import Case, When, Value, DecimalField, Q
+        colis_livres_mois = Colis.objects.filter(
             lot__destination=mali,
             status="LIVRE",
-            updated_at__year=now.year,
-            updated_at__month=now.month
-        ).exclude(paye_en_chine=True)
+        ).filter(
+            Q(date_encaissement__year=now.year, date_encaissement__month=now.month) |
+            Q(date_encaissement__isnull=True, date_livraison__year=now.year, date_livraison__month=now.month)
+        )
 
-        recette_brute = sum(c.prix_final - getattr(c, 'reste_a_payer', 0) - getattr(c, 'montant_jc', 0) for c in colis_livres)
+        recette_brute_agg = colis_livres_mois.aggregate(
+            total=Sum(
+                Case(
+                    When(paye_en_chine=True, then=Value(0)),
+                    default=F('prix_final') - F('montant_jc') - F('reste_a_payer'),
+                    output_field=DecimalField()
+                )
+            )
+        )
+        recette_brute = recette_brute_agg['total'] or 0
         context["recettes_mois"] = recette_brute
 
-        # Dépenses
-        dep = Depense.objects.filter(pays=mali, date__year=now.year, date__month=now.month)
+        # Dépenses (sans indicatif Chine)
+        dep = Depense.objects.filter(
+            pays=mali,
+            date__year=now.year,
+            date__month=now.month,
+            is_china_indicative=False
+        )
         total_depenses = dep.aggregate(t=Sum("montant"))["t"] or 0
         context["depenses_mois"] = total_depenses
 

@@ -435,6 +435,16 @@
                                 }
                             }));
 
+                            function initColisCalculator() {
+                                const tarifs = JSON.parse(
+                                    document.getElementById('tarif-data').textContent || '{}'
+                                );
+                                const specialTarifs = JSON.parse(
+                                    document.getElementById('special-tarif-data').textContent || '{}'
+                                );
+                                return colisCalculator(tarifs, specialTarifs);
+                            }
+
                             Alpine.data('colisCalculator', (tarifs, specialTarifs) => ({
                                 type_colis: 'STANDARD',
                                 poids: '',
