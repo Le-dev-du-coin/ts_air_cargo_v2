@@ -55,13 +55,20 @@ class Command(BaseCommand):
                 dest_name = f"ID={dest_id}"
             self.stdout.write(f"  Destination filtrée : {dest_name}\n")
 
-        # --- DASHBOARD ---
-        # Recettes comptabilisées selon la logique du DashboardView
+        # --- DASHBOARD AGENT MALI ---
+        # Nouvelle formule (date_livraison ou date_encaissement)
         qs_dashboard = base_qs.filter(
             Q(date_encaissement__year=year, date_encaissement__month=month) |
             Q(date_encaissement__isnull=True, date_livraison__year=year, date_livraison__month=month)
         )
         ids_dashboard = set(qs_dashboard.values_list("id", flat=True))
+
+        # --- ANCIEN DASHBOARD (updated_at) pour comparaison diagnostic ---
+        from django.utils import timezone
+        first_day = timezone.datetime(year, month, 1).date()
+        qs_old_dashboard = base_qs.filter(updated_at__date__gte=first_day,
+                                          updated_at__year=year, updated_at__month=month)
+        ids_old_dashboard = set(qs_old_dashboard.values_list("id", flat=True))
 
         # --- RAPPORT AVANCÉ ---
         # Même filtre (après notre correction, ils doivent être identiques)

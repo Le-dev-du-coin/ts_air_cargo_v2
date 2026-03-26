@@ -62,8 +62,12 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         # Pas TRANSIT ou STOCK. Nous devons ajuster selon les vrais statuts.
 
         # 1. Colis Livrés (mois en cours) et Recettes
+        from django.db.models import Q as Q_filter
         colis_livres_mois_qs = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE", updated_at__gte=first_day_of_month
+            lot__destination=mali, status="LIVRE"
+        ).filter(
+            Q_filter(date_encaissement__year=today.year, date_encaissement__month=today.month) |
+            Q_filter(date_encaissement__isnull=True, date_livraison__year=today.year, date_livraison__month=today.month)
         )
         context["colis_livres_mois"] = colis_livres_mois_qs.count()
 
