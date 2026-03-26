@@ -377,8 +377,7 @@ class RapportExportView(LoginRequiredMixin, View):
         # On calcule ce qui a été réellement encaissé (Prix final - JC - Reste à payer)
         colis_qs = Colis.objects.filter(status="LIVRE").filter(
             Q(date_encaissement__year=year, date_encaissement__month=month) |
-            Q(date_encaissement__isnull=True, date_livraison__year=year, date_livraison__month=month) |
-            Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__year=year, updated_at__month=month)
+            Q(date_encaissement__isnull=True, date_livraison__year=year, date_livraison__month=month)
         )
         if country:
             colis_qs = colis_qs.filter(lot__destination=country)
