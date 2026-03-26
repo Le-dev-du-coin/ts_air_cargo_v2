@@ -119,7 +119,10 @@ def send_parcel_reminders_periodic():
             }
 
         # Calcul montant
-        montant_a_payer = (colis.prix_final or 0) - (colis.montant_jc or 0)
+        if getattr(colis, 'paye_en_chine', False) or colis.est_paye:
+            montant_a_payer = 0
+        else:
+            montant_a_payer = (colis.prix_final or 0) - (colis.montant_jc or 0)
 
         reminders_data[user_id]["colis_list"].append(colis)
         reminders_data[user_id]["total_montant"] += max(0, montant_a_payer)
@@ -144,7 +147,10 @@ def send_parcel_reminders_periodic():
         if nb_colis == 1:
             # Mode simple
             colis = colis_list[0]
-            montant_colis = (colis.prix_final or 0) - (colis.montant_jc or 0)
+            if getattr(colis, 'paye_en_chine', False) or colis.est_paye:
+                montant_colis = 0
+            else:
+                montant_colis = (colis.prix_final or 0) - (colis.montant_jc or 0)
             fmt_montant = "{:,.0f} FCFA".format(max(0, montant_colis)).replace(",", " ")
             message = config.template_rappel.format(
                 numero_suivi=colis.reference,
@@ -324,14 +330,22 @@ def send_daily_report_mali():
             status="LIVRE"
         ).filter(
             Q(date_encaissement=today) |
-            Q(date_encaissement__isnull=True, date_livraison=today) |
-            Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date=today)
+            Q(date_encaissement__isnull=True, date_livraison=today)
         )
 
         def stat(qs):
+            from django.db.models import Case, When, Value, DecimalField
             nb = qs.count()
             ca = (
-                qs.aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"] or 0
+                qs.aggregate(
+                    total=Sum(
+                        Case(
+                            When(paye_en_chine=True, then=Value(0)),
+                            default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                            output_field=DecimalField()
+                        )
+                    )
+                )["total"] or 0
             )
             return nb, ca
 
@@ -347,7 +361,7 @@ def send_daily_report_mali():
             from report.models import Depense, TransfertArgent
 
             total_depenses = (
-                Depense.objects.filter(pays=mali, date=today).aggregate(
+                Depense.objects.filter(pays=mali, is_china_indicative=False, date=today).aggregate(
                     total=Sum("montant")
                 )["total"]
                 or 0
@@ -365,6 +379,7 @@ def send_daily_report_mali():
         total_sorties = total_depenses + total_transferts
 
         # --- Solde de la veille ---
+        from django.db.models import Case, When, Value, DecimalField
         recettes_avant = (
             Colis.objects.filter(
                 lot__destination=mali,
@@ -372,13 +387,21 @@ def send_daily_report_mali():
             ).filter(
                 Q(date_encaissement__lt=today) |
                 Q(date_encaissement__isnull=True, date_livraison__lt=today) |
-                Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date__lt=today)
-            ).aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"]
+                Q(date_encaissement__isnull=True, date_livraison__isnull=True)
+            ).aggregate(
+                total=Sum(
+                    Case(
+                        When(paye_en_chine=True, then=Value(0)),
+                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                        output_field=DecimalField()
+                    )
+                )
+            )["total"]
             or 0
         )
         try:
             dep_avant = (
-                Depense.objects.filter(pays=mali, date__lt=today).aggregate(
+                Depense.objects.filter(pays=mali, is_china_indicative=False, date__lt=today).aggregate(
                     total=Sum("montant")
                 )["total"]
                 or 0

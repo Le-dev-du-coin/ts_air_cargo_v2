@@ -29,7 +29,15 @@
                         <dt class="text-sm font-medium text-gray-500 truncate">Période</dt>
                         <dd>
                             <div class="text-lg font-medium text-gray-900">
-                                {{ current_month }}/{{ current_year }}
+                                {% if current_day and current_month and current_year %}
+                                    {{ current_day }}/{{ current_month }}/{{ current_year }}
+                                {% elif current_month and current_year %}
+                                    {{ current_month }}/{{ current_year }}
+                                {% elif current_year %}
+                                    Année {{ current_year }}
+                                {% else %}
+                                    Toutes périodes
+                                {% endif %}
                             </div>
                         </dd>
                     </dl>
@@ -73,7 +81,7 @@
                         <dt class="text-sm font-medium text-gray-500 truncate">Total Transferts</dt>
                         <dd>
                             <div class="text-lg font-medium text-gray-900">
-                                {{ total_transferts_mois|intcomma }} FCFA
+                                {{ total_transferts_periode|intcomma }} FCFA
                             </div>
                         </dd>
                     </dl>

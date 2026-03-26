@@ -96,7 +96,7 @@ class DepenseListView(LoginRequiredMixin, ListView):
             transferts_periode = transferts_periode.filter(
                 date__year=self.year, date__month=self.month
             )
-        else:
+        elif self.year:
             transferts_periode = transferts_periode.filter(date__year=self.year)
 
         context["total_transferts_periode"] = (
@@ -186,9 +186,16 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
         if country:
             colis_qs = colis_qs.filter(lot__destination=country)
 
-        # Calcul montant net réellement encaissé
+        # Calcul montant net réellement encaissé (en excluant les colis payés en Chine)
+        from django.db.models import Case, When, Value, DecimalField
         recettes_agg = colis_qs.aggregate(
-            total_net=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+            total_net=Sum(
+                Case(
+                    When(paye_en_chine=True, then=Value(0)),
+                    default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                    output_field=DecimalField()
+                )
+            )
         )
         total_recettes = recettes_agg["total_net"] or 0
 
@@ -376,8 +383,15 @@ class RapportExportView(LoginRequiredMixin, View):
         if country:
             colis_qs = colis_qs.filter(lot__destination=country)
 
+        from django.db.models import Case, When, Value, DecimalField
         recettes_agg = colis_qs.aggregate(
-            total_net=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+            total_net=Sum(
+                Case(
+                    When(paye_en_chine=True, then=Value(0)),
+                    default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                    output_field=DecimalField()
+                )
+            )
         )
         total_recettes = recettes_agg["total_net"] or 0
 

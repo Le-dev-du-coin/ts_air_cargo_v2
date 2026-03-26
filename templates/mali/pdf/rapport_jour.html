@@ -192,23 +192,23 @@
         <div class="summary-title">Synthèse Financière de la Journée</div>
         <div class="summary-row">
             <span>Solde Précédent (Report Veille)</span>
-            <span class="amount">{{ solde_veille|intcomma }} FCFA</span>
+            <span class="amount">{{ solde_veille|floatformat:0|intcomma }} FCFA</span>
         </div>
         <div class="summary-row">
             <span>Recettes Journalières (Encaissements)</span>
-            <span class="amount text-green">+ {{ total_encaissements|intcomma }} FCFA</span>
+            <span class="amount text-green">+ {{ total_encaissements|floatformat:0|intcomma }} FCFA</span>
         </div>
         <div class="summary-row">
             <span>Dépenses Journalières Mali</span>
-            <span class="amount text-red">- {{ total_depenses|intcomma }} FCFA</span>
+            <span class="amount text-red">- {{ total_depenses|floatformat:0|intcomma }} FCFA</span>
         </div>
         <div class="summary-row">
             <span>Transferts Journaliers</span>
-            <span class="amount text-blue">- {{ total_transferts|intcomma }} FCFA</span>
+            <span class="amount text-blue">- {{ total_transferts|floatformat:0|intcomma }} FCFA</span>
         </div>
         <div class="summary-row summary-total">
             <span>SOLDE DE CAISSE FINAL MALI</span>
-            <span class="amount">{{ solde_final|intcomma }} FCFA</span>
+            <span class="amount">{{ solde_final|floatformat:0|intcomma }} FCFA</span>
         </div>
     </div>
     {% else %}
@@ -246,14 +246,14 @@
                     {% if report_type == 'bateau' %}{{ colis.cbm }} m³{% else %}{{ colis.poids }} kg{% endif %}
                 </td>
                 <td style="text-align: center; font-size: 8px;">{{ colis.get_mode_paiement_display|default:"—" }}</td>
-                <td class="amount">{{ colis.prix_final|intcomma }}</td>
+                <td class="amount">{{ colis.prix_final|floatformat:0|intcomma }}</td>
                 <td class="amount {% if colis.reste_a_payer > 0 %}text-red{% endif %}">
-                    {% if colis.reste_a_payer > 0 %}{{ colis.reste_a_payer|intcomma }}{% else %}-{% endif %}
+                    {% if colis.reste_a_payer > 0 %}{{ colis.reste_a_payer|floatformat:0|intcomma }}{% else %}-{% endif %}
                 </td>
                 <td class="amount" style="color: var(--text-muted);">
-                    {% if colis.montant_jc > 0 %}{{ colis.montant_jc|intcomma }}{% else %}-{% endif %}
+                    {% if colis.montant_jc > 0 %}{{ colis.montant_jc|floatformat:0|intcomma }}{% else %}-{% endif %}
                 </td>
-                <td class="amount text-green" style="font-size: 10px; font-weight: 800;">{{ colis.net_price|intcomma }}</td>
+                <td class="amount text-green" style="font-size: 10px; font-weight: 800;">{{ colis.net_price|floatformat:0|intcomma }}</td>
             </tr>
             {% empty %}
             <tr>
@@ -264,14 +264,14 @@
             {% endfor %}
         </tbody>
         {% if colis_livres %}
-        <tfoot>
+        <tbody>
             <tr style="background-color: #f9fafb; font-weight: 800;">
                 <td colspan="2" style="padding: 10px; border-top: 2px solid var(--border);">TOTAL :</td>
                 <td style="padding: 10px; border-top: 2px solid var(--border); text-align: center;">{{ total_poids|floatformat:1 }}</td>
                 <td colspan="3" style="padding: 10px; border-top: 2px solid var(--border); text-align: right;">TOTAL NET ENCAISSÉ :</td>
-                <td colspan="2" style="padding: 10px; border-top: 2px solid var(--border); text-align: right; white-space: nowrap;" class="text-green">{{ total_encaissements|intcomma }} FCFA</td>
+                <td colspan="2" style="padding: 10px; border-top: 2px solid var(--border); text-align: right; white-space: nowrap;" class="text-green">{{ total_encaissements|floatformat:0|intcomma }} FCFA</td>
             </tr>
-        </tfoot>
+        </tbody>
         {% endif %}
     </table>
 

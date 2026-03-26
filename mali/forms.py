@@ -229,9 +229,14 @@ class MaliAgentForm(forms.ModelForm):
 class MaliClientLotTarifForm(forms.ModelForm):
     class Meta:
         model = ClientLotTarif
-        fields = ["client", "prix_kilo"]
+        fields = ["client", "type_transport", "prix_kilo"]
         widgets = {
             "client": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800"
+                }
+            ),
+            "type_transport": forms.Select(
                 attrs={
                     "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800"
                 }

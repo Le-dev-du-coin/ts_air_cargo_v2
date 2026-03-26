@@ -205,6 +205,13 @@ class ClientLotTarif(models.Model):
     destination = models.ForeignKey(
         "core.Country", on_delete=models.CASCADE, null=True, blank=True, related_name="tarifs_speciaux_recus"
     )
+    type_transport = models.CharField(
+        max_length=20, 
+        choices=Lot.TypeTransport.choices, 
+        null=True, 
+        blank=True,
+        help_text=_("S'applique uniquement à ce type de transport (Cargo/Express)")
+    )
     prix_kilo = models.DecimalField(
         max_digits=10, decimal_places=2, help_text=_("Prix au kilo négocié")
     )
@@ -383,8 +390,11 @@ class Colis(TenantAwareModel):
         du type de colis et des tarifs en vigueur.
         """
         # 1. Vérifier s'il existe un tarif spécial (conventionnel) pour ce client vers cette destination (global)
+        # On vérifie si un tarif a le type de transport du lot OU si le type de transport du tarif est vide (applicable à tout)
         special_tarif = ClientLotTarif.objects.filter(
             client=self.client, destination=self.lot.destination
+        ).filter(
+            models.Q(type_transport=self.lot.type_transport) | models.Q(type_transport__isnull=True)
         ).first()
 
         if special_tarif and self.lot.type_transport != "BATEAU":

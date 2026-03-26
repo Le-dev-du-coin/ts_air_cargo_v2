@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from django.urls import reverse, reverse_lazy
-from django.db.models import Q, Count, Sum, Value, F, DecimalField, DateField, ExpressionWrapper
+from django.db.models import Q, Count, Sum, Value, F, DecimalField, DateField, ExpressionWrapper, Case, When
 from django.db.models.functions import Concat, Coalesce
 from core.mixins import DestinationAgentRequiredMixin, AdminMaliRequiredMixin
 from core.models import Country, Lot, Colis, Client, User, AvanceSalaire, ClientLotTarif
@@ -67,10 +67,16 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         )
         context["colis_livres_mois"] = colis_livres_mois_qs.count()
 
-        # Recettes nettes du mois (déjà payés + livrés)
+        # Recettes nettes du mois complètes avec la formule de caisse standard
         recettes_mois = (
-            colis_livres_mois_qs.filter(est_paye=True).aggregate(
-                total=Sum(F("prix_final") - F("montant_jc"))
+            colis_livres_mois_qs.aggregate(
+                total=Sum(
+                    Case(
+                        When(paye_en_chine=True, then=Value(0)),
+                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                        output_field=DecimalField()
+                    )
+                )
             )["total"]
             or 0
         )
@@ -151,10 +157,18 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
             .count()
         )
 
-        # 8. Encaissements du Jour (Montant total des livraisons du jour)
+        # 8. Encaissements du Jour (Montant net collecté sur les livraisons du jour)
         encaissements = Colis.objects.filter(
             lot__destination=mali, status="LIVRE", date_encaissement=today
-        ).aggregate(total=Sum("prix_final"))
+        ).aggregate(
+            total=Sum(
+                Case(
+                    When(paye_en_chine=True, then=Value(0)),
+                    default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                    output_field=DecimalField()
+                )
+            )
+        )
         context["encaissements_jour"] = encaissements["total"] or 0
 
         # 9. Total Clients Mali
@@ -208,7 +222,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
 
         # --- 1. SOLDE VEILLE (Report) ---
         # Calcul : Total Recettes (depuis début) - Total Dépenses (depuis début) jusqu'à hier
-        from django.db.models import Sum, F
+        from django.db.models import Case, When, Value, DecimalField
 
         recettes_globales = (
             Colis.objects.filter(
@@ -217,8 +231,16 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             ).filter(
                 Q(date_encaissement__lt=today) |
                 Q(date_encaissement__isnull=True, date_livraison__lt=today) |
-                Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date__lt=today)
-            ).aggregate(total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer")))["total"]
+                Q(date_encaissement__isnull=True, date_livraison__isnull=True)
+            ).aggregate(
+                total=Sum(
+                    Case(
+                        When(paye_en_chine=True, then=Value(0)),
+                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                        output_field=DecimalField()
+                    )
+                )
+            )["total"]
             or 0
         )
 
@@ -250,8 +272,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             status="LIVRE"
         ).filter(
             Q(date_encaissement=today) |
-            Q(date_encaissement__isnull=True, date_livraison=today) |
-            Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__date=today)
+            Q(date_encaissement__isnull=True, date_livraison=today)
         ).select_related("client", "lot")
 
         # Séparation par type de transport (via le Lot)
@@ -261,7 +282,13 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         colis_cargo = colis_livres_jour.filter(lot__type_transport="CARGO")
         recette_cargo = (
             colis_cargo.aggregate(
-                total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+                total=Sum(
+                    Case(
+                        When(paye_en_chine=True, then=Value(0)),
+                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                        output_field=DecimalField()
+                    )
+                )
             )["total"]
             or 0
         )
@@ -278,7 +305,13 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         colis_express = colis_livres_jour.filter(lot__type_transport="EXPRESS")
         recette_express = (
             colis_express.aggregate(
-                total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+                total=Sum(
+                    Case(
+                        When(paye_en_chine=True, then=Value(0)),
+                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                        output_field=DecimalField()
+                    )
+                )
             )["total"]
             or 0
         )
@@ -295,7 +328,13 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         colis_bateau = colis_livres_jour.filter(lot__type_transport="BATEAU")
         recette_bateau = (
             colis_bateau.aggregate(
-                total=Sum(F("prix_final") - F("montant_jc") - F("reste_a_payer"))
+                total=Sum(
+                    Case(
+                        When(paye_en_chine=True, then=Value(0)),
+                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                        output_field=DecimalField()
+                    )
+                )
             )["total"]
             or 0
         )

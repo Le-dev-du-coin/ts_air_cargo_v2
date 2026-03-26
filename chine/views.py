@@ -130,10 +130,16 @@ def get_country_stats(country_code, year=None, month=None):
     stats = {}
     stats["montant_colis"] = montant_net_colis
     stats["poids_total"] = colis.aggregate(total=Sum("poids"))["total"] or 0
-    stats["cout_transport"] = lots.aggregate(total=Sum("frais_transport"))["total"] or 0
-    stats["cout_douane"] = lots.aggregate(total=Sum("frais_douane"))["total"] or 0
-    stats["autres_depenses"] = depenses.aggregate(total=Sum("montant"))["total"] or 0
     stats["total_transferts"] = transferts.aggregate(total=Sum("montant"))["total"] or 0
+
+    if country_code in ["ML", "CI"]:
+        stats["cout_transport"] = 0
+        stats["cout_douane"] = 0
+        stats["autres_depenses"] = depenses.filter(is_china_indicative=False).aggregate(total=Sum("montant"))["total"] or 0
+    else:
+        stats["cout_transport"] = lots.aggregate(total=Sum("frais_transport"))["total"] or 0
+        stats["cout_douane"] = lots.aggregate(total=Sum("frais_douane"))["total"] or 0
+        stats["autres_depenses"] = depenses.aggregate(total=Sum("montant"))["total"] or 0
 
     stats["total_depenses_global"] = (
         stats["autres_depenses"] + stats["total_transferts"]
@@ -214,9 +220,10 @@ def get_country_stats(country_code, year=None, month=None):
             {
                 "agent": agent,
                 "montant": montant,
-                "deja_paye": total_deja_percu,  # On l'affiche comme déjà perçu global
+                "deja_paye": total_deja_percu,
                 "paiements_effectues": deja_paye,
                 "avances_total": avances_total,
+                "avances": avances_total,
                 "reste_a_payer": reste_a_payer,
                 "mode": agent.get_remuneration_mode_display(),
                 "valeur": agent.remuneration_value,
@@ -1212,7 +1219,19 @@ class LotDetailView(LoginRequiredMixin, AgentChineRequiredMixin, DetailView):
                 "prix_piece": float(t.prix_piece),
             }
 
-        context["tarif_json"] = tarif_data
+        import json
+        context["tarif_json"] = json.dumps(tarif_data)
+
+        from core.models import ClientLotTarif
+        from django.db import models
+        special_tarifs = ClientLotTarif.objects.filter(
+            destination=self.object.destination
+        ).filter(
+            models.Q(type_transport=self.object.type_transport) | models.Q(type_transport__isnull=True)
+        )
+        context["special_tarifs_json"] = json.dumps({
+            str(t.client_id): float(t.prix_kilo) for t in special_tarifs
+        })
 
         # Warn if no tarifs at all for this destination
         if not tarif_data and self.object.status == "OUVERT":

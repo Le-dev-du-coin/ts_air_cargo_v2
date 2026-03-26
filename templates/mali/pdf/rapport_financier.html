@@ -191,17 +191,17 @@
     <div class="summary-grid">
         <div class="summary-card">
             <span class="card-label">RECETTES NETTES</span>
-            <div class="card-value positive">+ {{ total_recettes|intcomma }} FCFA</div>
+            <div class="card-value positive">+ {{ total_recettes|floatformat:0|intcomma }} FCFA</div>
         </div>
         <div class="summary-card">
             <span class="card-label">DÉPENSES MALI</span>
-            <div class="card-value negative">- {{ total_depenses|intcomma }} FCFA</div>
+            <div class="card-value negative">- {{ total_depenses|floatformat:0|intcomma }} FCFA</div>
         </div>
         <div class="summary-card">
             <span class="card-label">TRANSFERTS TOTAUX</span>
-            <div class="card-value negative">- {{ total_transferts|intcomma }} FCFA</div>
+            <div class="card-value negative">- {{ total_transferts|floatformat:0|intcomma }} FCFA</div>
             <div style="font-size: 10px; color: var(--text-muted); margin-top: 5px;">
-                Chine: {{ total_transferts_chine|intcomma }} | Gaoussou: {{ total_transferts_gaoussou|intcomma }}
+                Chine: {{ total_transferts_chine|floatformat:0|intcomma }} | Gaoussou: {{ total_transferts_gaoussou|floatformat:0|intcomma }}
             </div>
         </div>
         
@@ -211,7 +211,7 @@
                 <div style="font-size: 11px; color: var(--text-muted);">Recettes - (Dépenses + Transferts)</div>
             </div>
             <span class="total-value {% if solde >= 0 %}positive{% else %}negative{% endif %}">
-                {{ solde|intcomma }} FCFA
+                {{ solde|floatformat:0|intcomma }} FCFA
             </span>
         </div>
 
@@ -224,7 +224,7 @@
                 {% for item in depenses_by_category %}
                 <tr>
                     <td style="padding: 8px 0; border-bottom: 1px solid #edf2f7;">{{ item.categorie }}</td>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #edf2f7; text-align: right; font-weight: 700;">{{ item.total|intcomma }} FCFA</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #edf2f7; text-align: right; font-weight: 700;">{{ item.total|floatformat:0|intcomma }} FCFA</td>
                 </tr>
                 {% endfor %}
             </table>
@@ -247,7 +247,7 @@
                 <td>{{ depense.date|date:"d/m/Y" }}</td>
                 <td>{{ depense.get_categorie_display }}</td>
                 <td>{{ depense.description }}</td>
-                <td style="text-align: right; font-weight: 700;">{{ depense.montant|intcomma }} FCFA</td>
+                <td style="text-align: right; font-weight: 700;">{{ depense.montant|floatformat:0|intcomma }} FCFA</td>
             </tr>
             {% empty %}
             <tr>
