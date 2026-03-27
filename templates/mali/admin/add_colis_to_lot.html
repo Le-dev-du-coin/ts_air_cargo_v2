@@ -27,7 +27,7 @@
             <h3 class="text-base font-black text-gray-800">Informations du colis</h3>
         </div>
         <div class="px-6 py-6">
-            <form method="post" class="space-y-5" x-data="{ type_colis: '{{ form.type_colis.value|default:'STANDARD' }}' }">
+            <form method="post" enctype="multipart/form-data" class="space-y-5" x-data="{ type_colis: '{{ form.type_colis.value|default:'STANDARD' }}' }">
                 {% csrf_token %}
 
                 {% if form.non_field_errors %}
@@ -80,9 +80,12 @@
                 </div>
 
                 <!-- Prix Final -->
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.prix_final.label }} <span class="text-red-500">*</span></label>
+                <div class="pt-4 border-t border-gray-100 bg-gray-50 p-4 rounded-md">
+                    <label class="block text-sm font-bold text-gray-700 mb-1 flex justify-between items-center">
+                        <span>{{ form.prix_final.label }} <span class="text-red-500">*</span></span>
+                    </label>
                     {{ form.prix_final }}
+                    <p id="price-status" class="mt-1 text-[10px] text-gray-500">Auto-rempli selon les tarifs.</p>
                     {% if form.prix_final.errors %}<p class="mt-1 text-xs text-red-600">{{ form.prix_final.errors.0 }}</p>{% endif %}
                 </div>
 
@@ -91,6 +94,104 @@
                     <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.description.label }}</label>
                     {{ form.description }}
                 </div>
+
+                <!-- Photo -->
+                <div x-data="photoHandler()">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.photo.label }}</label>
+                    <div class="flex flex-col gap-3">
+                        <div class="flex gap-2">
+                            <button type="button" @click="openWebcam()" 
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">
+                                <svg class="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Prendre une photo (Caméra)
+                            </button>
+                            <div class="relative flex-1">
+                                {{ form.photo }}
+                            </div>
+                        </div>
+
+                        <!-- Webcam Preview Area -->
+                        <div x-show="showWebcam" x-cloak class="relative rounded-2xl overflow-hidden bg-black aspect-video shadow-2xl ring-4 ring-indigo-100 mt-2">
+                            <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                            <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
+                                <button type="button" @click="capturePhoto()" class="bg-indigo-600 text-white p-4 rounded-full shadow-2xl hover:bg-indigo-700 transform hover:scale-110 transition-all active:scale-95">
+                                    <svg class="h-8 w-8" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+                                </button>
+                                <button type="button" @click="closeWebcam()" class="bg-white/20 backdrop-blur-md text-white p-4 rounded-full shadow-2xl hover:bg-white/30 transform hover:scale-110 transition-all active:scale-95">
+                                    <svg class="h-8 w-8" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Result Preview -->
+                        <div x-show="photoPreview" x-cloak class="mt-2 text-center bg-gray-50 p-4 rounded-2xl border-2 border-dashed border-gray-200">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Aperçu de la capture</p>
+                            <div class="relative inline-block">
+                                <img :src="photoPreview" class="h-48 w-auto rounded-xl shadow-lg border-4 border-white">
+                                <button type="button" @click="clearPhoto()" class="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-2 shadow-lg hover:bg-red-600 transition-colors">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Hidden Field for Base64 -->
+                        <input type="hidden" name="compressed_photo" x-model="compressedBlobBase64">
+                    </div>
+                </div>
+
+                <!-- Script photoHandler -->
+                <script>
+                    document.addEventListener('alpine:init', () => {
+                        Alpine.data('photoHandler', () => ({
+                            showWebcam: false,
+                            photoPreview: null,
+                            compressedBlobBase64: '',
+                            stream: null,
+
+                            async openWebcam() {
+                                this.showWebcam = true;
+                                try {
+                                    this.stream = await navigator.mediaDevices.getUserMedia({ 
+                                        video: { facingMode: "environment" } 
+                                    });
+                                    this.$refs.video.srcObject = this.stream;
+                                } catch (err) {
+                                    console.error("Webcam error:", err);
+                                    alert("Impossible d'accéder à la caméra.");
+                                    this.showWebcam = false;
+                                }
+                            },
+
+                            capturePhoto() {
+                                const video = this.$refs.video;
+                                const canvas = document.createElement('canvas');
+                                const scale = 1200 / Math.max(video.videoWidth, video.videoHeight);
+                                canvas.width = video.videoWidth * Math.min(1, scale);
+                                canvas.height = video.videoHeight * Math.min(1, scale);
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                this.photoPreview = canvas.toDataURL('image/jpeg', 0.8);
+                                this.compressedBlobBase64 = this.photoPreview;
+                                this.closeWebcam();
+                            },
+
+                            closeWebcam() {
+                                if (this.stream) {
+                                    this.stream.getTracks().forEach(track => track.stop());
+                                }
+                                this.showWebcam = false;
+                            },
+
+                            clearPhoto() {
+                                this.photoPreview = null;
+                                this.compressedBlobBase64 = '';
+                            }
+                        }));
+                    });
+                </script>
 
                 <!-- Boutons -->
                 <div class="flex items-center justify-end space-x-3 pt-3 border-t border-gray-100">
@@ -106,12 +207,69 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const clientSelect = document.getElementById("{{ form.client.id_for_label }}");
+        const typeColisSelect = document.getElementById("{{ form.type_colis.id_for_label }}");
+        const poidsInput = document.getElementById("{{ form.poids.id_for_label }}");
+        const cbmInput = document.getElementById("{{ form.cbm.id_for_label }}");
+        const piecesInput = document.getElementById("{{ form.nombre_pieces.id_for_label }}");
+        const priceStatus = document.getElementById("price-status");
+        const prixFinalInput = document.getElementById("{{ form.prix_final.id_for_label }}");
+
+        function updatePrice() {
+            const clientId = clientSelect.value;
+            if (!clientId) return;
+
+            const params = new URLSearchParams({
+                client_id: clientId,
+                lot_id: "{{ lot.pk }}",
+                type_colis: typeColisSelect.value,
+                poids: poidsInput ? poidsInput.value : 0,
+                cbm: cbmInput ? cbmInput.value : 0,
+                nombre_pieces: piecesInput ? piecesInput.value : 1
+            });
+
+            fetch("{% url 'mali:admin_calculate_price' %}?" + params)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.prix_final !== undefined) {
+                        if (prixFinalInput) {
+                            prixFinalInput.value = Math.ceil(data.prix_final);
+                        }
+                        
+                        if (data.prix_final === 0) {
+                            priceStatus.classList.add('text-red-600', 'font-bold');
+                            priceStatus.innerText = "Aucun tarif trouvé pour cette configuration !";
+                            if (data.debug) {
+                                priceStatus.innerText += " [" + data.debug + "]";
+                            }
+                        } else {
+                            priceStatus.classList.remove('text-red-600', 'font-bold');
+                            const formattedPrice = new Intl.NumberFormat('fr-FR').format(data.prix_final);
+                            priceStatus.innerText = "Prix calculé : " + formattedPrice + " FCFA";
+                        }
+                    } else if (data.error) {
+                        priceStatus.classList.add('text-red-600');
+                        priceStatus.innerText = "Erreur : " + data.error;
+                    }
+                })
+                .catch(err => {
+                    console.error("Erreur calcul prix:", err);
+                });
+        }
+
+        [clientSelect, typeColisSelect, poidsInput, cbmInput, piecesInput].forEach(el => {
+            if (el) el.addEventListener('change', updatePrice);
+            if (el && (el.tagName === 'INPUT')) el.addEventListener('input', updatePrice);
+        });
+
+        // TomSelect support
         if (typeof TomSelect !== 'undefined') {
-            new TomSelect("#{{ form.client.id_for_label }}", {
+            const ts = new TomSelect("#{{ form.client.id_for_label }}", {
                 create: false,
                 sortField: { field: "text", direction: "asc" },
                 placeholder: "Rechercher par nom ou numéro..."
             });
+            ts.on('change', updatePrice);
         }
     });
 </script>

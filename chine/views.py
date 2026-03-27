@@ -1424,6 +1424,66 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
         )
 
 
+class ColisUpdateView(LoginRequiredMixin, AgentChineRequiredMixin, UpdateView):
+    model = Colis
+    form_class = ColisForm
+    template_name = "chine/lots/colis_form.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        import json
+        from django.core.serializers.json import DjangoJSONEncoder
+        
+        # Tarifs standards
+        tarifs = Tarif.objects.filter(destination=self.object.lot.destination)
+        tarif_dict = {}
+        for t in tarifs:
+            tarif_dict[t.type_transport] = {
+                "prix_kilo": float(t.prix_kilo or 0),
+                "prix_cbm": float(t.prix_cbm or 0),
+                "prix_piece": float(t.prix_piece or 0),
+            }
+        context["tarif_json"] = json.dumps(tarif_dict, cls=DjangoJSONEncoder)
+
+        # Tarifs spéciaux
+        from core.models import ClientLotTarif
+        special_tarifs = ClientLotTarif.objects.filter(destination=self.object.lot.destination)
+        special_dict = {}
+        for st in special_tarifs:
+            special_dict[str(st.client.id)] = float(st.prix_kilo or 0)
+        context["special_tarifs_json"] = json.dumps(special_dict, cls=DjangoJSONEncoder)
+        
+        return context
+
+    def get_success_url(self):
+        return reverse_lazy("chine:lot_detail", kwargs={"pk": self.object.lot.pk})
+
+    def form_valid(self, form):
+        colis = form.save(commit=False)
+        
+        # Handle Base64 photo (Webcam/Compressed)
+        compressed_photo_data = self.request.POST.get("compressed_photo")
+        if compressed_photo_data and compressed_photo_data.startswith("data:image"):
+            try:
+                import base64
+                from django.core.files.base import ContentFile
+                import uuid
+
+                format, imgstr = compressed_photo_data.split(";base64,")
+                ext = format.split("/")[-1]
+                photo_content = ContentFile(
+                    base64.b64decode(imgstr),
+                    name=f"colis_update_{uuid.uuid4().hex[:8]}.{ext}",
+                )
+                colis.photo.save(photo_content.name, photo_content, save=False)
+            except Exception:
+                pass
+                
+        colis.save()
+        messages.success(self.request, "Carton mis à jour avec succès !")
+        return super().form_valid(form)
+
+
 class ColisDeleteView(LoginRequiredMixin, AgentChineRequiredMixin, DeleteView):
     model = Colis
 

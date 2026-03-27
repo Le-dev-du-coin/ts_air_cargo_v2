@@ -15,6 +15,7 @@ from .views import (
     LotNoteUpdateView,
     LotReopenView,
     ColisCreateView,
+    ColisUpdateView,
     ColisDeleteView,
     CountryCreateView,
     ClientExportView,
@@ -95,6 +96,7 @@ urlpatterns = [
     path("lots/<int:pk>/delete/", LotDeleteView.as_view(), name="lot_delete"),
     # Colis (Nested under lot)
     path("lots/<int:lot_id>/colis/add/", ColisCreateView.as_view(), name="colis_add"),
+    path("colis/<int:pk>/update/", ColisUpdateView.as_view(), name="colis_update"),
     path("colis/<int:pk>/delete/", ColisDeleteView.as_view(), name="colis_delete"),
     path("colis/print/", ColisEtiquettePDFView.as_view(), name="colis_print_pdf"),
     # Tarifs

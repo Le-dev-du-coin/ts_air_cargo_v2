@@ -1,0 +1,268 @@
+{% extends "chine/base.html" %}
+{% load currency_tags %}
+
+{% block header %}Modifier le Carton : {{ object.reference }}{% endblock %}
+
+{% block chine_content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white shadow sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div id="colis-calculator" x-data="colisCalculator(JSON.parse('{{ tarif_json|default:'{}'|escapejs }}'), JSON.parse('{{ special_tarifs_json|default:'{}'|escapejs }}'))">
+                <form method="post" enctype="multipart/form-data" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                        <!-- Client -->
+                        <div class="sm:col-span-6">
+                            <label class="block text-sm font-medium text-gray-700">Client</label>
+                            <div class="mt-1">
+                                {{ form.client }}
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="sm:col-span-6">
+                            <label class="block text-sm font-medium text-gray-700">Description</label>
+                            <div class="mt-1">
+                                {{ form.description }}
+                            </div>
+                        </div>
+
+                        <!-- Type & Poids/Pièces -->
+                        <div class="sm:col-span-3">
+                            <label class="block text-sm font-medium text-gray-700">Type de Colis</label>
+                            {{ form.type_colis }}
+                        </div>
+
+                        <div class="sm:col-span-3" x-show="type_colis === 'TELEPHONE'">
+                            <label class="block text-sm font-medium text-gray-700">Nombre de Pièces</label>
+                            {{ form.nombre_pieces }}
+                        </div>
+
+                        <div class="sm:col-span-3" x-show="type_colis !== 'TELEPHONE' && transportType !== 'BATEAU'">
+                            <label class="block text-sm font-medium text-gray-700">Poids (kg)</label>
+                            {{ form.poids }}
+                        </div>
+
+                        <div class="sm:col-span-3" x-show="transportType === 'BATEAU'">
+                            <label class="block text-sm font-medium text-gray-700">Volume (CBM)</label>
+                            {{ form.cbm }}
+                        </div>
+                    </div>
+
+                    <!-- Prix Manuel -->
+                    <div class="pt-4 border-t border-gray-100" x-show="type_colis === 'MANUEL'">
+                        <label class="block text-sm font-medium text-gray-700">Prix Kilo Manuel (FCFA)</label>
+                        {{ form.prix_kilo_manuel }}
+                    </div>
+
+                    <!-- Prix Final & Paiement -->
+                    <div class="pt-4 border-t border-gray-100 bg-gray-50 p-4 rounded-md">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <!-- Prix Final -->
+                <div class="space-y-1">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">
+                        {{ form.prix_final.label }} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.prix_final }}
+                    <p id="price-error" class="hidden text-[10px] text-red-600 font-bold animate-pulse"></p>
+                    <p class="text-[10px] text-gray-500">Auto-rempli selon les tarifs.</p>
+                    {% if form.prix_final.errors %}<p class="mt-1 text-xs text-red-600">{{ form.prix_final.errors.0 }}</p>{% endif %}
+                </div>
+                            <div class="flex items-center pt-6">
+                                {{ form.est_paye }}
+                                <label class="ml-2 block text-sm text-gray-900 font-medium">Déjà Payé en Chine ?</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Photo -->
+                    <div class="pt-4 border-t border-gray-100" x-data="photoHandler()">
+                        <label class="block text-sm font-medium text-gray-700">Photo du Carton</label>
+                        {% if object.photo %}
+                        <div class="mt-2 mb-2">
+                            <img src="{{ object.photo.url }}" class="h-32 w-auto rounded-lg shadow-sm border border-gray-200">
+                            <p class="text-xs text-gray-500 mt-1">Photo actuelle</p>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="flex flex-col gap-3">
+                            <div class="flex gap-2">
+                                <button type="button" @click="openWebcam()" 
+                                        class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <svg class="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Caméra (Prendre Photo)
+                                </button>
+                                {{ form.photo }}
+                            </div>
+
+                            <!-- Webcam Preview -->
+                            <div x-show="showWebcam" x-cloak class="relative rounded-lg overflow-hidden bg-black aspect-video mt-2">
+                                <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                                <div class="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
+                                    <button type="button" @click="capturePhoto()" class="bg-indigo-600 text-white p-2 rounded-full shadow-lg hover:bg-indigo-700">
+                                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                    <button type="button" @click="closeWebcam()" class="bg-gray-600 text-white p-2 rounded-full shadow-lg hover:bg-gray-700">
+                                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Photo Preview -->
+                            <div x-show="photoPreview" x-cloak class="mt-2 relative inline-block">
+                                <img :src="photoPreview" class="h-32 w-auto rounded-lg shadow-sm border border-gray-200">
+                                <button type="button" @click="clearPhoto()" class="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 border border-red-200 hover:bg-red-200">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                </button>
+                            </div>
+
+                            <!-- Hidden compressed field -->
+                            <input type="hidden" name="compressed_photo" x-model="compressedBlobBase64">
+                        </div>
+                    </div>
+
+                    <div class="pt-5 flex justify-end gap-3">
+                        <a href="{% url 'chine:lot_detail' object.lot.pk %}" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Annuler
+                        </a>
+                        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                            Enregistrer les modifications
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('colisCalculator', (tarifs, specialTarifs) => ({
+            type_colis: '{{ object.type_colis|escapejs }}',
+            poids: '{{ object.poids|floatformat:"2"|escapejs }}',
+            prix_kilo_manuel: '{{ object.prix_kilo_manuel|default:""|escapejs }}',
+            nombre_pieces: '{{ object.nombre_pieces|default:"1"|escapejs }}',
+            cbm: '{{ object.cbm|floatformat:"4"|escapejs }}',
+            transportType: '{{ object.lot.type_transport|escapejs }}',
+            tarifs: tarifs,
+            specialTarifs: specialTarifs || {},
+            clientId: '{{ object.client.pk|escapejs }}',
+            
+            init() {
+                // S'assurer que les valeurs numériques sont bien parsées (gestion locale fr-FR)
+                this.poids = String(this.poids).replace(',', '.');
+                this.cbm = String(this.cbm).replace(',', '.');
+                
+                this.calculate(); // Initial calculation
+                this.$watch('clientId', () => this.calculate());
+                this.$watch('cbm', () => this.calculate());
+                this.$watch('poids', () => this.calculate());
+                this.$watch('type_colis', () => this.calculate());
+                this.$watch('prix_kilo_manuel', () => this.calculate());
+                this.$watch('nombre_pieces', () => this.calculate());
+            },
+
+            hasSpecialTarif() {
+                return this.clientId && (String(this.clientId) in this.specialTarifs);
+            },
+
+            getSpecialTarif() {
+                return this.specialTarifs[this.clientId];
+            },
+
+            calculate() {
+                const cbmVal = parseFloat(this.cbm) || 0;
+                if (this.type_colis === 'ELECTRONIQUE') return;
+                if (!this.tarifs) return; 
+                let prix = 0;
+                
+                if (this.transportType === 'BATEAU') {
+                    if (this.tarifs.BATEAU) {
+                        prix = cbmVal * this.tarifs.BATEAU.prix_cbm;
+                    }
+                } else if (this.type_colis === 'MANUEL') {
+                    const p = parseFloat(this.poids) || 0;
+                    const prixKiloManuel = parseFloat(this.prix_kilo_manuel) || 0;
+                    prix = p * prixKiloManuel;
+                } else if (this.type_colis === 'TELEPHONE') {
+                    const pieces = parseInt(this.nombre_pieces) || 0;
+                    if (this.tarifs.TELEPHONE) {
+                        prix = pieces * this.tarifs.TELEPHONE.prix_piece;
+                    }
+                } else {
+                    const p = parseFloat(this.poids) || 0;
+                    let prixKilo = 0;
+                    if (this.hasSpecialTarif()) {
+                        prixKilo = this.getSpecialTarif();
+                    } else {
+                        prixKilo = (this.tarifs && this.tarifs[this.transportType]) ? this.tarifs[this.transportType].prix_kilo : 0;
+                    }
+                    prix = p * prixKilo;
+                }
+                
+                const prixFinalInput = document.getElementById('id_prix_final');
+                if (prixFinalInput) {
+                    prixFinalInput.value = Math.ceil(prix);
+                }
+            }
+        }));
+
+        Alpine.data('photoHandler', () => ({
+            showWebcam: false,
+            photoPreview: null,
+            compressedBlobBase64: '',
+            stream: null,
+
+            async openWebcam() {
+                this.showWebcam = true;
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: "environment" } 
+                    });
+                    this.$refs.video.srcObject = this.stream;
+                } catch (err) {
+                    console.error("Webcam error:", err);
+                    alert("Impossible d'accéder à la caméra.");
+                    this.showWebcam = false;
+                }
+            },
+
+            capturePhoto() {
+                const video = this.$refs.video;
+                const canvas = document.createElement('canvas');
+                const scale = 1200 / Math.max(video.videoWidth, video.videoHeight);
+                canvas.width = video.videoWidth * Math.min(1, scale);
+                canvas.height = video.videoHeight * Math.min(1, scale);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                this.photoPreview = canvas.toDataURL('image/jpeg', 0.8);
+                this.compressedBlobBase64 = this.photoPreview;
+                this.closeWebcam();
+            },
+
+            closeWebcam() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                }
+                this.showWebcam = false;
+            },
+
+            clearPhoto() {
+                this.photoPreview = null;
+                this.compressedBlobBase64 = '';
+            }
+        }));
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        new TomSelect('#id_client', {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        });
+    });
+</script>
+{% endblock %}

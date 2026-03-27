@@ -175,6 +175,11 @@ class MaliAddColisForm(forms.Form):
         label="Description (optionnel)",
         widget=forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': 'Décription du colis...'})
     )
+    photo = forms.ImageField(
+        required=False,
+        label="Photo du colis",
+        widget=forms.FileInput(attrs={'class': 'w-full border-gray-300 rounded-xl text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100'})
+    )
 
     def __init__(self, *args, **kwargs):
         country = kwargs.pop('country', None)

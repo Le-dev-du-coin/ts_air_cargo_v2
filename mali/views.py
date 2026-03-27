@@ -1587,7 +1587,9 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         # Création des encaissements en masse
         encaissements_to_create = []
         for c in colis_list:
-            new_paid = (c.prix_final or 0) - (c.montant_jc or 0) - (c.reste_a_payer or 0)
+            new_paid = (
+                (c.prix_final or 0) - (c.montant_jc or 0) - (c.reste_a_payer or 0)
+            )
             diff = new_paid - old_paid_map.get(c.id, 0)
             if diff > 0 and not c.paye_en_chine:
                 encaissements_to_create.append(
@@ -1596,13 +1598,12 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                         montant=diff,
                         date=c.date_encaissement or timezone.now().date(),
                         methode=c.mode_paiement or "ESPECE",
-                        enregistre_par=request.user
+                        enregistre_par=request.user,
                     )
                 )
 
         if encaissements_to_create:
             EncaissementColis.objects.bulk_create(encaissements_to_create)
-
 
         # Grouper les notifications
         from notification.tasks import send_notification_async
@@ -2196,6 +2197,16 @@ class ColisUpdateMaliView(LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView
     form_class = ColisUpdateMaliForm
     template_name = "mali/colis_update.html"
 
+    def dispatch(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.lot.status != "OUVERT":
+            messages.error(
+                request,
+                f"La modification est interdite car le lot {obj.lot.numero} est déjà {obj.lot.get_status_display().lower()}.",
+            )
+            return redirect("mali:admin_correction_lot_detail", pk=obj.lot.pk)
+        return super().dispatch(request, *args, **kwargs)
+
     def get_success_url(self):
         messages.success(
             self.request,
@@ -2411,9 +2422,8 @@ class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
         context["total_colis_mois"] = Colis.objects.filter(
             lot__destination=mali,
             lot__date_arrivee__year=now.year,
-            lot__date_arrivee__month=now.month
+            lot__date_arrivee__month=now.month,
         ).count()
-
 
         # Lots par statut
         context["lots_en_cours"] = Lot.objects.filter(
@@ -2750,14 +2760,15 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
             colis.sortie_sous_garantie = False
             colis.sortie_autorisee_par = ""
             colis.save()
-            
+
             # Notification d'excuse
             if colis.client and colis.client.user:
                 try:
                     from notification.tasks import send_notification_async
+
                     message = (
                         f"Cher client, une erreur s'est glissée dans le suivi de votre colis {colis.reference}. "
-                        "Il n'est pas encore prêt. Nous vous prions de nous excuser. "
+                        "Il n'est pas encore arrivé. Nous vous prions de nous excuser. "
                         "Vous recevrez une nouvelle notification dès qu'il sera disponible."
                     )
                     send_notification_async.delay(
@@ -2765,7 +2776,7 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
                         message=message,
                         categorie="autre",
                         titre=f"Correction Suivi - {colis.reference}",
-                        region="mali"
+                        region="mali",
                     )
                 except Exception:
                     pass
@@ -2785,11 +2796,12 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
             colis.sortie_sous_garantie = False
             colis.sortie_autorisee_par = ""
             colis.save()
-            
+
             # Notification d'excuse
             if colis.client and colis.client.user:
                 try:
                     from notification.tasks import send_notification_async
+
                     message = (
                         f"Cher client, une erreur s'est glissée dans le suivi de votre colis {colis.reference}. "
                         "Celui-ci est marqué comme 'Non Livré' pour correction. "
@@ -2800,7 +2812,7 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
                         message=message,
                         categorie="autre",
                         titre=f"Correction Livraison - {colis.reference}",
-                        region="mali"
+                        region="mali",
                     )
                 except Exception:
                     pass
@@ -2841,7 +2853,7 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
         from .forms import MaliAddColisForm
 
         lot = get_object_or_404(Lot, pk=lot_pk, destination=request.user.country)
-        form = MaliAddColisForm(request.POST, country=request.user.country)
+        form = MaliAddColisForm(request.POST, request.FILES, country=request.user.country)
 
         if form.is_valid():
             data = form.cleaned_data
@@ -2854,19 +2866,37 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
                 cbm=data.get("cbm") or 0,
                 nombre_pieces=data.get("nombre_pieces") or 1,
                 description=data.get("description", ""),
+                photo=data.get("photo"),
                 status=Colis.Status.ARRIVE,
                 ajoute_par_mali=True,
             )
-            
+
+            # Handle Base64 photo (Webcam/Compressed)
+            compressed_photo_data = request.POST.get("compressed_photo")
+            if compressed_photo_data and compressed_photo_data.startswith("data:image"):
+                try:
+                    import base64
+                    from django.core.files.base import ContentFile
+                    import uuid
+
+                    format, imgstr = compressed_photo_data.split(";base64,")
+                    ext = format.split("/")[-1]
+                    photo_content = ContentFile(
+                        base64.b64decode(imgstr),
+                        name=f"colis_mali_{uuid.uuid4().hex[:8]}.{ext}",
+                    )
+                    colis.photo.save(photo_content.name, photo_content, save=False)
+                except Exception:
+                    pass
+
             colis.save()
-            
+
             # Si un prix final est saisi manuellement, on l'utilise (après le save pour éviter l'écrasement auto)
             if data.get("prix_final"):
                 colis.prix_final = data["prix_final"]
                 colis.prix_transport = data["prix_final"]
                 Colis.objects.filter(pk=colis.pk).update(
-                    prix_final=colis.prix_final, 
-                    prix_transport=colis.prix_transport
+                    prix_final=colis.prix_final, prix_transport=colis.prix_transport
                 )
 
             # Essaie d'envoyer la notification WhatsApp si configurée
@@ -2886,7 +2916,7 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
                         message=message,
                         categorie="lot_arrive",
                         titre=f"Arrivée Colis {colis.reference}",
-                        region="mali"
+                        region="mali",
                     )
             except Exception:
                 pass  # Notification non bloquante
@@ -2900,3 +2930,54 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
         return render(
             request, "mali/admin/add_colis_to_lot.html", {"lot": lot, "form": form}
         )
+
+from django.http import JsonResponse
+
+class MaliCalculatePriceView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
+    """
+    API pour calculer le prix d'un colis en temps réel via AJAX.
+    """
+    def get(self, request):
+        client_id = request.GET.get('client_id')
+        lot_id = request.GET.get('lot_id')
+        type_colis = request.GET.get('type_colis', 'STANDARD')
+        poids = request.GET.get('poids', 0)
+        cbm = request.GET.get('cbm', 0)
+        nombre_pieces = request.GET.get('nombre_pieces', 1)
+
+        if not all([client_id, lot_id]):
+            return JsonResponse({'error': 'Paramètres manquants'}, status=400)
+
+        try:
+            from core.models import Client, Lot, Colis
+            from decimal import Decimal
+            client = Client.objects.get(pk=client_id)
+            lot = Lot.objects.get(pk=lot_id)
+            
+            # Conversion sécurisée (évite erreurs si virgule ou vide) - Utilise Decimal pour éviter TypeError avec les modèles
+            try:
+                p_val = Decimal(str(poids).replace(',', '.')) if poids and str(poids).strip() else Decimal('0')
+                c_val = Decimal(str(cbm).replace(',', '.')) if cbm and str(cbm).strip() else Decimal('0')
+                n_val = int(nombre_pieces) if nombre_pieces else 1
+            except (ValueError, TypeError, Exception):
+                p_val = Decimal('0')
+                c_val = Decimal('0')
+                n_val = 1
+
+            temp_colis = Colis(
+                client=client,
+                lot=lot,
+                type_colis=type_colis,
+                poids=p_val,
+                cbm=c_val,
+                nombre_pieces=n_val
+            )
+            temp_colis.recalculate_prices()
+            
+            return JsonResponse({
+                'prix_final': float(temp_colis.prix_final or 0),
+                'prix_transport': float(temp_colis.prix_transport or 0),
+                'success': True
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e), 'prix_final': 0, 'success': False}, status=400)
