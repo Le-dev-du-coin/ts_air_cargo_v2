@@ -2489,9 +2489,10 @@ class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
 
         context["rh_mois"] = total_avances + total_salaires
 
-        # Caisse nette de l'agence (Basée sur les encaissements réels)
+        # Caisse nette de l'agence (Basée sur le bénéfice théorique du mois)
+        # On utilise recettes_mois (théorique) pour être cohérent avec les autres cartes du dashboard
         context["caisse_nette"] = (
-            recette_reelle - total_depenses - total_transferts - context["rh_mois"]
+            context["recettes_mois"] - total_depenses - total_transferts - context["rh_mois"]
         )
 
         # Dernières livraisons
@@ -2586,6 +2587,7 @@ class MaliAgentRemunerationView(AdminMaliRequiredMixin, TemplateView):
 
         # Stats du Mali pour la liste des agents
         stats_ml = get_country_stats("ML", selected_year, selected_month)
+        context["stats_ml"] = stats_ml
         context["agents_data"] = stats_ml.get("agents_remuneration", [])
 
         # Liste des paiements

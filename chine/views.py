@@ -145,11 +145,13 @@ def get_country_stats(country_code, year=None, month=None):
         stats["autres_depenses"] + stats["total_transferts"]
     )
 
+    # Le Bénéfice Net (partageable) = Recettes - Coûts fixes (Transport, Douane, Dépenses Agence)
+    # On n'inclut pas les transferts de fonds car ce sont des mouvements de trésorerie, pas des charges opérationnelles.
     stats["benefice"] = (
         stats["montant_colis"]
         - stats["cout_transport"]
         - stats["cout_douane"]
-        - stats["total_depenses_global"]
+        - stats["autres_depenses"]
     )
 
     # ------------------ SEPARATION AVION / BATEAU ------------------
@@ -172,18 +174,22 @@ def get_country_stats(country_code, year=None, month=None):
     stats["nb_colis"] = colis.count()
 
     # Filtrage des agents par rôle spécifique au pays
+    # On inclut ADMIN_CHINE dans tous les pays car ils peuvent avoir une commission sur tous les bénéfices
     role_map = {
-        "ML": ["ADMIN_MALI", "AGENT_MALI"],
-        "CI": ["AGENT_RCI"],
+        "ML": ["ADMIN_MALI", "AGENT_MALI", "ADMIN_CHINE"],
+        "CI": ["AGENT_RCI", "ADMIN_CHINE"],
         "CN": ["ADMIN_CHINE", "AGENT_CHINE"],
     }
     allowed_roles = role_map.get(country_code, [])
 
-    agents = User.objects.filter(country__code=country_code)
+    agents = User.objects.filter(Q(country__code=country_code) | Q(role="ADMIN_CHINE"))
     if allowed_roles:
         agents = agents.filter(role__in=allowed_roles)
     else:
         agents = agents.exclude(role__in=["CLIENT", "GLOBAL_ADMIN"])
+    
+    # Éviter les doublons si l'admin chine est déjà dans le pays (peu probable mais possible)
+    agents = agents.distinct()
     
     agents_remuneration = []
     total_commissions = 0
@@ -1945,6 +1951,8 @@ class RemunerationListView(LoginRequiredMixin, AdminChineRequiredMixin, Template
         agents_data.extend(stats_cn.get("agents_remuneration", []))
 
         context["agents_data"] = agents_data
+        context["stats_ml"] = stats_ml
+        context["stats_ci"] = stats_ci
         context["stats_cn"] = stats_cn
 
         # Historique des paiements de ce mois-ci

@@ -40,63 +40,91 @@
         </form>
     </div>
 
-    <!-- Tableau de bord et Historique -->
+    <!-- Tableau de bord Global -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-indigo-600 rounded-xl shadow-md p-6 text-white">
+            <p class="text-xs font-bold uppercase tracking-widest text-indigo-100">Bénéfice Mali partageable</p>
+            <p class="text-2xl font-black mt-1">{{ stats_ml.benefice|floatformat:0|intcomma }} <span class="text-xs font-normal">FCFA</span></p>
+        </div>
+        <div class="bg-blue-600 rounded-xl shadow-md p-6 text-white">
+            <p class="text-xs font-bold uppercase tracking-widest text-blue-100">Bénéfice RCI partageable</p>
+            <p class="text-2xl font-black mt-1">{{ stats_ci.benefice|floatformat:0|intcomma }} <span class="text-xs font-normal">FCFA</span></p>
+        </div>
+        <div class="bg-gray-800 rounded-xl shadow-md p-6 text-white">
+            <p class="text-xs font-bold uppercase tracking-widest text-gray-300">Bénéfice Chine / Total</p>
+            <p class="text-2xl font-black mt-1">{{ stats_cn.benefice|floatformat:0|intcomma }} <span class="text-xs font-normal">FCFA</span></p>
+        </div>
+    </div>
+
+    <!-- Liste des Agents -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Liste des Agents (2 Colonnes) -->
-        <div class="lg:col-span-2 space-y-4">
-            <h3 class="text-lg font-medium leading-6 text-gray-900">Calcul des Rémunérations</h3>
+        <div class="lg:col-span-2 space-y-8">
             
-            <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                <ul class="divide-y divide-gray-200">
-                    {% for data in agents_data %}
-                    <li class="p-4 hover:bg-gray-50 flex flex-col sm:flex-row justify-between sm:items-center">
-                        <div class="flex items-center mb-4 sm:mb-0">
-                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold uppercase">
-                                {{ data.agent.username|slice:":2" }}
+            {% regroup agents_data by agent.country.name as country_list %}
+
+            {% for country in country_list %}
+            <div class="space-y-4">
+                <div class="flex items-center space-x-2 border-b-2 border-gray-100 pb-2">
+                    <span class="p-1.5 bg-indigo-50 rounded-md">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.5a3 3 0 013 3V16.5m-3-12.135A9 9 0 113.55 15.35"></path></svg>
+                    </span>
+                    <h3 class="text-lg font-bold text-gray-900">Agents du país : {{ country.grouper }}</h3>
+                </div>
+
+                <div class="bg-white shadow-sm border border-gray-100 overflow-hidden sm:rounded-xl">
+                    <ul class="divide-y divide-gray-100">
+                        {% for data in country.list %}
+                        <li class="p-5 hover:bg-gray-50 flex flex-col sm:flex-row justify-between sm:items-center transition duration-150">
+                            <div class="flex items-center mb-4 sm:mb-0">
+                                <div class="flex-shrink-0 h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold uppercase text-lg border-2 border-indigo-200">
+                                    {% if data.agent.first_name or data.agent.last_name %}
+                                        {{ data.agent.first_name|slice:":1" }}{{ data.agent.last_name|slice:":1" }}
+                                    {% else %}
+                                        {{ data.agent.username|slice:":2" }}
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-base font-bold text-gray-900">{{ data.agent.get_full_name|default:data.agent.username }}</h4>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                            {{ data.mode }} ({{ data.valeur|floatformat:0 }}{% if data.mode == 'Commission (%)' %}%{% else %} FCFA{% endif %})
+                                        </span>
+                                    </p>
+                                </div>
                             </div>
-                            <div class="ml-4">
-                                <h4 class="text-sm font-bold text-gray-900">{{ data.agent.get_full_name|default:data.agent.username }}</h4>
-                                <p class="text-xs text-gray-500">{{ data.agent.country.name }}</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                        {{ data.mode }} ({{ data.valeur }}{% if data.mode == 'Commission (%)' %}%{% else %} FCFA{% endif %})
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex flex-col items-end space-y-1 text-right">
-                            <p class="text-sm text-gray-500">Dû Théorique : <strong class="text-gray-900">{{ data.montant|floatformat:0|intcomma }}</strong> FCFA</p>
-                            <p class="text-sm text-gray-500">Paiements : <strong class="text-green-600">{{ data.paiements_effectues|floatformat:0|intcomma }}</strong> FCFA</p>
-                            {% if data.avances_total %}
-                            <p class="text-[11px] text-gray-400">Avances déduites : <span class="text-orange-500 font-semibold">{{ data.avances_total|floatformat:0|intcomma }} FCFA</span></p>
-                            {% endif %}
                             
-                            <div class="mt-2 pt-2 border-t border-gray-100 w-full flex justify-between items-center sm:justify-end sm:space-x-4">
-                                <span class="text-sm font-bold {% if data.reste_a_payer > 0 %}text-red-600{% else %}text-gray-400{% endif %}">
-                                    Reste : {{ data.reste_a_payer|floatformat:0|intcomma }}
-                                </span>
-                                
-                                {% if data.reste_a_payer > 0 %}
-                                <button @click="openModal('{{ data.agent.id }}', '{{ data.agent.username|escapejs }}', {{ data.reste_a_payer|floatformat:0 }})" 
-                                        type="button" 
-                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700">
-                                    Payer
-                                </button>
-                                {% else %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    ✓ Réglé
-                                </span>
+                            <div class="flex flex-col items-end space-y-1 text-right">
+                                <p class="text-sm text-gray-500">Dû Théorique : <strong class="text-gray-900">{{ data.montant|floatformat:0|intcomma }}</strong> FCFA</p>
+                                <p class="text-sm text-gray-500">Déjà Payé : <strong class="text-green-600">{{ data.paiements_effectues|floatformat:0|intcomma }}</strong> FCFA</p>
+                                {% if data.avances_total %}
+                                <p class="text-[11px] text-gray-400">Avances prises : <span class="text-orange-500 font-semibold">{{ data.avances_total|floatformat:0|intcomma }} FCFA</span></p>
                                 {% endif %}
+                                
+                                <div class="mt-2 pt-2 border-t border-gray-100 w-full flex justify-between items-center sm:justify-end sm:space-x-4">
+                                    <span class="text-sm font-bold {% if data.reste_a_payer > 0 %}text-red-900{% else %}text-gray-400{% endif %}">
+                                        RESTE : {{ data.reste_a_payer|floatformat:0|intcomma }} FCFA
+                                    </span>
+                                    
+                                    {% if data.reste_a_payer > 0 %}
+                                    <button @click="openModal('{{ data.agent.id }}', '{{ data.agent.username|escapejs }}', {{ data.reste_a_payer|floatformat:0 }})" 
+                                            type="button" 
+                                            class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg shadow-sm transition">
+                                        Payer
+                                    </button>
+                                    {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        ✓ Réglé
+                                    </span>
+                                    {% endif %}
+                                </div>
                             </div>
-                        </div>
-                    </li>
-                    {% empty %}
-                    <li class="p-4 text-center text-gray-500">Aucun agent (Commission/Salaire) trouvé.</li>
-                    {% endfor %}
-                </ul>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
+            {% endfor %}
         </div>
 
         <!-- Historique (1 Colonne) -->
