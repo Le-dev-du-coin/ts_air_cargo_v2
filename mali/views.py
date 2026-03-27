@@ -2482,8 +2482,8 @@ class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
 
         salaires = PaiementAgent.objects.filter(
             agent__country=mali,
-            date_paiement__year=now.year,
-            date_paiement__month=now.month,
+            periode_annee=now.year,
+            periode_mois=now.month,
         )
         total_salaires = salaires.aggregate(t=Sum("montant"))["t"] or 0
 

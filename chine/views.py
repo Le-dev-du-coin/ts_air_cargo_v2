@@ -141,17 +141,29 @@ def get_country_stats(country_code, year=None, month=None):
         stats["cout_douane"] = lots.aggregate(total=Sum("frais_douane"))["total"] or 0
         stats["autres_depenses"] = depenses.aggregate(total=Sum("montant"))["total"] or 0
 
-    stats["total_depenses_global"] = (
-        stats["autres_depenses"] + stats["total_transferts"]
-    )
+    # Calcul des charges RH du pays (Salaires fixes + Avances) pour la période
+    # Cela permet d'aligner la formule sur la "Caisse Nette" du dashboard Mali
+    total_avances_pays = 0
+    total_salaires_pays = 0
+    if year and month:
+        total_avances_pays = AvanceSalaire.objects.filter(
+            agent__country__code=country_code, date__year=year, date__month=month
+        ).aggregate(total=Sum("montant"))["total"] or 0
+        total_salaires_pays = PaiementAgent.objects.filter(
+            agent__country__code=country_code, periode_annee=year, periode_mois=month
+        ).aggregate(total=Sum("montant"))["total"] or 0
+    
+    stats["total_rh"] = total_avances_pays + total_salaires_pays
 
-    # Le Bénéfice Net (partageable) = Recettes - Coûts fixes (Transport, Douane, Dépenses Agence)
-    # On n'inclut pas les transferts de fonds car ce sont des mouvements de trésorerie, pas des charges opérationnelles.
+    # Le Bénéfice Net (partageable) = Recettes - (Fret + Douane + Dépenses + Transferts + RH)
+    # Formule alignée sur la Caisse Nette du Dashboard
     stats["benefice"] = (
         stats["montant_colis"]
         - stats["cout_transport"]
         - stats["cout_douane"]
         - stats["autres_depenses"]
+        - stats["total_transferts"]
+        - stats["total_rh"]
     )
 
     # ------------------ SEPARATION AVION / BATEAU ------------------
