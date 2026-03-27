@@ -1,0 +1,79 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block header %}Modifier Transfert{% endblock %}
+
+{% block mali_content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white shadow-sm rounded-xl border border-gray-100 overflow-hidden">
+        <div class="bg-blue-600 px-6 py-4">
+            <h3 class="text-lg font-bold text-white uppercase tracking-tight">Détails du Transfert</h3>
+        </div>
+        
+        <form method="post" enctype="multipart/form-data" class="p-6 space-y-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Date</label>
+                    <input type="date" name="date" value="{{ form.date.value|date:'Y-m-d' }}" 
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    {% if form.date.errors %}<p class="text-red-500 text-xs mt-1">{{ form.date.errors }}</p>{% endif %}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Montant (FCFA)</label>
+                    <input type="number" name="montant" value="{{ form.montant.value }}" 
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    {% if form.montant.errors %}<p class="text-red-500 text-xs mt-1">{{ form.montant.errors }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Destinataire</label>
+                <select name="destinataire" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    {% for val, label in form.fields.destinataire.choices %}
+                        <option value="{{ val }}" {% if form.destinataire.value == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.destinataire.errors %}<p class="text-red-500 text-xs mt-1">{{ form.destinataire.errors }}</p>{% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Description</label>
+                <textarea name="description" rows="3" 
+                          class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">{{ form.description.value|default:"" }}</textarea>
+                {% if form.description.errors %}<p class="text-red-500 text-xs mt-1">{{ form.description.errors }}</p>{% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Statut</label>
+                <select name="statut" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    {% for val, label in form.fields.statut.choices %}
+                        <option value="{{ val }}" {% if form.statut.value == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.statut.errors %}<p class="text-red-500 text-xs mt-1">{{ form.statut.errors }}</p>{% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Preuve de transfert (Image)</label>
+                {% if object.preuve_image %}
+                    <div class="mb-4">
+                        <img src="{{ object.preuve_image.url }}" class="h-32 rounded-lg border border-gray-200">
+                    </div>
+                {% endif %}
+                <input type="file" name="preuve_image" 
+                       class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            </div>
+
+            <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-100">
+                <a href="{% url 'mali:transferts_list' %}" class="text-gray-500 hover:text-gray-700 font-bold uppercase tracking-tight text-sm">Annuler</a>
+                <button type="submit" class="bg-blue-600 px-6 py-2 rounded-lg text-white font-black uppercase tracking-tight hover:bg-blue-700 transition shadow-sm">
+                    Mettre à jour
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

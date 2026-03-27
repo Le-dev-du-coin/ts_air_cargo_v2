@@ -49,6 +49,7 @@ from report.views import (
     RapportFinancierView,
     TransfertListView,
     TransfertCreateView,
+    TransfertUpdateView,
     RapportExportView,
 )
 
@@ -159,6 +160,11 @@ urlpatterns = [
         "finance/transferts/add/",
         TransfertCreateView.as_view(),
         name="transfert_add",
+    ),
+    path(
+        "finance/transferts/<int:pk>/edit/",
+        TransfertUpdateView.as_view(),
+        name="transfert_edit",
     ),
     path(
         "finance/rapport/export/",

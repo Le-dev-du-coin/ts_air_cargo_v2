@@ -166,9 +166,9 @@ class MaliAddColisForm(forms.Form):
         widget=forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'min': '1'})
     )
     prix_final = forms.DecimalField(
-        max_digits=12, decimal_places=2, min_value=0,
+        max_digits=12, decimal_places=2, min_value=0, required=False,
         label="Prix final (FCFA)",
-        widget=forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': '0'})
+        widget=forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': 'Laisser vide pour calcul auto'})
     )
     description = forms.CharField(
         required=False, max_length=255,

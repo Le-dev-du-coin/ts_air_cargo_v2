@@ -1874,15 +1874,18 @@ class RemunerationListView(LoginRequiredMixin, AdminChineRequiredMixin, Template
             (12, "Décembre"),
         ]
 
-        # Stats ML et CI pour choper agents_remuneration mis à jour avec reste_a_payer
+        # Stats ML, CI et CN pour choper agents_remuneration mis à jour avec reste_a_payer
         stats_ml = get_country_stats("ML", selected_year, selected_month)
         stats_ci = get_country_stats("CI", selected_year, selected_month)
+        stats_cn = get_country_stats("CN", selected_year, selected_month)
 
         agents_data = []
         agents_data.extend(stats_ml.get("agents_remuneration", []))
         agents_data.extend(stats_ci.get("agents_remuneration", []))
+        agents_data.extend(stats_cn.get("agents_remuneration", []))
 
         context["agents_data"] = agents_data
+        context["stats_cn"] = stats_cn
 
         # Historique des paiements de ce mois-ci
         context["paiements"] = PaiementAgent.objects.filter(

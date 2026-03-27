@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-from django.views.generic import ListView, CreateView, DeleteView, TemplateView, View
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.contrib import messages
@@ -355,6 +355,19 @@ class TransfertCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return self.request.META.get("HTTP_REFERER", "/")
+
+
+class TransfertUpdateView(LoginRequiredMixin, UpdateView):
+    model = TransfertArgent
+    fields = ["date", "destinataire", "montant", "description", "preuve_image", "statut"]
+    template_name = "report/transfert_form.html"
+
+    def form_valid(self, form):
+        messages.success(self.request, "Transfert mis à jour avec succès.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy("mali:transferts_list")
 
 
 class RapportExportView(LoginRequiredMixin, View):

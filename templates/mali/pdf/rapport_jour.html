@@ -253,7 +253,7 @@
                 <td class="amount" style="color: var(--text-muted);">
                     {% if colis.montant_jc > 0 %}{{ colis.montant_jc|floatformat:0|intcomma }}{% else %}-{% endif %}
                 </td>
-                <td class="amount text-green" style="font-size: 10px; font-weight: 800;">{{ colis.net_price|floatformat:0|intcomma }}</td>
+                <td class="amount text-green" style="font-size: 10px; font-weight: 800;">{{ colis.montant_paye_jour|floatformat:0|intcomma }}</td>
             </tr>
             {% empty %}
             <tr>

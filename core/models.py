@@ -535,3 +535,36 @@ class AvanceSalaire(models.Model):
 
     class Meta:
         ordering = ["-date", "-created_at"]
+
+
+class EncaissementColis(models.Model):
+    """
+    Historique des paiements (encaissements) pour un colis.
+    Permet de gérer proprement les paiements partiels étalés dans le temps.
+    """
+    colis = models.ForeignKey(Colis, on_delete=models.CASCADE, related_name="encaissements")
+    montant = models.DecimalField(max_digits=12, decimal_places=2, help_text=_("Montant encaissé lors de cette transaction"))
+    date = models.DateField(default=timezone.now)
+    methode = models.CharField(
+        max_length=20,
+        choices=[
+            ("ESPECE", "Espèce"),
+            ("ORANGE_MONEY", "Orange Money"),
+            ("SARALI", "Sarali"),
+            ("AUTRE", "Autre"),
+        ],
+        default="ESPECE"
+    )
+    enregistre_par = models.ForeignKey(User, on_delete=models.PROTECT, related_name="encaissements_colis_realises")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Encaissement Colis")
+        verbose_name_plural = _("Encaissements Colis")
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return f"Paiement {self.montant} pour {self.colis.reference} le {self.date}"
+
