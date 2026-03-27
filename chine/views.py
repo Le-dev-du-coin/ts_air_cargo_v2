@@ -1958,9 +1958,18 @@ class RemunerationListView(LoginRequiredMixin, AdminChineRequiredMixin, Template
         stats_cn = get_country_stats("CN", selected_year, selected_month)
 
         agents_data = []
-        agents_data.extend(stats_ml.get("agents_remuneration", []))
-        agents_data.extend(stats_ci.get("agents_remuneration", []))
-        agents_data.extend(stats_cn.get("agents_remuneration", []))
+        
+        for item in stats_ml.get("agents_remuneration", []):
+            item["source_country"] = "Mali"
+            agents_data.append(item)
+            
+        for item in stats_ci.get("agents_remuneration", []):
+            item["source_country"] = "Côte d'Ivoire"
+            agents_data.append(item)
+            
+        for item in stats_cn.get("agents_remuneration", []):
+            item["source_country"] = "Chine"
+            agents_data.append(item)
 
         context["agents_data"] = agents_data
         context["stats_ml"] = stats_ml
