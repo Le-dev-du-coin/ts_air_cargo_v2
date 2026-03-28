@@ -155,15 +155,16 @@ def get_country_stats(country_code, year=None, month=None):
     
     stats["total_rh"] = total_avances_pays + total_salaires_pays
 
+    # Total regroupé des charges (hors transport/douane) pour le dashboard
+    stats["total_depenses_global"] = stats["autres_depenses"] + stats["total_transferts"] + stats["total_rh"]
+
     # Le Bénéfice Net (partageable) = Recettes - (Fret + Douane + Dépenses + Transferts + RH)
     # Formule alignée sur la Caisse Nette du Dashboard
     stats["benefice"] = (
         stats["montant_colis"]
         - stats["cout_transport"]
         - stats["cout_douane"]
-        - stats["autres_depenses"]
-        - stats["total_transferts"]
-        - stats["total_rh"]
+        - stats["total_depenses_global"]
     )
 
     # ------------------ SEPARATION AVION / BATEAU ------------------
