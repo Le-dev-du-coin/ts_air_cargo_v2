@@ -923,8 +923,8 @@ class LotArriveDetailView(LotDetailView):
         context["total_poids"] = aggregates["total_poids"] or 0
         context["total_montant_colis"] = aggregates["total_montant"] or 0
 
-        # Filtrage des colis listés (ARRIVE + LIVRE pour la pagination visible)
-        colis_qs = self.object.colis.all()
+        # Filtrage des colis listés (Uniquement ARRIVE pour ne pas mélanger avec les LIVRE)
+        colis_qs = self.object.colis.filter(status="ARRIVE")
         qc = self.request.GET.get("qc")
         if qc:
             colis_qs = colis_qs.annotate(
@@ -1829,7 +1829,7 @@ class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, V
 class ColisEncaissementBulkView(
     LoginRequiredMixin, DestinationAgentRequiredMixin, View
 ):
-    """Encaisser plusieurs colis en masse"""
+    """Encaisser plusieurs colis en masse avec gestion optionnelle du paiement partiel global"""
 
     def post(self, request):
         colis_ids = request.POST.getlist("colis_ids")
@@ -1837,46 +1837,141 @@ class ColisEncaissementBulkView(
         date_encaissement = (
             request.POST.get("date_encaissement") or timezone.now().date()
         )
-
+        
         if not colis_ids:
             messages.warning(request, "Aucun colis sélectionné.")
             return redirect("mali:colis_attente_paiement")
 
-        colis_qs = Colis.objects.filter(
-            id__in=colis_ids, status="LIVRE", est_paye=False
-        )
+        # Validation : Un seul client autorisé pour l'encaissement en masse
+        colis_check_qs = Colis.objects.filter(id__in=colis_ids)
+        if colis_check_qs.values("client").distinct().count() > 1:
+            messages.error(
+                request, 
+                "L'encaissement en masse n'est possible que pour les colis d'un même client. Veuillez filtrer par client."
+            )
+            return redirect("mali:colis_attente_paiement")
+
+        # Récupération du montant total reçu (pour paiement partiel groupé)
+        montant_total_recu_str = request.POST.get("montant_total_recu", "").strip()
+        if not montant_total_recu_str:
+            is_partial_bulk = False
+            montant_restant = None
+        else:
+            try:
+                montant_restant = Decimal(montant_total_recu_str)
+                is_partial_bulk = True
+            except Exception:
+                is_partial_bulk = False
+                montant_restant = None
+
+        # On trie par montant décroissant (plus gros d'abord)
+        colis_qs = colis_check_qs.filter(
+            status="LIVRE", est_paye=False
+        ).order_by("-reste_a_payer", "-id")
         colis_list = list(colis_qs)
 
-        now = timezone.now()
         encaissements_to_create = []
-        for c in colis_list:
-            # Montant payé = ce qui restait à payer
-            amount_paid = c.reste_a_payer or 0
+        colis_to_update = []
+        
+        total_encaisse_reel = 0
+        nb_colis_soldes = 0
+        
+        colis_sautes_pour_reliquat = []
 
-            c.est_paye = True
-            c.reste_a_payer = 0
+        # PREMIÈRE PASSE : Solder ce qu'on peut entièrement en priorité sur les gros montants
+        for c in colis_list:
+            if not is_partial_bulk:
+                # Encaissement total classique (mode normal)
+                paiement_colis = c.reste_a_payer or 0
+            else:
+                attendu = c.reste_a_payer or 0
+                if attendu <= montant_restant:
+                    # On a assez pour solder entièrement
+                    paiement_colis = attendu
+                    montant_restant -= paiement_colis
+                else:
+                    # On n'a pas assez pour solder ENTIEREMENT, on saute pour tester les suivants
+                    # (Mais on garde le colis en mémoire s'il est le dernier possible pour le reliquat)
+                    colis_sautes_pour_reliquat.append(c)
+                    continue
+
+            if paiement_colis > 0:
+                # Mise à jour du colis
+                c.reste_a_payer = (c.reste_a_payer or 0) - paiement_colis
+                if c.reste_a_payer <= 0:
+                    c.est_paye = True
+                    c.reste_a_payer = 0
+                    nb_colis_soldes += 1
+                
+                c.mode_paiement = mode_paiement
+                c.date_encaissement = date_encaissement
+                c.updated_at = timezone.now()
+                colis_to_update.append(c)
+                
+                # Création de la transaction
+                encaissements_to_create.append(
+                    EncaissementColis(
+                        colis=c,
+                        montant=paiement_colis,
+                        date=date_encaissement,
+                        methode=mode_paiement,
+                        enregistre_par=request.user
+                    )
+                )
+                total_encaisse_reel += paiement_colis
+
+        # DEUXIÈME PASSE : S'il reste un reliquat, on l'applique au plus petit colis possible (le dernier sauté)
+        if is_partial_bulk and montant_restant > 0 and colis_sautes_pour_reliquat:
+            # On prend le dernier colis de la liste sautée (le plus petit car la liste est décroissante)
+            c = colis_sautes_pour_reliquat[-1]
+            paiement_colis = montant_restant
+            montant_restant = 0 # Tout consommé
+            
+            c.reste_a_payer = (c.reste_a_payer or 0) - paiement_colis
+            if c.reste_a_payer <= 0:
+                c.est_paye = True
+                c.reste_a_payer = 0
+                nb_colis_soldes += 1
+            
             c.mode_paiement = mode_paiement
             c.date_encaissement = date_encaissement
             c.updated_at = timezone.now()
+            colis_to_update.append(c)
+            
+            encaissements_to_create.append(
+                EncaissementColis(
+                    colis=c,
+                    montant=paiement_colis,
+                    date=date_encaissement,
+                    methode=mode_paiement,
+                    enregistre_par=request.user
+                )
+            )
+            total_encaisse_reel += paiement_colis
 
-        Colis.objects.bulk_update(
-            colis_list,
-            [
-                "est_paye",
-                "reste_a_payer",
-                "mode_paiement",
-                "date_encaissement",
-                "updated_at",
-            ],
-        )
+        if colis_to_update:
+            # Note: il faut s'assurer de ne pas avoir de doublons dans colis_to_update si un colis était traité deux fois (normalement non ici)
+            Colis.objects.bulk_update(
+                colis_to_update,
+                [
+                    "est_paye",
+                    "reste_a_payer",
+                    "mode_paiement",
+                    "date_encaissement",
+                    "updated_at",
+                ],
+            )
 
         if encaissements_to_create:
             EncaissementColis.objects.bulk_create(encaissements_to_create)
 
-        messages.success(
-            request,
-            f"{len(colis_list)} paiements encaissés avec succès ({mode_paiement}).",
-        )
+        if is_partial_bulk:
+            suffixe = f" ({nb_colis_soldes} soldés totalement)" if nb_colis_soldes > 0 else ""
+            msg = f"Encaissement de {total_encaisse_reel:,.0f} FCFA avec priorité aux gros montants{suffixe}."
+        else:
+            msg = f"{len(colis_list)} colis encaissés totalement ({mode_paiement})."
+            
+        messages.success(request, msg)
         return redirect("mali:colis_attente_paiement")
 
 
@@ -1910,109 +2005,90 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         elif report_type == "bateau":
             titre_rapport = "Rapport Journalier - BATEAU"
 
-        # Base QuerySet : Colis ayant eu des encaissements aujourd'hui
-        # On récupère tous les colis qui ont au moins un encaissement à la date demandée
-        from core.models import EncaissementColis
-
-        encaissements_du_jour = EncaissementColis.objects.filter(
-            date=today, colis__lot__destination__code="ML"
+        # --- 1. IDENTIFICATION DES COLIS DU JOUR (Même logique que AujourdhuiView) ---
+        mali = self.get_current_country()
+        colis_livres_jour_base = Colis.objects.filter(lot__destination=mali, status="LIVRE").filter(
+            Q(date_encaissement=today) | Q(date_encaissement__isnull=True, date_livraison=today)
         )
 
         if report_type in ["cargo", "express", "bateau"]:
-            encaissements_du_jour = encaissements_du_jour.filter(
-                colis__lot__type_transport=report_type.upper()
+            colis_livres_jour_base = colis_livres_jour_base.filter(
+                lot__type_transport=report_type.upper()
             )
 
-        colis_ids_du_jour = encaissements_du_jour.values_list(
-            "colis_id", flat=True
-        ).distinct()
-
         colis_qs = (
-            Colis.objects.filter(id__in=colis_ids_du_jour)
-            .select_related("client", "lot")
+            colis_livres_jour_base.select_related("client", "lot")
             .annotate(
-                # Pour le rapport, on veut le montant payé CE JOUR-LÀ pour ce colis
-                montant_paye_jour=Sum(
-                    Case(
-                        When(
-                            encaissements__date=today, then=F("encaissements__montant")
-                        ),
-                        default=Value(0),
-                        output_field=DecimalField(),
-                    )
-                )
+                net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
             )
             .order_by("-date_livraison", "-updated_at")
         )
 
-        # Calcul des totaux réels basés sur les transactions du jour
-        encaissements = (
-            encaissements_du_jour.aggregate(total=Sum("montant"))["total"] or 0
-        )
-        total_jc = (
-            colis_qs.aggregate(total=Sum("montant_jc"))["total"] or 0
-        )  # JC est indicatif par colis
+        # Recettes du jour (Somme des net_price des colis identifiés)
+        total_encaissements = colis_qs.aggregate(
+            total=Sum(
+                Case(
+                    When(paye_en_chine=True, then=Value(0)),
+                    default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                    output_field=DecimalField(),
+                )
+            )
+        )["total"] or 0
+        
+        total_jc = colis_qs.aggregate(total=Sum("montant_jc"))["total"] or 0
 
-        # Récupération des dépenses et transferts (Uniquement pour le rapport Global ?)
-        # Décision : On affiche les dépenses/transferts uniquement sur le rapport Global
-        # Car il est difficile de les attribuer à une activité spécifique (sauf si on catégorise les transferts)
+        # --- 2. SOLDE VEILLE (Même logique que AujourdhuiView pour conformité) ---
+        solde_veille = 0
         total_depenses = 0
         total_transferts = 0
-        solde_veille = 0
 
         if report_type == "global":
-            # Solde Veille cumulé (Recettes - Dépenses - Transferts jusqu'à hier)
-            recettes_globales_veille = (
-                EncaissementColis.objects.filter(
-                    colis__lot__destination__code="ML", date__lt=today
-                ).aggregate(total=Sum("montant"))["total"]
+            # Recettes Globales Veille
+            recettes_globales = (
+                Colis.objects.filter(lot__destination=mali, status="LIVRE")
+                .filter(
+                    Q(date_encaissement__lt=today)
+                    | Q(date_encaissement__isnull=True, date_livraison__lt=today)
+                    | Q(date_encaissement__isnull=True, date_livraison__isnull=True)
+                )
+                .aggregate(
+                    total=Sum(
+                        Case(
+                            When(paye_en_chine=True, then=Value(0)),
+                            default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                            output_field=DecimalField(),
+                        )
+                    )
+                )["total"]
                 or 0
             )
 
-            # Dépenses cumulées Mali uniquement (Exclut indicatif Chine)
-            depenses_globales_veille = (
-                Depense.objects.filter(
-                    pays__code="ML", is_china_indicative=False, date__lt=today
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-            from report.models import TransfertArgent
+            # Dépenses Globales Veille
+            depenses_globales = Depense.objects.filter(
+                pays=mali, is_china_indicative=False, date__lt=today
+            ).aggregate(total=Sum("montant"))["total"] or 0
 
-            transferts_globaux_veille = (
-                TransfertArgent.objects.filter(
-                    pays_expediteur__code="ML", date__lt=today
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-            solde_veille = recettes_globales_veille - (
-                depenses_globales_veille + transferts_globaux_veille
-            )
+            # Transferts Globaux Veille
+            transferts_globaux = TransfertArgent.objects.filter(
+                pays_expediteur=mali, date__lt=today
+            ).aggregate(total=Sum("montant"))["total"] or 0
 
-            # Dépenses Jour Mali uniquement
-            total_depenses = (
-                Depense.objects.filter(
-                    pays__code="ML", date=today, is_china_indicative=False
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-            # Transferts Jour
-            total_transferts = (
-                TransfertArgent.objects.filter(
-                    pays_expediteur__code="ML", date=today
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
+            solde_veille = recettes_globales - (depenses_globales + transferts_globaux)
 
-        # Calcul du solde final (pour ce rapport)
-        solde_final = 0
+            # Sorties du Jour
+            total_depenses = Depense.objects.filter(
+                pays=mali, date=today, is_china_indicative=False
+            ).aggregate(total=Sum("montant"))["total"] or 0
+            
+            total_transferts = TransfertArgent.objects.filter(
+                pays_expediteur=mali, date=today
+            ).aggregate(total=Sum("montant"))["total"] or 0
+
+        # Calcul du solde final
         if report_type == "global":
-            solde_final = (
-                solde_veille + encaissements - (total_depenses + total_transferts)
-            )
+            solde_final = solde_veille + total_encaissements - (total_depenses + total_transferts)
         else:
-            solde_final = (
-                encaissements  # Pour un rapport spécifique, le solde est le CA généré
-            )
+            solde_final = total_encaissements
 
         # Calcul du poids total pour le rapport
         total_poids = colis_qs.aggregate(total=Sum("poids"))["total"] or 0
@@ -2023,7 +2099,7 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             "report_type": report_type,
             "titre_rapport": titre_rapport,
             "colis_list": colis_qs,
-            "total_encaissements": encaissements,
+            "total_encaissements": total_encaissements,
             "total_jc": total_jc,
             "total_depenses": total_depenses,
             "total_transferts": total_transferts,

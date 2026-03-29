@@ -223,16 +223,22 @@
                         <div class="flex flex-col">
                             <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Date Encaissement</label>
                             <input type="date" name="date_encaissement" form="bulk-encaissement-form" required value="{% now 'Y-m-d' %}"
-                                   class="block w-36 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                                   class="block w-32 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
                         </div>
                         <div class="flex flex-col">
                             <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Mode</label>
                             <select name="mode_paiement" form="bulk-encaissement-form"
-                                    class="block w-32 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                                    class="block w-30 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
                                 <option value="ESPECE" selected>💵 Espèce</option>
                                 <option value="ORANGE_MONEY">📱 Orange Money</option>
                                 <option value="SARALI">💳 Sarali</option>
                             </select>
+                        </div>
+                        <div class="flex flex-col">
+                            <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Montant Reçu (Optionnel)</label>
+                            <input type="number" name="montant_total_recu" id="montant_total_recu" form="bulk-encaissement-form"
+                                   placeholder="Total payé"
+                                   class="block w-32 border-indigo-400 bg-indigo-700 text-white placeholder-indigo-300 rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
                         </div>
 
                         <form method="POST" action="{% url 'mali:colis_encaisser_bulk' %}" id="bulk-encaissement-form" class="mt-4">
@@ -260,14 +266,24 @@
         const count = document.querySelectorAll('input[name="colis_ids"]:checked').length;
         if (count === 0) return;
 
+        const montantRecu = document.getElementById('montant_total_recu').value;
+        let infoText = "Cette action marquera tous les colis sélectionnés comme payés.";
+        let confirmBtnText = 'Oui, tout encaisser';
+
+        if (montantRecu && parseFloat(montantRecu) > 0) {
+            const formattedMontant = new Intl.NumberFormat('fr-FR').format(montantRecu);
+            infoText = `Vous allez encaisser ${formattedMontant} FCFA qui seront répartis sur les ${count} colis sélectionnés.`;
+            confirmBtnText = 'Confirmer l\'encaissement partiel';
+        }
+
         Swal.fire({
             title: `Encaisser ${count} colis ?`,
-            text: "Cette action marquera tous les colis sélectionnés comme payés.",
+            text: infoText,
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#4f46e5',
             cancelButtonColor: '#d33',
-            confirmButtonText: 'Oui, tout encaisser',
+            confirmButtonText: confirmBtnText,
             cancelButtonText: 'Annuler'
         }).then((result) => {
             if (result.isConfirmed) {
