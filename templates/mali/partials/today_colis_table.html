@@ -55,7 +55,11 @@
                     {% endif %}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-green-600">
-                    {{ colis.net_price|fcfa }}
+                    {% if colis.mode_paiement == 'AVANCE' and colis.net_price == 0 %}
+                        <span class="text-indigo-600 uppercase text-[10px] font-black">Avance</span>
+                    {% else %}
+                        {{ colis.net_price|fcfa }}
+                    {% endif %}
                 </td>
             </tr>
             {% empty %}

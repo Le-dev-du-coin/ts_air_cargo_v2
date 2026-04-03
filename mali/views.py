@@ -109,6 +109,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
                 total=Sum(
                     Case(
                         When(paye_en_chine=True, then=Value(0)),
+                        When(paye_par_avance=True, then=Value(0)),
                         default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
                         output_field=DecimalField(),
                     )
@@ -116,7 +117,20 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
             )["total"]
             or 0
         )
-        context["recettes_mois"] = recettes_mois
+
+        from core.models import AvoirMouvement
+
+        rechargements_avoir_mois = (
+            AvoirMouvement.objects.filter(
+                client__country=mali,
+                type="DEPOT",
+                created_at__year=today.year,
+                created_at__month=today.month,
+            ).aggregate(total=Sum("montant"))["total"]
+            or 0
+        )
+
+        context["recettes_mois"] = recettes_mois + rechargements_avoir_mois
 
         # Poids total des colis livrés (mois en cours)
         total_poids_mois = (
@@ -203,6 +217,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
             total=Sum(
                 Case(
                     When(paye_en_chine=True, then=Value(0)),
+                    When(paye_par_avance=True, then=Value(0)),
                     default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
                     output_field=DecimalField(),
                 )
@@ -281,6 +296,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
                 total=Sum(
                     Case(
                         When(paye_en_chine=True, then=Value(0)),
+                        When(paye_par_avance=True, then=Value(0)),
                         default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
                         output_field=DecimalField(),
                     )
@@ -304,8 +320,19 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             or 0
         )
 
-        context["solde_veille"] = recettes_globales - (
-            depenses_globales + transferts_globaux
+        from core.models import AvoirMouvement
+
+        rechargements_avoir_globaux = (
+            AvoirMouvement.objects.filter(
+                client__country=mali, type="DEPOT", created_at__date__lt=today
+            ).aggregate(total=Sum("montant"))["total"]
+            or 0
+        )
+
+        context["solde_veille"] = (
+            recettes_globales
+            + rechargements_avoir_globaux
+            - (depenses_globales + transferts_globaux)
         )
 
         # --- 2. ACTIVITÉ DU JOUR (Cargo, Express, Bateau) ---
@@ -329,6 +356,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
                 total=Sum(
                     Case(
                         When(paye_en_chine=True, then=Value(0)),
+                        When(paye_par_avance=True, then=Value(0)),
                         default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
                         output_field=DecimalField(),
                     )
@@ -339,7 +367,12 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         poids_cargo = colis_cargo.aggregate(total=Sum("poids"))["total"] or 0
 
         context["colis_cargo_list"] = colis_cargo.annotate(
-            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+            net_price=Case(
+                When(paye_en_chine=True, then=Value(0)),
+                When(paye_par_avance=True, then=Value(0)),
+                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                output_field=DecimalField(),
+            ),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
@@ -354,6 +387,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
                 total=Sum(
                     Case(
                         When(paye_en_chine=True, then=Value(0)),
+                        When(paye_par_avance=True, then=Value(0)),
                         default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
                         output_field=DecimalField(),
                     )
@@ -364,7 +398,12 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         poids_express = colis_express.aggregate(total=Sum("poids"))["total"] or 0
 
         context["colis_express_list"] = colis_express.annotate(
-            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+            net_price=Case(
+                When(paye_en_chine=True, then=Value(0)),
+                When(paye_par_avance=True, then=Value(0)),
+                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                output_field=DecimalField(),
+            ),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
@@ -379,6 +418,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
                 total=Sum(
                     Case(
                         When(paye_en_chine=True, then=Value(0)),
+                        When(paye_par_avance=True, then=Value(0)),
                         default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
                         output_field=DecimalField(),
                     )
@@ -390,7 +430,12 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         cbm_bateau = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
 
         context["colis_bateau_list"] = colis_bateau.annotate(
-            net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+            net_price=Case(
+                When(paye_en_chine=True, then=Value(0)),
+                When(paye_par_avance=True, then=Value(0)),
+                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                output_field=DecimalField(),
+            ),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
@@ -399,9 +444,20 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         context["poids_bateau_jour"] = poids_bateau
         context["cbm_bateau_jour"] = cbm_bateau
 
+        # Dépôts Avoir du Jour
+        rechargements_avoir_jour_qs = AvoirMouvement.objects.filter(
+            client__country=mali, type="DEPOT", created_at__date=today
+        ).order_by("-created_at")
+
+        rechargements_avoir_jour = (
+            rechargements_avoir_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
+        )
+        context["rechargements_avoir_jour"] = rechargements_avoir_jour
+        context["rechargements_avoir_list"] = rechargements_avoir_jour_qs
+
         # Total Recettes Jour
         context["total_recettes_jour"] = (
-            recette_cargo + recette_express + recette_bateau
+            recette_cargo + recette_express + recette_bateau + rechargements_avoir_jour
         )
 
         # Poids Total Jour (Kilos livrés du jour)
@@ -503,7 +559,7 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
                 # Nombre de colis déjà payés en Chine dans ce lot (parmi les colis en transit)
                 nb_colis_payes_chine=Count(
                     "colis",
-                    filter=Q(colis__status="EXPEDIE", colis__est_paye=True),
+                    filter=Q(colis__status="EXPEDIE", colis__paye_en_chine=True),
                 ),
             )
             .annotate(
@@ -561,24 +617,28 @@ class LotsArrivesView(LotsEnTransitView):
         if not mali:
             return Lot.objects.none()
 
-        # Un lot apparaît en arrivés s'il a au moins un colis ARRIVE
+        # Un lot apparaît en arrivés s'il a au moins un colis ARRIVE non traité (aucun paiement)
+        pending_q = Q(
+            colis__status="ARRIVE",
+            colis__est_paye=False,
+            colis__reste_a_payer=F("colis__prix_final") - F("colis__montant_jc")
+        )
+
         queryset = (
-            Lot.objects.filter(destination=mali, colis__status="ARRIVE")
+            Lot.objects.filter(destination=mali)
+            .filter(pending_q)
+            .distinct()
             .select_related("destination")
             .prefetch_related("colis")
             .annotate(
-                # On ne compte que les colis arrivés pour ce lot dans cette vue
-                nb_colis_arrive=Count("colis", filter=Q(colis__status="ARRIVE")),
-                poids_total_arrive=Sum(
-                    "colis__poids", filter=Q(colis__status="ARRIVE")
-                ),
-                total_recettes_arrive=Sum(
-                    "colis__prix_final", filter=Q(colis__status="ARRIVE")
-                ),
-                # Nombre de colis déjà payés en Chine (parmi les colis arrivés)
+                # On ne compte que les colis "vierges" pour ce lot dans cette vue
+                nb_colis_arrive=Count("colis", filter=pending_q),
+                poids_total_arrive=Sum("colis__poids", filter=pending_q),
+                total_recettes_arrive=Sum("colis__prix_final", filter=pending_q),
+                # Note: payé en Chine et imputés n'apparaissent plus ici
                 nb_colis_payes_chine=Count(
                     "colis",
-                    filter=Q(colis__status="ARRIVE", colis__est_paye=True),
+                    filter=pending_q & Q(colis__paye_en_chine=True),
                 ),
             )
             .annotate(
@@ -923,8 +983,12 @@ class LotArriveDetailView(LotDetailView):
         context["total_poids"] = aggregates["total_poids"] or 0
         context["total_montant_colis"] = aggregates["total_montant"] or 0
 
-        # Filtrage des colis listés (Uniquement ARRIVE pour ne pas mélanger avec les LIVRE)
-        colis_qs = self.object.colis.filter(status="ARRIVE")
+        # Filtrage des colis listés (Seul ceux n'ayant AUCUN paiement et non soldés)
+        colis_qs = self.object.colis.filter(
+            status="ARRIVE", 
+            est_paye=False, 
+            reste_a_payer=F("prix_final") - F("montant_jc")
+        )
         qc = self.request.GET.get("qc")
         if qc:
             colis_qs = colis_qs.annotate(
@@ -1019,6 +1083,23 @@ class ColisArriveView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
             return redirect("mali:lot_transit_detail", pk=colis.lot.pk)
 
         colis.status = "ARRIVE"
+        
+        # --- SÉCURITÉ : Colis payé en Chine ---
+        if colis.paye_en_chine:
+            colis.reste_a_payer = 0
+            colis.est_paye = True
+        
+        # --- SÉCURITÉ : Imputation automatique de l'avoir à l'arrivée (Celery) ---
+        if colis.client and colis.client.solde_avoir > 0 and colis.reste_a_payer > 0:
+            try:
+                from notification.tasks import impute_avoir_colis_async
+
+                impute_avoir_colis_async.delay(colis.id, request.user.id)
+            except Exception as e:
+                logger.error(
+                    f"Erreur déclenchement imputation auto colis {colis.id}: {e}"
+                )
+
         colis.save()
 
         # Notification immédiate au client avec rappel du prix
@@ -1120,7 +1201,22 @@ class ColisArriveBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, Vie
         colis_list = list(colis_qs.select_related("client", "client__user"))
 
         # Mettre à jour le statut en masse
-        colis_qs.update(status="ARRIVE")
+        for c in colis_list:
+            c.status = "ARRIVE"
+            if c.paye_en_chine:
+                c.reste_a_payer = 0
+                c.est_paye = True
+            c.save()
+        
+        # --- NOUVEAU : Imputation automatique lors du pointage groupé (Celery) ---
+        try:
+            from notification.tasks import impute_avoir_colis_async
+
+            for c in colis_list:
+                if c.client and c.client.solde_avoir > 0 and c.reste_a_payer > 0:
+                    impute_avoir_colis_async.delay(c.id, request.user.id)
+        except Exception as e:
+            logger.error(f"Erreur déclenchement imputation bulk lot {lot.id}: {e}")
 
         # Grouper les notifications par client pour envoi combiné
         from notification.tasks import send_notification_async
@@ -1224,18 +1320,7 @@ class LotArriveView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
         if not lot.date_arrivee:
             lot.date_arrivee = timezone.now()
 
-        # Si le lot était en transit, il passe en ARRIVE (global)
-        # MODIF : On ne change PAS le statut automatiquement ici pour permettre le pointage dans la vue Transit.
-        # Le statut passera à ARRIVE quand ? Manuellement ou quand tout est pointé ?
-        # Pour l'instant on laisse en TRANSIT pour que l'agent puisse voir la liste et pointer.
-        # if lot.status == "EN_TRANSIT":
-        #    lot.status = "ARRIVE"
-        #    lot.date_arrivee = timezone.now()
-
         lot.save()
-
-        # On peut aussi forcer l'arrivée de tous les colis non pointés si on veut
-        # lot.colis.filter(status="EXPEDIE").update(status="ARRIVE")
 
         messages.success(
             request,
@@ -1753,8 +1838,13 @@ class ColisAttentePaiementView(
         from django.db.models import F, Case, When, DecimalField
 
         queryset = (
-            Colis.objects.filter(lot__destination=mali, status="LIVRE", est_paye=False)
-            .select_related("client", "lot")
+            Colis.objects.filter(
+                Q(lot__destination=mali) & 
+                (
+                    Q(status="LIVRE", est_paye=False) | 
+                    Q(status="ARRIVE", est_paye=False, reste_a_payer__lt=F("prix_final") - F("montant_jc"))
+                )
+            )
             .annotate(
                 montant_du=Case(
                     When(reste_a_payer__gt=0, then=F("reste_a_payer")),
@@ -1837,7 +1927,7 @@ class ColisEncaissementBulkView(
         date_encaissement = (
             request.POST.get("date_encaissement") or timezone.now().date()
         )
-        
+
         if not colis_ids:
             messages.warning(request, "Aucun colis sélectionné.")
             return redirect("mali:colis_attente_paiement")
@@ -1846,8 +1936,8 @@ class ColisEncaissementBulkView(
         colis_check_qs = Colis.objects.filter(id__in=colis_ids)
         if colis_check_qs.values("client").distinct().count() > 1:
             messages.error(
-                request, 
-                "L'encaissement en masse n'est possible que pour les colis d'un même client. Veuillez filtrer par client."
+                request,
+                "L'encaissement en masse n'est possible que pour les colis d'un même client. Veuillez filtrer par client.",
             )
             return redirect("mali:colis_attente_paiement")
 
@@ -1866,16 +1956,17 @@ class ColisEncaissementBulkView(
 
         # On trie par montant décroissant (plus gros d'abord)
         colis_qs = colis_check_qs.filter(
-            status="LIVRE", est_paye=False
+            status__in=["LIVRE", "ARRIVE"], 
+            est_paye=False
         ).order_by("-reste_a_payer", "-id")
         colis_list = list(colis_qs)
 
         encaissements_to_create = []
         colis_to_update = []
-        
+
         total_encaisse_reel = 0
         nb_colis_soldes = 0
-        
+
         colis_sautes_pour_reliquat = []
 
         # PREMIÈRE PASSE : Solder ce qu'on peut entièrement en priorité sur les gros montants
@@ -1902,12 +1993,12 @@ class ColisEncaissementBulkView(
                     c.est_paye = True
                     c.reste_a_payer = 0
                     nb_colis_soldes += 1
-                
+
                 c.mode_paiement = mode_paiement
                 c.date_encaissement = date_encaissement
                 c.updated_at = timezone.now()
                 colis_to_update.append(c)
-                
+
                 # Création de la transaction
                 encaissements_to_create.append(
                     EncaissementColis(
@@ -1915,7 +2006,7 @@ class ColisEncaissementBulkView(
                         montant=paiement_colis,
                         date=date_encaissement,
                         methode=mode_paiement,
-                        enregistre_par=request.user
+                        enregistre_par=request.user,
                     )
                 )
                 total_encaisse_reel += paiement_colis
@@ -1925,26 +2016,26 @@ class ColisEncaissementBulkView(
             # On prend le dernier colis de la liste sautée (le plus petit car la liste est décroissante)
             c = colis_sautes_pour_reliquat[-1]
             paiement_colis = montant_restant
-            montant_restant = 0 # Tout consommé
-            
+            montant_restant = 0  # Tout consommé
+
             c.reste_a_payer = (c.reste_a_payer or 0) - paiement_colis
             if c.reste_a_payer <= 0:
                 c.est_paye = True
                 c.reste_a_payer = 0
                 nb_colis_soldes += 1
-            
+
             c.mode_paiement = mode_paiement
             c.date_encaissement = date_encaissement
             c.updated_at = timezone.now()
             colis_to_update.append(c)
-            
+
             encaissements_to_create.append(
                 EncaissementColis(
                     colis=c,
                     montant=paiement_colis,
                     date=date_encaissement,
                     methode=mode_paiement,
-                    enregistre_par=request.user
+                    enregistre_par=request.user,
                 )
             )
             total_encaisse_reel += paiement_colis
@@ -1966,11 +2057,13 @@ class ColisEncaissementBulkView(
             EncaissementColis.objects.bulk_create(encaissements_to_create)
 
         if is_partial_bulk:
-            suffixe = f" ({nb_colis_soldes} soldés totalement)" if nb_colis_soldes > 0 else ""
+            suffixe = (
+                f" ({nb_colis_soldes} soldés totalement)" if nb_colis_soldes > 0 else ""
+            )
             msg = f"Encaissement de {total_encaisse_reel:,.0f} FCFA avec priorité aux gros montants{suffixe}."
         else:
             msg = f"{len(colis_list)} colis encaissés totalement ({mode_paiement})."
-            
+
         messages.success(request, msg)
         return redirect("mali:colis_attente_paiement")
 
@@ -2007,8 +2100,11 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
 
         # --- 1. IDENTIFICATION DES COLIS DU JOUR (Même logique que AujourdhuiView) ---
         mali = self.get_current_country()
-        colis_livres_jour_base = Colis.objects.filter(lot__destination=mali, status="LIVRE").filter(
-            Q(date_encaissement=today) | Q(date_encaissement__isnull=True, date_livraison=today)
+        colis_livres_jour_base = Colis.objects.filter(
+            lot__destination=mali, status="LIVRE"
+        ).filter(
+            Q(date_encaissement=today)
+            | Q(date_encaissement__isnull=True, date_livraison=today)
         )
 
         if report_type in ["cargo", "express", "bateau"]:
@@ -2019,43 +2115,54 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         colis_qs = (
             colis_livres_jour_base.select_related("client", "lot")
             .annotate(
-                net_price=F("prix_final") - F("montant_jc") - F("reste_a_payer")
+                net_price=Case(
+                    When(paye_en_chine=True, then=Value(0)),
+                    When(est_paye=True, mode_paiement="AVANCE", then=Value(0)),
+                    default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                    output_field=DecimalField(),
+                )
             )
             .order_by("-date_livraison", "-updated_at")
         )
 
         # Recettes du jour (Somme des net_price des colis identifiés)
-        total_encaissements = colis_qs.aggregate(
-            total=Sum(
-                Case(
-                    When(paye_en_chine=True, then=Value(0)),
-                    default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                    output_field=DecimalField(),
+        total_encaissements = (
+            colis_qs.aggregate(
+                total=Sum(
+                    Case(
+                        When(paye_en_chine=True, then=Value(0)),
+                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                        output_field=DecimalField(),
+                    )
                 )
-            )
-        )["total"] or 0
-        
+            )["total"]
+            or 0
+        )
+
         total_jc = colis_qs.aggregate(total=Sum("montant_jc"))["total"] or 0
 
-        # --- 2. SOLDE VEILLE (Même logique que AujourdhuiView pour conformité) ---
+        # --- 2. SOLDE VEILLE & ACTIVITÉ AVOIR ---
         solde_veille = 0
         total_depenses = 0
         total_transferts = 0
+        rechargements_avoir_jour = 0
 
         if report_type == "global":
-            # Recettes Globales Veille
+            # Recettes Globales Veille (Colis)
             recettes_globales = (
                 Colis.objects.filter(lot__destination=mali, status="LIVRE")
                 .filter(
                     Q(date_encaissement__lt=today)
                     | Q(date_encaissement__isnull=True, date_livraison__lt=today)
-                    | Q(date_encaissement__isnull=True, date_livraison__isnull=True)
                 )
                 .aggregate(
                     total=Sum(
                         Case(
                             When(paye_en_chine=True, then=Value(0)),
-                            default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                            When(est_paye=True, mode_paiement="AVANCE", then=Value(0)),
+                            default=F("prix_final")
+                            - F("montant_jc")
+                            - F("reste_a_payer"),
                             output_field=DecimalField(),
                         )
                     )
@@ -2063,30 +2170,69 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                 or 0
             )
 
+            # Avoirs Globaux Veille (Dépôts)
+            from core.models import AvoirMouvement
+
+            avoirs_global_veille = (
+                AvoirMouvement.objects.filter(
+                    client__country=mali, type="DEPOT", created_at__date__lt=today
+                ).aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
+
             # Dépenses Globales Veille
-            depenses_globales = Depense.objects.filter(
-                pays=mali, is_china_indicative=False, date__lt=today
-            ).aggregate(total=Sum("montant"))["total"] or 0
+            depenses_globales = (
+                Depense.objects.filter(
+                    pays=mali, is_china_indicative=False, date__lt=today
+                ).aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
 
             # Transferts Globaux Veille
-            transferts_globaux = TransfertArgent.objects.filter(
-                pays_expediteur=mali, date__lt=today
-            ).aggregate(total=Sum("montant"))["total"] or 0
+            transferts_globaux = (
+                TransfertArgent.objects.filter(
+                    pays_expediteur=mali, date__lt=today
+                ).aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
 
-            solde_veille = recettes_globales - (depenses_globales + transferts_globaux)
+            solde_veille = (recettes_globales + avoirs_global_veille) - (
+                depenses_globales + transferts_globaux
+            )
 
-            # Sorties du Jour
-            total_depenses = Depense.objects.filter(
-                pays=mali, date=today, is_china_indicative=False
-            ).aggregate(total=Sum("montant"))["total"] or 0
-            
-            total_transferts = TransfertArgent.objects.filter(
-                pays_expediteur=mali, date=today
-            ).aggregate(total=Sum("montant"))["total"] or 0
+            # Activité du Jour
+            from core.models import AvoirMouvement as AM_Day
+
+            rechargements_avoir_jour_qs = AM_Day.objects.filter(
+                client__country=mali, type="DEPOT", created_at__date=today
+            )
+            rechargements_avoir_jour = (
+                rechargements_avoir_jour_qs.aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
+
+            total_depenses = (
+                Depense.objects.filter(
+                    pays=mali, date=today, is_china_indicative=False
+                ).aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
+
+            total_transferts = (
+                TransfertArgent.objects.filter(
+                    pays_expediteur=mali, date=today
+                ).aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
 
         # Calcul du solde final
         if report_type == "global":
-            solde_final = solde_veille + total_encaissements - (total_depenses + total_transferts)
+            solde_final = (
+                solde_veille
+                + total_encaissements
+                + rechargements_avoir_jour
+                - (total_depenses + total_transferts)
+            )
         else:
             solde_final = total_encaissements
 
@@ -2100,6 +2246,14 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             "titre_rapport": titre_rapport,
             "colis_list": colis_qs,
             "total_encaissements": total_encaissements,
+            "rechargements_avoir_jour": rechargements_avoir_jour,
+            "rechargements_avoir_list": (
+                AM_Day.objects.filter(
+                    client__country=mali, type="DEPOT", created_at__date=today
+                ).select_related("client")
+                if report_type == "global"
+                else []
+            ),
             "total_jc": total_jc,
             "total_depenses": total_depenses,
             "total_transferts": total_transferts,
@@ -2568,7 +2722,10 @@ class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
         # Caisse nette de l'agence (Basée sur le bénéfice théorique du mois)
         # On utilise recettes_mois (théorique) pour être cohérent avec les autres cartes du dashboard
         context["caisse_nette"] = (
-            context["recettes_mois"] - total_depenses - total_transferts - context["rh_mois"]
+            context["recettes_mois"]
+            - total_depenses
+            - total_transferts
+            - context["rh_mois"]
         )
 
         # Dernières livraisons
@@ -2931,7 +3088,9 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
         from .forms import MaliAddColisForm
 
         lot = get_object_or_404(Lot, pk=lot_pk, destination=request.user.country)
-        form = MaliAddColisForm(request.POST, request.FILES, country=request.user.country)
+        form = MaliAddColisForm(
+            request.POST, request.FILES, country=request.user.country
+        )
 
         if form.is_valid():
             data = form.cleaned_data
@@ -3009,37 +3168,49 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
             request, "mali/admin/add_colis_to_lot.html", {"lot": lot, "form": form}
         )
 
+
 from django.http import JsonResponse
+
 
 class MaliCalculatePriceView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
     """
     API pour calculer le prix d'un colis en temps réel via AJAX.
     """
+
     def get(self, request):
-        client_id = request.GET.get('client_id')
-        lot_id = request.GET.get('lot_id')
-        type_colis = request.GET.get('type_colis', 'STANDARD')
-        poids = request.GET.get('poids', 0)
-        cbm = request.GET.get('cbm', 0)
-        nombre_pieces = request.GET.get('nombre_pieces', 1)
+        client_id = request.GET.get("client_id")
+        lot_id = request.GET.get("lot_id")
+        type_colis = request.GET.get("type_colis", "STANDARD")
+        poids = request.GET.get("poids", 0)
+        cbm = request.GET.get("cbm", 0)
+        nombre_pieces = request.GET.get("nombre_pieces", 1)
 
         if not all([client_id, lot_id]):
-            return JsonResponse({'error': 'Paramètres manquants'}, status=400)
+            return JsonResponse({"error": "Paramètres manquants"}, status=400)
 
         try:
             from core.models import Client, Lot, Colis
             from decimal import Decimal
+
             client = Client.objects.get(pk=client_id)
             lot = Lot.objects.get(pk=lot_id)
-            
+
             # Conversion sécurisée (évite erreurs si virgule ou vide) - Utilise Decimal pour éviter TypeError avec les modèles
             try:
-                p_val = Decimal(str(poids).replace(',', '.')) if poids and str(poids).strip() else Decimal('0')
-                c_val = Decimal(str(cbm).replace(',', '.')) if cbm and str(cbm).strip() else Decimal('0')
+                p_val = (
+                    Decimal(str(poids).replace(",", "."))
+                    if poids and str(poids).strip()
+                    else Decimal("0")
+                )
+                c_val = (
+                    Decimal(str(cbm).replace(",", "."))
+                    if cbm and str(cbm).strip()
+                    else Decimal("0")
+                )
                 n_val = int(nombre_pieces) if nombre_pieces else 1
             except (ValueError, TypeError, Exception):
-                p_val = Decimal('0')
-                c_val = Decimal('0')
+                p_val = Decimal("0")
+                c_val = Decimal("0")
                 n_val = 1
 
             temp_colis = Colis(
@@ -3048,14 +3219,213 @@ class MaliCalculatePriceView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
                 type_colis=type_colis,
                 poids=p_val,
                 cbm=c_val,
-                nombre_pieces=n_val
+                nombre_pieces=n_val,
             )
             temp_colis.recalculate_prices()
-            
-            return JsonResponse({
-                'prix_final': float(temp_colis.prix_final or 0),
-                'prix_transport': float(temp_colis.prix_transport or 0),
-                'success': True
-            })
+
+            return JsonResponse(
+                {
+                    "prix_final": float(temp_colis.prix_final or 0),
+                    "prix_transport": float(temp_colis.prix_transport or 0),
+                    "success": True,
+                }
+            )
         except Exception as e:
-            return JsonResponse({'error': str(e), 'prix_final': 0, 'success': False}, status=400)
+            return JsonResponse(
+                {"error": str(e), "prix_final": 0, "success": False}, status=400
+            )
+
+
+class MaliClientAvoirView(DestinationAgentRequiredMixin, TemplateView):
+    """
+    Interface pour gérer l'avoir (portefeuille) d'un client au Mali.
+    Permet de recharger le compte.
+    """
+
+    template_name = "mali/client_avoir.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from core.models import Client, AvoirMouvement
+        from django.db.models import Q
+
+        q = self.request.GET.get("q", "").strip()
+        clients = Client.objects.filter(country=self.request.user.country)
+        if q:
+            # Recherche intelligente : chaque mot doit se trouver soit dans le nom, le prénom ou le tel
+            mots = q.split()
+            for mot in mots:
+                clients = clients.filter(
+                    Q(nom__icontains=mot)
+                    | Q(prenom__icontains=mot)
+                    | Q(telephone__icontains=mot)
+                )
+
+        context["clients"] = clients.order_by("nom", "prenom")[:20]
+        context["search_query"] = q
+
+        # Si un client spécifique est sélectionné
+        client_id = self.request.GET.get("client_id")
+        if client_id:
+            try:
+                selected_client = Client.objects.get(
+                    pk=client_id, country=self.request.user.country
+                )
+                context["selected_client"] = selected_client
+                context["mouvements"] = AvoirMouvement.objects.filter(
+                    client=selected_client
+                ).order_by("-created_at")[:50]
+            except Client.DoesNotExist:
+                pass
+
+        return context
+
+    def post(self, request, *args, **kwargs):
+        from core.models import Client, AvoirMouvement
+        from decimal import Decimal
+
+        client_id = request.POST.get("client_id")
+        montant = request.POST.get("montant")
+        commentaire = request.POST.get("commentaire", "")
+
+        if not client_id or not montant:
+            messages.error(request, "Veuillez sélectionner un client et un montant.")
+            return redirect("mali:client_avoir")
+
+        try:
+            client = Client.objects.get(pk=client_id, country=request.user.country)
+            montant_dec = Decimal(montant.replace(",", "."))
+
+            if montant_dec <= 0:
+                messages.error(request, "Le montant doit être supérieur à 0.")
+                return redirect(f"{reverse('mali:client_avoir')}?client_id={client_id}")
+
+            # Mise à jour du solde
+            client.solde_avoir += montant_dec
+            client.save()
+
+            # Tracer le mouvement
+            AvoirMouvement.objects.create(
+                client=client,
+                montant=montant_dec,
+                type="DEPOT",
+                enregistre_par=request.user,
+                commentaire=commentaire,
+            )
+
+            messages.success(
+                request,
+                f"✅ {montant_dec:,.0f} FCFA ajoutés avec succès au compte de {client}.".replace(
+                    ",", " "
+                ),
+            )
+            return redirect(f"{reverse('mali:client_avoir')}?client_id={client_id}")
+
+        except Exception as e:
+            messages.error(request, f"Erreur : {str(e)}")
+            return redirect("mali:client_avoir")
+
+
+class ManualImputeView(DestinationAgentRequiredMixin, View):
+    """
+    Déclencher manuellement l'imputation des avoirs pour TOUS les colis en attente d'un client.
+    """
+    def post(self, request, client_id):
+        from core.models import Client, Colis
+        from notification.tasks import perform_avoir_imputation_colis
+        
+        client = get_object_or_404(Client, pk=client_id)
+        
+        if client.solde_avoir <= 0:
+            messages.warning(request, f"Le client {client} n'a pas de solde d'avance disponible.")
+            return redirect(reverse("mali:client_avoir") + f"?client_id={client_id}")
+            
+        # On cherche tous les colis non payés du client à destination du Mali
+        colis_en_attente = Colis.objects.filter(
+            client=client, 
+            est_paye=False,
+            reste_a_payer__gt=0,
+            lot__destination=request.user.country
+        ).order_by("created_at") # Du plus ancien au plus récent
+        
+        if not colis_en_attente.exists():
+            messages.info(request, f"Aucun colis en attente de paiement trouvé pour {client}.")
+            return redirect(reverse("mali:client_avoir") + f"?client_id={client_id}")
+            
+        count = 0
+        total_impute = 0
+        
+        for colis in colis_en_attente:
+            if client.solde_avoir <= 0:
+                break
+                
+            mt, success, err = perform_avoir_imputation_colis(colis, request.user)
+            if success and mt > 0:
+                count += 1
+                total_impute += mt
+                client.refresh_from_db()
+
+        if count > 0:
+            messages.success(request, f"Imputation réussie : {count} colis traités pour un total de {total_impute} FCFA.")
+        else:
+            messages.warning(request, "Aucune imputation n'a pu être effectuée (Solde insuffisant ou erreur).")
+            
+        return redirect(reverse("mali:client_avoir") + f"?client_id={client_id}")
+
+
+class MaliPretsRetraitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """
+    Affiche la liste des colis déjà payés (par avance/avoir) qui sont à l'entrepôt au Mali
+    et qui attendent d'être retirés par le client.
+    """
+
+    model = Colis
+    template_name = "mali/prets_retrait.html"
+    context_object_name = "colis_list"
+    paginate_by = 50
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        queryset = (
+            Colis.objects.filter(lot__destination=mali, status="ARRIVE", est_paye=True)
+            .select_related("client", "lot")
+            .order_by("client__nom", "-updated_at")
+        )
+
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            queryset = queryset.filter(
+                Q(reference__icontains=q)
+                | Q(client__nom__icontains=q)
+                | Q(client__prenom__icontains=q)
+                | Q(client__telephone__icontains=q)
+            )
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["search_query"] = self.request.GET.get("q", "")
+        return context
+
+
+class MaliConfirmerRetraitBulkView(
+    LoginRequiredMixin, DestinationAgentRequiredMixin, View
+):
+    """Version groupée pour marquer les colis comme LIVRES (retirés)"""
+
+    def post(self, request):
+        colis_ids = request.POST.getlist("colis_ids")
+        if not colis_ids:
+            messages.warning(request, "Aucun colis sélectionné.")
+            return redirect("mali:prets_retrait")
+
+        updated = Colis.objects.filter(
+            id__in=colis_ids, status="ARRIVE", est_paye=True
+        ).update(
+            status="LIVRE",
+            date_livraison=timezone.now().date(),
+            updated_at=timezone.now(),
+        )
+
+        messages.success(request, f"{updated} colis marqués comme retirés (Livrés).")
+        return redirect("mali:prets_retrait")

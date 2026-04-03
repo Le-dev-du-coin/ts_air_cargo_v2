@@ -488,3 +488,123 @@ def cleanup_old_notifications_periodic():
     except Exception as e:
         logger.error(f"[Cleanup] Erreur lors du nettoyage : {e}")
         return f"Erreur nettoyage : {e}"
+
+
+def perform_avoir_imputation_colis(colis, user):
+    """
+    Logique atomique pour imputer l'avoir d'un client sur un colis spécifique.
+    Retourne (montant_impute, success, error_message)
+    """
+    from django.db import transaction
+    from decimal import Decimal
+    from django.apps import apps
+    
+    AvoirMouvement = apps.get_model("core", "AvoirMouvement")
+    EncaissementColis = apps.get_model("core", "EncaissementColis")
+    
+    if not colis.client or colis.client.solde_avoir <= 0 or colis.est_paye:
+        return Decimal('0'), False, "Conditions d'imputation non remplies"
+        
+    try:
+        with transaction.atomic():
+            # Verrouillage du client pour éviter les accès concurrents
+            client = colis.client.__class__.objects.select_for_update().get(pk=colis.client.pk)
+            
+            montant_a_payer = colis.reste_a_payer
+            montant_impute = min(montant_a_payer, client.solde_avoir)
+            
+            if montant_impute > 0:
+                # 1. Déduction de l'avoir
+                client.solde_avoir -= montant_impute
+                client.save()
+                
+                # 2. Mise à jour du colis
+                colis.reste_a_payer -= montant_impute
+                if colis.reste_a_payer <= 0:
+                    colis.est_paye = True
+                    colis.reste_a_payer = 0
+                
+                colis.mode_paiement = "AVOIR"
+                colis.save()
+                
+                # 3. Tracer l'encaissement
+                EncaissementColis.objects.create(
+                    colis=colis,
+                    montant=montant_impute,
+                    methode="AVOIR",
+                    enregistre_par=user,
+                    date=timezone.now().date()
+                )
+                
+                # 4. Tracer le mouvement d'avoir
+                AvoirMouvement.objects.create(
+                    client=client,
+                    montant=montant_impute,
+                    type="CONSOMMATION",
+                    colis=colis,
+                    enregistre_par=user,
+                    commentaire=f"Paiement auto (Lot {colis.lot.numero})"
+                )
+                return montant_impute, True, None
+    except Exception as e:
+        return Decimal('0'), False, str(e)
+    
+    return Decimal('0'), False, "Inconnu"
+
+
+@shared_task
+def impute_avoirs_lot_async(lot_id, user_id):
+    """
+    Tâche asynchrone pour imputer les avoirs des clients ayant des colis dans un lot spécifique.
+    """
+    from django.apps import apps
+    Lot = apps.get_model("core", "Lot")
+    User = apps.get_model("core", "User")
+
+    try:
+        lot = Lot.objects.prefetch_related('colis', 'colis__client').get(pk=lot_id)
+        user = User.objects.get(pk=user_id)
+        
+        # On traite tous les colis du lot pour le log, même si déjà payés
+        tous_colis = lot.colis.all().order_by("-prix_final")
+        
+        total_impute = 0
+        skipped_count = 0
+        
+        logger.info(f"Début imputation lot {lot.numero} (ID: {lot.id}) - {tous_colis.count()} colis à vérifier")
+
+        for c in tous_colis:
+            client_name = str(c.client) if c.client else "Inconnu"
+            
+            if c.est_paye:
+                logger.info(f"  > Colis {c.reference} ({client_name}) : Déjà payé. Ignoré.")
+                skipped_count += 1
+                continue
+                
+            if not c.client:
+                logger.warning(f"  > Colis {c.reference} : Aucun client rattaché. Ignoré.")
+                skipped_count += 1
+                continue
+                
+            if c.client.solde_avoir <= 0:
+                logger.info(f"  > Colis {c.reference} ({client_name}) : Solde avoir à 0. Ignoré.")
+                skipped_count += 1
+                continue
+            
+            # Si on arrive ici, on tente l'imputation
+            logger.info(f"  > Tentative imputation Colis {c.reference} ({client_name}) - Avoir: {c.client.solde_avoir}")
+            mt, success, err = perform_avoir_imputation_colis(c, user)
+            
+            if success:
+                total_impute += mt
+                logger.info(f"    ✅ SUCCÈS : {mt} FCFA imputés sur {c.reference}")
+            else:
+                logger.error(f"    ❌ ÉCHEC : {c.reference} - Erreur: {err}")
+                skipped_count += 1
+                    
+        logger.info(f"=== FIN IMPUTATION LOT {lot.numero} ===")
+        logger.info(f"Total Imputé : {total_impute} FCFA")
+        logger.info(f"Colis ignorés/échoués : {skipped_count}")
+
+    except Exception as e:
+        logger.error(f"Erreur CRITIQUE imputation async lot {lot_id}: {e}")

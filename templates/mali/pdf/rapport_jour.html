@@ -199,6 +199,10 @@
             <span class="amount text-green">+ {{ total_encaissements|floatformat:0|intcomma }} FCFA</span>
         </div>
         <div class="summary-row">
+            <span>Avances Reçues (Avoirs)</span>
+            <span class="amount text-green">+ {{ rechargements_avoir_jour|floatformat:0|intcomma }} FCFA</span>
+        </div>
+        <div class="summary-row">
             <span>Dépenses Journalières Mali</span>
             <span class="amount text-red">- {{ total_depenses|floatformat:0|intcomma }} FCFA</span>
         </div>
@@ -253,7 +257,13 @@
                 <td class="amount" style="color: var(--text-muted);">
                     {% if colis.montant_jc > 0 %}{{ colis.montant_jc|floatformat:0|intcomma }}{% else %}-{% endif %}
                 </td>
-                <td class="amount text-green" style="font-size: 10px; font-weight: 800;">{{ colis.montant_paye_jour|floatformat:0|intcomma }}</td>
+                <td class="amount text-green" style="font-size: 10px; font-weight: 800;">
+                    {% if colis.mode_paiement == 'AVANCE' and colis.net_price == 0 %}
+                        <span style="color: var(--blue); font-size: 8px;">AVANCE</span>
+                    {% else %}
+                        {{ colis.net_price|floatformat:0|intcomma }}
+                    {% endif %}
+                </td>
             </tr>
             {% empty %}
             <tr>
@@ -274,6 +284,34 @@
         </tbody>
         {% endif %}
     </table>
+
+    {% if report_type == 'global' and rechargements_avoir_jour > 0 %}
+    <h3 class="section-title" style="margin-top: 30px; border-color: #059669; color: #059669;">Détail des Avances Reçues (Avoirs)</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 40%">Client</th>
+                <th style="width: 20%; text-align: center;">Heure</th>
+                <th style="width: 40%; text-align: right;">Montant Avancé</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rechargement in rechargements_avoir_list %}
+            <tr>
+                <td style="font-weight: 600;">{{ rechargement.client.nom|upper }} {{ rechargement.client.prenom }}</td>
+                <td style="text-align: center;">{{ rechargement.created_at|date:"H:i" }}</td>
+                <td class="amount" style="color: #059669;">+ {{ rechargement.montant|floatformat:0|intcomma }} FCFA</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="background-color: #f0fdf4; font-weight: 800;">
+                <td colspan="2" style="padding: 10px; border-top: 2px solid #bbf7d0; text-align: right;">TOTAL DES AVANCES DU JOUR :</td>
+                <td style="padding: 10px; border-top: 2px solid #bbf7d0; text-align: right; color: #059669;">{{ rechargements_avoir_jour|floatformat:0|intcomma }} FCFA</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
 
     <div class="footer">
         Document généré automatiquement par le système TS Air Cargo.<br>

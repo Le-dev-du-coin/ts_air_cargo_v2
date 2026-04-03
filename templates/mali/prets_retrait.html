@@ -1,0 +1,142 @@
+{% extends "mali/base.html" %}
+{% load static %}
+
+{% block title %}Prêts pour Retrait - Mali - TS Air Cargo{% endblock %}
+
+{% block header %}🎁 Colis Prêts pour Retrait{% endblock %}
+
+{% block actions %}
+<div class="flex items-center space-x-3">
+    <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm">
+        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 11v10l8 4" />
+        </svg>
+        {{ colis_list.count }} colis en attente
+    </span>
+</div>
+{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-6" x-data="{ selectedColis: [] }">
+    <!-- Barre d'outils Recherche et Actions -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex-1 max-w-lg">
+            <form method="GET" class="relative">
+                <input type="text" name="q" value="{{ search_query }}"
+                    class="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all sm:text-sm"
+                    placeholder="Référence, nom ou téléphone du client...">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </form>
+        </div>
+
+        <div class="flex items-center">
+            <form action="{% url 'mali:confirmer_retrait_bulk' %}" method="POST" id="bulk-retrait-form" 
+                  @submit="if (selectedColis.length === 0) { $event.preventDefault(); alert('Veuillez sélectionner au moins un colis.'); }">
+                {% csrf_token %}
+                <template x-for="id in selectedColis" :key="id">
+                    <input type="hidden" name="colis_ids" :value="id">
+                </template>
+                <button type="submit" 
+                        class="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-bold rounded-lg shadow-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        :disabled="selectedColis.length === 0">
+                    <svg class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Confirmer la remise (<span x-text="selectedColis.length">0</span>)
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau des Colis -->
+    <div class="bg-white shadow-xl rounded-xl border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 text-left">
+                            <input type="checkbox" @change="$el.checked ? selectedColis = [{% for c in colis_list %}'{{ c.id }}',{% endfor %}] : selectedColis = []"
+                                   class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded-md transition-all cursor-pointer">
+                        </th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Client & Contact</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Colis</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Provenance</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Détails</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Paiement</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Arrivé le</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    {% for colis in colis_list %}
+                    <tr class="hover:bg-green-50/30 transition-colors group">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <input type="checkbox" :value="'{{ colis.id }}'" x-model="selectedColis"
+                                   class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded-md transition-all cursor-pointer">
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-900 group-hover:text-green-700 transition-colors">{{ colis.client }}</span>
+                                <span class="text-xs text-gray-500 font-medium font-mono">{{ colis.client.telephone }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-black text-indigo-600 font-mono tracking-tighter">{{ colis.reference }}</span>
+                                <span class="text-[10px] font-bold text-gray-400 italic">{{ colis.get_type_colis_display }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200">
+                                <svg class="mr-1.5 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                {{ colis.lot.numero }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-600 uppercase">
+                                {% if colis.type_colis == 'TELEPHONE' %}
+                                    <span class="text-orange-600">{{ colis.nombre_pieces }} Pcs</span>
+                                {% else %}
+                                    <span class="text-indigo-600">{{ colis.poids }} KG</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black bg-green-100 text-green-800 border border-green-200 uppercase tracking-widest">
+                                ✅ Payé (AVANCE)
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                            {{ colis.updated_at|date:"d M Y" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-20 text-center">
+                            <div class="flex flex-col items-center">
+                                <svg class="h-16 w-16 text-gray-200 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                </svg>
+                                <p class="text-gray-400 text-lg font-medium italic">Aucun colis payé par avance n'attend d'être retiré.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="mt-8">
+        {% include "core/components/pagination.html" %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

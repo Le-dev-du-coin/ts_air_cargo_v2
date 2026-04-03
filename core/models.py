@@ -82,6 +82,12 @@ class Client(TenantAwareModel):
         blank=True,
         related_name="client_profile",
     )
+    solde_avoir = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        default=0,
+        help_text=_("Crédit disponible pour payer des colis")
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -449,6 +455,10 @@ class Colis(TenantAwareModel):
         # Par défaut, le prix final est égal au prix transport
         self.prix_final = self.prix_transport
 
+        # Initialisation du reste à payer à la création
+        if not self.pk:
+            self.reste_a_payer = self.prix_final
+
     def __str__(self):
         return f"Carton {self.reference} - {self.client}"
 
@@ -560,6 +570,7 @@ class EncaissementColis(models.Model):
             ("ESPECE", "Espèce"),
             ("ORANGE_MONEY", "Orange Money"),
             ("SARALI", "Sarali"),
+            ("AVOIR", "Avoir Client"),
             ("AUTRE", "Autre"),
         ],
         default="ESPECE"
@@ -576,4 +587,32 @@ class EncaissementColis(models.Model):
 
     def __str__(self):
         return f"Paiement {self.montant} pour {self.colis.reference} le {self.date}"
+
+
+class AvoirMouvement(models.Model):
+    """
+    Historique des mouvements sur le compte avoir d'un client.
+    """
+    class TypeMouvement(models.TextChoices):
+        DEPOT = "DEPOT", _("Dépôt / Recharge")
+        CONSOMMATION = "CONSOMMATION", _("Consommation (Paiement Colis)")
+        CORRECTION = "CORRECTION", _("Correction / Ajustement")
+
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="mouvements_avoir")
+    montant = models.DecimalField(max_digits=12, decimal_places=2)
+    type = models.CharField(max_length=20, choices=TypeMouvement.choices)
+    colis = models.ForeignKey(Colis, on_delete=models.SET_NULL, null=True, blank=True, related_name="paiements_avoir")
+    reference_recu = models.CharField(max_length=50, blank=True, help_text=_("Numéro de reçu ou référence transaction"))
+    commentaire = models.TextField(blank=True)
+    enregistre_par = models.ForeignKey(User, on_delete=models.PROTECT)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("Mouvement Avoir")
+        verbose_name_plural = _("Mouvements Avoir")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.type} - {self.montant} FCFA - {self.client}"
 

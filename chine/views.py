@@ -1094,6 +1094,7 @@ class LotCloseView(LoginRequiredMixin, StrictAgentChineRequiredMixin, View):
                             f"Nous venons de fermer le lot *{lot.numero}* contenant "
                             f"{'votre colis' if nb == 1 else f'vos {nb} colis'} :\n"
                             f"{lines}\n\n"
+                            f"🚢 Transport : *{lot.get_type_transport_display().upper()}*\n"
                             f"\u23f3 L'exp\u00e9dition est pr\u00e9vue prochainement depuis la Chine.\n"
                             f"\U0001f514 Vous recevrez une notification d\u00e8s le d\u00e9part.\n\n"
                             f"\U0001f310 Suivez vos colis : https://ts-aircargo.com/login\n"
@@ -1156,8 +1157,16 @@ class LotStatusUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Vie
             lot.save()
             # Also update colis status? Generally yes.
             lot.colis.update(status="EXPEDIE")
+
+            # --- NOUVEAU : Imputation automatique de l'avoir client (Celery) ---
+            try:
+                from notification.tasks import impute_avoirs_lot_async
+                impute_avoirs_lot_async.delay(lot.id, request.user.id)
+            except Exception as e:
+                logger.error(f"Erreur déclenchement imputation avoir lot {lot.id}: {e}")
+
             messages.success(
-                request, f"Lot {lot.numero} EXPÉDIÉ ! (Mode Lecture Seule activé)"
+                request, f"Lot {lot.numero} EXPÉDIÉ ! L'imputation des avoirs est en cours en arrière-plan."
             )
 
             # Notification Clients — Groupée par client (1 seul message par client)
@@ -1401,8 +1410,8 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
                     f"Nous venons d'enregistrer votre colis le *{date_reception}*.\n\n"
                     f"🔖 Référence : *{colis.reference}*\n"
                     f"📋 Type : *{colis.get_type_colis_display()}*\n"
+                    f"🚢 Transport : *{lot.get_type_transport_display().upper()}*\n"
                     f"{quantite_info}\n"
-                    f"{transport_info}\n"
                     + (f"{delai_info}\n" if delai_info else "")
                     + (f"{prix_info}\n" if prix_info else "")
                     + f"📍 Statut : *Réceptionné — en attente d'expédition*\n\n"

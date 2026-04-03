@@ -48,7 +48,10 @@
         <div class="px-4 py-5 sm:p-6">
             <dt class="text-xs font-medium text-gray-500 truncate uppercase">Recettes Jour</dt>
             <dd class="mt-1 text-xl font-bold text-green-600 truncate" title="{{ total_recettes_jour|fcfa }}">{{ total_recettes_jour|fcfa }}</dd>
-            <p class="mt-1 text-[10px] text-green-500 font-medium">Dont JC: -{{ total_jc_jour|fcfa }}</p>
+            <div class="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                <p class="text-[10px] text-green-500 font-medium">Dont JC: -{{ total_jc_jour|fcfa }}</p>
+                <p class="text-[10px] text-emerald-600 font-bold">| Avances: +{{ rechargements_avoir_jour|fcfa }}</p>
+            </div>
         </div>
     </div>
 
@@ -95,6 +98,12 @@
                 class="min-w-[100px] flex-1 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col items-center justify-center">
                 <span>🚢 Bateau</span>
                 <span class="text-[10px] font-normal" :class="activeTab === 'bateau' ? 'text-indigo-400' : 'text-gray-400'">{{ cbm_bateau_jour|floatformat:2 }} m³</span>
+            </button>
+            <button @click="activeTab = 'avoirs'"
+                :class="{ 'border-emerald-500 text-emerald-600': activeTab === 'avoirs', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'avoirs' }"
+                class="min-w-[100px] flex-1 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col items-center justify-center">
+                <span>💳 Avoirs</span>
+                <span class="text-[10px] font-normal" :class="activeTab === 'avoirs' ? 'text-emerald-400' : 'text-gray-400'">+{{ rechargements_avoir_jour|fcfa }}</span>
             </button>
             <button @click="activeTab = 'sorties'"
                 :class="{ 'border-red-500 text-red-600': activeTab === 'sorties', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'sorties' }"
@@ -153,6 +162,45 @@
              </div>
         </div>
         {% include "mali/partials/today_colis_table.html" with colis_list=colis_bateau_list type="Bateau" total_recette=recette_bateau_jour %}
+    </div>
+
+    <!-- 4. Rechargements Avoir -->
+    <div x-show="activeTab === 'avoirs'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+         <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Rechargements Avoir ({{ target_date|date:"d/m/Y" }})</h3>
+             <div class="flex gap-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                    Total: {{ rechargements_avoir_jour|fcfa }}
+                </span>
+             </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Client</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Heure</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Montant</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Commentaire</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for m in rechargements_avoir_list %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{{ m.client }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ m.created_at|date:"H:i" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-black text-emerald-600">{{ m.montant|fcfa }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500 italic">{{ m.commentaire|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-400 italic">Aucun rechargement d'avoir aujourd'hui.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- 4. Sorties (Dépenses + Transferts) -->

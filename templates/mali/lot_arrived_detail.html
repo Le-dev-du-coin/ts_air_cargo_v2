@@ -34,6 +34,7 @@
     showBulkDeliveryModal: false,
     showBulkSortieModal: false,
     selectedIds: [],
+    isSelectionPayeChine: false,
     async submitDelivery() {
         const form = document.getElementById('deliveryForm');
         const formData = new FormData(form);
@@ -124,14 +125,19 @@
         this.selectedIds = Array.from(checked).map(cb => cb.value);
 
         // Restriction : interdire mélange colis payés en Chine et non-payés en Chine
-        if (checked.length > 1) {
+        if (checked.length > 0) {
             const payeChineValues = Array.from(checked).map(cb => cb.dataset.payeChine === 'true');
             const hasChine = payeChineValues.some(v => v === true);
             const hasNonChine = payeChineValues.some(v => v === false);
+            
+            this.isSelectionPayeChine = hasChine && !hasNonChine;
+            
             if (hasChine && hasNonChine) {
                 this.mixedSelectionError = true;
                 this.hasSelection = false; // Désactiver le bouton de bulk livraison
             }
+        } else {
+            this.isSelectionPayeChine = false;
         }
     },
     selectedPoids: 0,
@@ -512,20 +518,20 @@
 
                         <!-- Dates -->
                         <div class="grid grid-cols-2 gap-4">
-                            <div>
+                            <div :class="isSelectionPayeChine ? 'col-span-2' : ''">
                                 <label class="block text-xs font-black text-gray-700 uppercase mb-1">Date de livraison</label>
                                 <input type="date" name="date_livraison" required value="{% now 'Y-m-d' %}"
                                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
                             </div>
-                            <div x-show="bulkPaiement !== 'ATTENTE'">
+                            <div x-show="bulkPaiement !== 'ATTENTE' && !isSelectionPayeChine">
                                 <label class="block text-xs font-black text-gray-700 uppercase mb-1">Date d'encaissement</label>
                                 <input type="date" name="date_encaissement" required value="{% now 'Y-m-d' %}"
                                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm font-bold">
                             </div>
                         </div>
 
-                        <!-- Statut Paiement -->
-                        <div class="grid grid-cols-2 gap-4">
+                        <!-- Statut Paiement (Masqué si payé en Chine car déjà soldé) -->
+                        <div class="grid grid-cols-2 gap-4" x-show="!isSelectionPayeChine">
                             <div class="col-span-2">
                                 <label class="block text-xs font-black text-gray-700 uppercase mb-1">Statut Paiement</label>
                                 <select name="status_paiement" x-model="bulkPaiement"
@@ -558,6 +564,11 @@
                                        :value="Math.max(0, selectedMontant - bulkEncaisse)"
                                        class="block w-full border-red-200 bg-red-50 rounded-md text-red-700 sm:text-sm font-black outline-none">
                             </div>
+                        </div>
+                        
+                        <!-- Info Label pour China Paid -->
+                        <div x-show="isSelectionPayeChine" class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 font-bold">
+                            ⚠️ Ces colis sont marqués comme payés en Chine. Aucun encaissement ne sera généré au Mali.
                         </div>
                     </div>
 

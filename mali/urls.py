@@ -26,6 +26,8 @@ from .views import (
     ColisLivreBulkView,
     ColisSortieBulkView,
     ColisUpdateMaliView,
+    MaliPretsRetraitView,
+    MaliConfirmerRetraitBulkView,
     MaliAdminDashboardView,
     MaliAgentListView,
     MaliAgentCreateView,
@@ -41,7 +43,11 @@ from .views import (
     MaliDouaneGestionView,
     MaliClientLotTarifCreateView,
     MaliClientLotTarifDeleteView,
+    MaliClientLotTarifDeleteView,
     MaliCalculatePriceView,
+    MaliCalculatePriceView,
+    MaliClientAvoirView,
+    ManualImputeView,
 )
 from report.views import (
     DepenseListView,
@@ -109,6 +115,8 @@ urlpatterns = [
         ColisAttentePaiementView.as_view(),
         name="colis_attente_paiement",
     ),
+    path("prets-retrait/", MaliPretsRetraitView.as_view(), name="prets_retrait"),
+    path("prets-retrait/confirm-bulk/", MaliConfirmerRetraitBulkView.as_view(), name="confirmer_retrait_bulk"),
     path(
         "colis/sortie-garantie/",
         ColisSortieGarantieView.as_view(),
@@ -166,6 +174,16 @@ urlpatterns = [
         "finance/transferts/<int:pk>/edit/",
         TransfertUpdateView.as_view(),
         name="transfert_edit",
+    ),
+    path(
+        "finance/avoir/",
+        MaliClientAvoirView.as_view(),
+        name="client_avoir",
+    ),
+    path(
+        "finance/avoir/<int:client_id>/imputer/",
+        ManualImputeView.as_view(),
+        name="manual_impute",
     ),
     path(
         "finance/rapport/export/",
