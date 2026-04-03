@@ -21,25 +21,42 @@
     selectedCount: 0,
     selectedPoids: 0,
     selectedMontant: 0,
-    updateSelection() {
-        const checked = document.querySelectorAll('input[name=\'colis_ids\']:checked');
-        this.selectedCount = checked.length;
-        let poids = 0;
-        let montant = 0;
-        let ids = [];
-        checked.forEach(cb => {
-            poids += parseFloat(cb.dataset.poids || 0);
-            montant += parseFloat(cb.dataset.montant || 0);
-            ids.push(cb.value);
-        });
-        this.selectedPoids = poids.toFixed(1);
-        this.selectedMontant = montant;
-        this.selectedIds = ids;
-    },
+    mixedSelectionError: false,
+    isSelectionPayeChine: false,
     toggleAll(e) {
         const checkboxes = document.querySelectorAll('input[name=\'colis_ids\']');
         checkboxes.forEach(cb => cb.checked = e.target.checked);
         this.updateSelection();
+    },
+    updateSelection() {
+        const checked = document.querySelectorAll('input[name=\'colis_ids\']:checked');
+        this.selectedCount = checked.length;
+        this.mixedSelectionError = false;
+        this.isSelectionPayeChine = false;
+
+        let poids = 0;
+        let montant = 0;
+        let ids = [];
+        let hasChine = false;
+        let hasNonChine = false;
+
+        checked.forEach(cb => {
+            poids += parseFloat(cb.dataset.poids || 0);
+            montant += parseFloat(cb.dataset.montant || 0);
+            ids.push(cb.value);
+            if (cb.dataset.payeChine === 'true') hasChine = true;
+            else hasNonChine = true;
+        });
+
+        if (hasChine && hasNonChine) {
+            this.mixedSelectionError = true;
+        } else if (hasChine && !hasNonChine) {
+            this.isSelectionPayeChine = true;
+        }
+
+        this.selectedPoids = poids.toFixed(1);
+        this.selectedMontant = montant;
+        this.selectedIds = ids;
     }
 }">
     <!-- Filtres / Recherche -->
@@ -85,6 +102,7 @@
                             <input type="checkbox" name="colis_ids" value="{{ colis.pk }}" 
                                    data-poids="{{ colis.poids|default:0|unlocalize }}"
                                    data-montant="{{ colis.montant_du|default:0|unlocalize }}"
+                                   data-paye-chine="{% if colis.paye_en_chine %}true{% else %}false{% endif %}"
                                    @change="updateSelection"
                                    class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
                         </td>
@@ -220,37 +238,46 @@
                         </p>
                     </div>
                     <div class="order-3 mt-2 flex-shrink-0 w-full sm:order-2 sm:mt-0 sm:w-auto flex items-center space-x-2">
-                        <div class="flex flex-col">
-                            <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Date Encaissement</label>
-                            <input type="date" name="date_encaissement" form="bulk-encaissement-form" required value="{% now 'Y-m-d' %}"
-                                   class="block w-32 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
-                        </div>
-                        <div class="flex flex-col">
-                            <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Mode</label>
-                            <select name="mode_paiement" form="bulk-encaissement-form"
-                                    class="block w-30 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
-                                <option value="ESPECE" selected>💵 Espèce</option>
-                                <option value="ORANGE_MONEY">📱 Orange Money</option>
-                                <option value="SARALI">💳 Sarali</option>
-                            </select>
-                        </div>
-                        <div class="flex flex-col">
-                            <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Montant Reçu (Optionnel)</label>
-                            <input type="number" name="montant_total_recu" id="montant_total_recu" form="bulk-encaissement-form"
-                                   placeholder="Total payé"
-                                   class="block w-32 border-indigo-400 bg-indigo-700 text-white placeholder-indigo-300 rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
-                        </div>
-
-                        <form method="POST" action="{% url 'mali:colis_encaisser_bulk' %}" id="bulk-encaissement-form" class="mt-4">
+                        <form method="POST" action="{% url 'mali:colis_encaisser_bulk' %}" id="bulk-encaissement-form" class="flex items-end space-x-3">
                             {% csrf_token %}
                             <template x-for="id in selectedIds" :key="id">
                                 <input type="hidden" name="colis_ids" :value="id">
                             </template>
+                            
+                            <div class="flex flex-col">
+                                <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Date Enc.</label>
+                                <input type="date" name="date_encaissement" required value="{% now 'Y-m-d' %}"
+                                       class="block w-32 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                            </div>
+                            
+                            <div class="flex flex-col">
+                                <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Mode</label>
+                                <select name="mode_paiement"
+                                        class="block w-30 border-indigo-400 bg-indigo-700 text-white rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                                    <option value="ESPECE" selected>💵 Espèce</option>
+                                    <option value="ORANGE_MONEY">📱 Orange Money</option>
+                                    <option value="SARALI">💳 Sarali</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex flex-col">
+                                <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Montant Reçu (Optionnel)</label>
+                                <input type="number" name="montant_total_recu" id="montant_total_recu"
+                                       placeholder="Total payé"
+                                       class="block w-32 border-indigo-400 bg-indigo-700 text-white placeholder-indigo-300 rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                            </div>
+
                             <button type="button" @click="confirmerEncaissementBulk()"
-                                    class="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-bold text-indigo-600 bg-white hover:bg-indigo-50">
-                                Encaisser
+                                    x-bind:disabled="mixedSelectionError || isSelectionPayeChine || selectedCount === 0"
+                                    x-bind:class="(mixedSelectionError || isSelectionPayeChine || selectedCount === 0) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-50'"
+                                    class="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-bold text-indigo-600 bg-white">
+                                <span x-show="!isSelectionPayeChine">Encaisser</span>
+                                <span x-show="isSelectionPayeChine">Déjà Payé Chine</span>
                             </button>
                         </form>
+                        <template x-if="mixedSelectionError">
+                            <p class="text-[10px] text-red-200 mt-1 font-bold">Mélange Chine/Standard interdit</p>
+                        </template>
                     </div>
                 </div>
             </div>

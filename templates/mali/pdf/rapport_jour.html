@@ -258,7 +258,9 @@
                     {% if colis.montant_jc > 0 %}{{ colis.montant_jc|floatformat:0|intcomma }}{% else %}-{% endif %}
                 </td>
                 <td class="amount text-green" style="font-size: 10px; font-weight: 800;">
-                    {% if colis.mode_paiement == 'AVANCE' and colis.net_price == 0 %}
+                    {% if colis.paye_en_chine %}
+                        <span style="color: #d97706; font-size: 8px; font-weight: 900;">PAYÉ CHINE</span>
+                    {% elif colis.paye_par_avance %}
                         <span style="color: var(--blue); font-size: 8px;">AVANCE</span>
                     {% else %}
                         {{ colis.net_price|floatformat:0|intcomma }}

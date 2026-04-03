@@ -48,6 +48,7 @@ from .views import (
     MaliCalculatePriceView,
     MaliClientAvoirView,
     ManualImputeView,
+    LotManualImputeView,
 )
 from report.views import (
     DepenseListView,
@@ -103,6 +104,11 @@ urlpatterns = [
         "lots/<int:pk>/notify-arrivals/",
         NotifyArrivalsView.as_view(),
         name="lot_notify_arrivals",
+    ),
+    path(
+        "lots/<int:pk>/manual-impute/",
+        LotManualImputeView.as_view(),
+        name="lot_manual_impute",
     ),
     path("colis/<int:pk>/arrive/", ColisArriveView.as_view(), name="colis_arrive"),
     path("lots/<int:pk>/arrive-bulk/", ColisArriveBulkView.as_view(), name="colis_arrive_bulk"),

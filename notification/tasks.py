@@ -341,6 +341,7 @@ def send_daily_report_mali():
                     total=Sum(
                         Case(
                             When(paye_en_chine=True, then=Value(0)),
+                            When(paye_par_avance=True, then=Value(0)),
                             default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
                             output_field=DecimalField()
                         )
@@ -392,6 +393,7 @@ def send_daily_report_mali():
                 total=Sum(
                     Case(
                         When(paye_en_chine=True, then=Value(0)),
+                        When(paye_par_avance=True, then=Value(0)),
                         default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
                         output_field=DecimalField()
                     )
@@ -502,8 +504,17 @@ def perform_avoir_imputation_colis(colis, user):
     AvoirMouvement = apps.get_model("core", "AvoirMouvement")
     EncaissementColis = apps.get_model("core", "EncaissementColis")
     
-    if not colis.client or colis.client.solde_avoir <= 0 or colis.est_paye:
-        return Decimal('0'), False, "Conditions d'imputation non remplies"
+    if not colis.client or colis.client.solde_avoir <= 0:
+        return Decimal('0'), False, "Client sans avoir ou solde nul"
+    
+    # Si le colis est déjà marqué comme payé mais qu'il reste un montant (ex: douane ajoutée après)
+    # ou s'il n'est pas marqué payé mais a un reste à payer nul (erreur Chine)
+    if colis.reste_a_payer <= 0:
+        if not colis.est_paye:
+            colis.est_paye = True
+            colis.save()
+            return Decimal('0'), True, "Colis déjà soldé (Ajustement statut)"
+        return Decimal('0'), False, "Colis déjà totalement payé"
         
     try:
         with transaction.atomic():
@@ -524,14 +535,15 @@ def perform_avoir_imputation_colis(colis, user):
                     colis.est_paye = True
                     colis.reste_a_payer = 0
                 
-                colis.mode_paiement = "AVOIR"
+                colis.mode_paiement = "AVANCE"
+                colis.paye_par_avance = True
                 colis.save()
                 
                 # 3. Tracer l'encaissement
                 EncaissementColis.objects.create(
                     colis=colis,
                     montant=montant_impute,
-                    methode="AVOIR",
+                    methode="AVANCE",
                     enregistre_par=user,
                     date=timezone.now().date()
                 )
@@ -550,6 +562,30 @@ def perform_avoir_imputation_colis(colis, user):
         return Decimal('0'), False, str(e)
     
     return Decimal('0'), False, "Inconnu"
+
+
+@shared_task
+def impute_avoir_colis_async(colis_id, user_id):
+    """
+    Tâche asynchrone pour imputer l'avoir d'un client sur un colis spécifique.
+    Accélère l'interface lors du pointage (Pointage -> Imputation en arrière-plan).
+    """
+    from django.apps import apps
+    Colis = apps.get_model("core", "Colis")
+    User = apps.get_model("core", "User")
+
+    try:
+        colis = Colis.objects.select_related('client', 'lot').get(pk=colis_id)
+        user = User.objects.get(pk=user_id)
+        
+        if colis.client and colis.client.solde_avoir > 0 and colis.reste_a_payer > 0:
+            mt, success, err = perform_avoir_imputation_colis(colis, user)
+            if success:
+                logger.info(f"Imputation auto réussie (Celery) pour {colis.reference} : {mt} FCFA")
+            else:
+                logger.error(f"Échec imputation auto (Celery) pour {colis.reference} : {err}")
+    except Exception as e:
+        logger.error(f"Erreur task impute_avoir_colis_async (Colis ID {colis_id}): {e}")
 
 
 @shared_task
@@ -576,8 +612,14 @@ def impute_avoirs_lot_async(lot_id, user_id):
         for c in tous_colis:
             client_name = str(c.client) if c.client else "Inconnu"
             
-            if c.est_paye:
-                logger.info(f"  > Colis {c.reference} ({client_name}) : Déjà payé. Ignoré.")
+            # On ne filtre plus par est_paye ici pour permettre le rattrapage des douanes
+            if c.reste_a_payer <= 0:
+                if not c.est_paye:
+                    c.est_paye = True
+                    c.save()
+                    logger.info(f"  > Colis {c.reference} ({client_name}) : Déjà soldé. Statut corrigé.")
+                else:
+                    logger.info(f"  > Colis {c.reference} ({client_name}) : Déjà payé. Ignoré.")
                 skipped_count += 1
                 continue
                 
@@ -592,14 +634,18 @@ def impute_avoirs_lot_async(lot_id, user_id):
                 continue
             
             # Si on arrive ici, on tente l'imputation
-            logger.info(f"  > Tentative imputation Colis {c.reference} ({client_name}) - Avoir: {c.client.solde_avoir}")
-            mt, success, err = perform_avoir_imputation_colis(c, user)
-            
-            if success:
-                total_impute += mt
-                logger.info(f"    ✅ SUCCÈS : {mt} FCFA imputés sur {c.reference}")
+            if c.reste_a_payer > 0 and c.client and c.client.solde_avoir > 0:
+                logger.info(f"  > Tentative imputation Colis {c.reference} ({client_name}) - Avoir: {c.client.solde_avoir}")
+                mt, success, err = perform_avoir_imputation_colis(c, user)
+                
+                if success:
+                    total_impute += mt
+                    logger.info(f"    ✅ SUCCÈS : {mt} FCFA imputés sur {c.reference}")
+                else:
+                    logger.error(f"    ❌ ÉCHEC : {c.reference} - Erreur: {err}")
+                    skipped_count += 1
             else:
-                logger.error(f"    ❌ ÉCHEC : {c.reference} - Erreur: {err}")
+                logger.info(f"    - Pas d'imputation nécessaire ou possible pour {c.reference}")
                 skipped_count += 1
                     
         logger.info(f"=== FIN IMPUTATION LOT {lot.numero} ===")

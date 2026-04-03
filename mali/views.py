@@ -1580,6 +1580,11 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             return redirect("mali:lot_arrived_detail", pk=lot.pk)
 
         colis_qs = Colis.objects.filter(id__in=colis_ids, lot=lot, status="ARRIVE")
+        
+        # Sécurité Backend : Un seul client par livraison en masse
+        if colis_qs.values("client").distinct().count() > 1:
+            messages.error(request, "Erreur de sécurité : Vous ne pouvez pas livrer des colis de clients différents en une seule fois.")
+            return redirect("mali:lot_arrived_detail", pk=lot.pk)
 
         if not colis_qs.exists():
             if request.headers.get("HX-Request"):
@@ -1767,6 +1772,12 @@ class ColisSortieBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, Vie
             return redirect("mali:lot_arrived_detail", pk=lot.pk)
 
         colis_qs = Colis.objects.filter(id__in=colis_ids, lot=lot, status="ARRIVE")
+        
+        # Sécurité Backend : Un seul client par sortie groupée
+        if colis_qs.values("client").distinct().count() > 1:
+            messages.error(request, "Erreur de sécurité : Les sorties groupées ne sont autorisées que pour un seul client.")
+            return redirect("mali:lot_arrived_detail", pk=lot.pk)
+            
         colis_list = list(colis_qs)
 
         for c in colis_list:
@@ -3371,6 +3382,54 @@ class ManualImputeView(DestinationAgentRequiredMixin, View):
             messages.warning(request, "Aucune imputation n'a pu être effectuée (Solde insuffisant ou erreur).")
             
         return redirect(reverse("mali:client_avoir") + f"?client_id={client_id}")
+
+
+class LotManualImputeView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+    """
+    Déclencher l'imputation des avoirs pour TOUS les colis d'un lot spécifique.
+    """
+
+    def post(self, request, pk):
+        from core.models import Lot
+        from notification.tasks import perform_avoir_imputation_colis
+
+        lot = get_object_or_404(Lot, pk=pk)
+
+        # On cherche tous les colis non payés du lot
+        colis_in_lot = lot.colis.filter(est_paye=False, reste_a_payer__gt=0).select_related(
+            "client"
+        )
+
+        if not colis_in_lot.exists():
+            messages.info(
+                request, f"Aucun colis en attente de paiement dans le lot {lot.numero}."
+            )
+            return redirect("mali:lot_arrived_detail", pk=pk)
+
+        count = 0
+        total_impute = 0
+
+        for colis in colis_in_lot:
+            if not colis.client or colis.client.solde_avoir <= 0:
+                continue
+
+            mt, success, err = perform_avoir_imputation_colis(colis, request.user)
+            if success and mt > 0:
+                count += 1
+                total_impute += mt
+
+        if count > 0:
+            messages.success(
+                request,
+                f"Imputation du lot réussie : {count} colis traités pour {total_impute} FCFA.",
+            )
+        else:
+            messages.warning(
+                request,
+                "Aucune imputation n'a pu être effectuée pour ce lot (Soldes clients insuffisants).",
+            )
+
+        return redirect("mali:lot_arrived_detail", pk=pk)
 
 
 class MaliPretsRetraitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):

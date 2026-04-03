@@ -134,12 +134,23 @@
             
             if (hasChine && hasNonChine) {
                 this.mixedSelectionError = true;
-                this.hasSelection = false; // Désactiver le bouton de bulk livraison
+                this.hasSelection = false; 
+            }
+
+            // NOUVEAU : Restriction mélange de clients
+            const clientIds = Array.from(checked).map(cb => cb.dataset.clientId);
+            const uniqueClients = [...new Set(clientIds)];
+            this.isMixedClients = uniqueClients.length > 1;
+            
+            if (this.isMixedClients) {
+                this.hasSelection = false;
             }
         } else {
             this.isSelectionPayeChine = false;
+            this.isMixedClients = false;
         }
     },
+    isMixedClients: false,
     selectedPoids: 0,
     selectedMontant: 0,
     // Modal Détail Colis (Modèle Transit)
@@ -193,23 +204,43 @@
 
     <!-- Colis List (Livraison) -->
     <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
-        <div class="px-6 py-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 bg-gray-50/50">
-            <div>
-                <h3 class="text-lg font-bold text-gray-900">Livraison aux Clients</h3>
-                <p class="mt-1 text-sm text-gray-500 font-medium">{{ colis_list.paginator.count }} colis restants ou livrés.</p>
+        <div class="px-6 py-5 border-b border-gray-200 flex flex-col space-y-5 bg-gray-50/50">
+            <!-- Ligne 1 : Titre et Bouton Imputer -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                <div>
+                    <h3 class="text-lg font-black text-gray-900 flex items-center">
+                        <svg class="mr-2 h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        Livraison aux Clients
+                    </h3>
+                    <p class="mt-0.5 text-xs text-gray-500 font-medium">Gestion des encaissements et remises physiques.</p>
+                </div>
+                
+                <!-- Bouton d'imputation globale -->
+                <form action="{% url 'mali:lot_manual_impute' lot.pk %}" method="POST" id="lot-impute-form">
+                    {% csrf_token %}
+                    <button type="button" @click="confirmAction('Imputer les avoirs ?', 'Voulez-vous éponger les dettes des colis de ce lot avec les avoirs disponibles des clients ?', 'lot-impute-form', 'Oui, imputer', '#4f46e5')"
+                            class="inline-flex items-center px-5 py-2.5 border border-indigo-200 shadow-sm text-xs font-black rounded-xl text-indigo-700 bg-white hover:bg-indigo-50 hover:border-indigo-400 transition-all uppercase tracking-wider">
+                        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Imputer les Avoirs
+                    </button>
+                </form>
             </div>
             
-            <!-- Recherche de Colis -->
-            <form method="GET" class="flex w-full max-sm:w-full">
-                <div class="relative w-full">
+            <!-- Ligne 2 : Recherche de Colis -->
+            <form method="GET" class="w-full flex justify-center">
+                <div class="relative w-full max-w-2xl">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
                     <input type="text" name="qc" value="{{ qc|default:'' }}"
-                        class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 sm:text-sm shadow-sm transition-all"
-                        placeholder="Réf, Client ou Poids (ex: 5.0)...">
+                        class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm shadow-sm transition-all"
+                        placeholder="Rechercher par référence, client ou poids (ex: ML-24-001)...">
                 </div>
                 <button type="submit" class="hidden">Rechercher</button>
             </form>
@@ -260,6 +291,12 @@
                     <svg class="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
                     <span>Impossible de mélanger colis payés en Chine et non-payés. Sélectionnez uniquement un type.</span>
                 </div>
+                
+                <!-- Alerte clients multiples -->
+                <div x-show="isMixedClients" x-cloak class="flex items-center space-x-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-300 rounded-md px-3 py-2">
+                    <svg class="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    <span>Veuillez ne sélectionner qu'un seul client pour la livraison en masse.</span>
+                </div>
             </div>
 
         <ul class="divide-y divide-gray-200">
@@ -274,6 +311,7 @@
                                        data-paye-chine="{% if colis.paye_en_chine %}true{% else %}false{% endif %}"
                                        data-poids="{{ colis.poids|stringformat:".2f" }}"
                                        data-prix="{{ colis.prix_final|stringformat:".2f" }}"
+                                       data-client-id="{{ colis.client.id }}"
                                        @change="updateSelection()"
                                        class="colis-checkbox h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
                             {% else %}
@@ -666,5 +704,22 @@
             setTimeout(() => item.remove(), 500);
         }
     });
+
+    function confirmAction(title, text, formId, confirmBtnText, confirmBtnColor) {
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: confirmBtnColor,
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: confirmBtnText,
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById(formId).submit();
+            }
+        });
+    }
 </script>
 {% endblock %}

@@ -303,6 +303,10 @@ class Colis(TenantAwareModel):
     )
     # Livraison & Paiement
     est_paye = models.BooleanField(default=False)
+    paye_par_avance = models.BooleanField(
+        default=False,
+        help_text=_("Indique si le colis a été payé par imputation d'avoir (Avance)"),
+    )
     paye_en_chine = models.BooleanField(
         default=False,
         help_text=_("Indique si le colis a été encaissé par l'agence en Chine"),
@@ -319,6 +323,7 @@ class Colis(TenantAwareModel):
             ("ESPECE", "Espèce"),
             ("ORANGE_MONEY", "Orange Money"),
             ("SARALI", "Sarali"),
+            ("AVANCE", "Avance"),
         ],
         null=True,
         blank=True,
@@ -570,7 +575,7 @@ class EncaissementColis(models.Model):
             ("ESPECE", "Espèce"),
             ("ORANGE_MONEY", "Orange Money"),
             ("SARALI", "Sarali"),
-            ("AVOIR", "Avoir Client"),
+            ("AVANCE", "Avance / Avoir"),
             ("AUTRE", "Autre"),
         ],
         default="ESPECE"

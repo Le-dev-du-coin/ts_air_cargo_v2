@@ -109,7 +109,7 @@ def get_country_stats(country_code, year=None, month=None):
             date_filter_lots = {"date_expedition__year": year, "date_expedition__month": month}
             date_filter_colis = {"lot__date_expedition__year": year, "lot__date_expedition__month": month}
         else:
-            # Destinations (Mali, RCI): Fait générateur = Arrivée (ou Création si pas encore d'arrivée)
+            # Destinations (Mali, RCI, etc.): Fait générateur = Arrivée
             date_filter_lots = {"date_arrivee__year": year, "date_arrivee__month": month}
             date_filter_colis = {"lot__date_arrivee__year": year, "lot__date_arrivee__month": month}
 
@@ -132,7 +132,7 @@ def get_country_stats(country_code, year=None, month=None):
     stats["poids_total"] = colis.aggregate(total=Sum("poids"))["total"] or 0
     stats["total_transferts"] = transferts.aggregate(total=Sum("montant"))["total"] or 0
 
-    if country_code in ["ML", "CI"]:
+    if country_code != "CN":
         stats["cout_transport"] = 0
         stats["cout_douane"] = 0
         stats["autres_depenses"] = depenses.filter(is_china_indicative=False).aggregate(total=Sum("montant"))["total"] or 0
@@ -1158,15 +1158,8 @@ class LotStatusUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Vie
             # Also update colis status? Generally yes.
             lot.colis.update(status="EXPEDIE")
 
-            # --- NOUVEAU : Imputation automatique de l'avoir client (Celery) ---
-            try:
-                from notification.tasks import impute_avoirs_lot_async
-                impute_avoirs_lot_async.delay(lot.id, request.user.id)
-            except Exception as e:
-                logger.error(f"Erreur déclenchement imputation avoir lot {lot.id}: {e}")
-
             messages.success(
-                request, f"Lot {lot.numero} EXPÉDIÉ ! L'imputation des avoirs est en cours en arrière-plan."
+                request, f"Lot {lot.numero} EXPÉDIÉ ! Les clients seront notifiés du départ."
             )
 
             # Notification Clients — Groupée par client (1 seul message par client)
@@ -1962,29 +1955,20 @@ class RemunerationListView(LoginRequiredMixin, AdminChineRequiredMixin, Template
             (12, "Décembre"),
         ]
 
-        # Stats ML, CI et CN pour choper agents_remuneration mis à jour avec reste_a_payer
-        stats_ml = get_country_stats("ML", selected_year, selected_month)
-        stats_ci = get_country_stats("CI", selected_year, selected_month)
-        stats_cn = get_country_stats("CN", selected_year, selected_month)
-
+        from core.models import Country
+        countries = Country.objects.all().order_by("name")
         agents_data = []
-        
-        for item in stats_ml.get("agents_remuneration", []):
-            item["source_country"] = "Mali"
-            agents_data.append(item)
+
+        for country in countries:
+            stats = get_country_stats(country.code, selected_year, selected_month)
+            # On stocke les stats individuelles pour compatibilité template si besoin
+            context[f"stats_{country.code.lower()}"] = stats
             
-        for item in stats_ci.get("agents_remuneration", []):
-            item["source_country"] = "Côte d'Ivoire"
-            agents_data.append(item)
-            
-        for item in stats_cn.get("agents_remuneration", []):
-            item["source_country"] = "Chine"
-            agents_data.append(item)
+            for item in stats.get("agents_remuneration", []):
+                item["source_country"] = country.name
+                agents_data.append(item)
 
         context["agents_data"] = agents_data
-        context["stats_ml"] = stats_ml
-        context["stats_ci"] = stats_ci
-        context["stats_cn"] = stats_cn
 
         # Historique des paiements de ce mois-ci
         context["paiements"] = PaiementAgent.objects.filter(

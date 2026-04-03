@@ -33,7 +33,7 @@
                     {% endif %}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {% if colis.mode_paiement == 'ESPECE' %}bg-green-100 text-green-800{% elif colis.mode_paiement == 'ORANGE_MONEY' %}bg-orange-100 text-orange-800{% else %}bg-blue-100 text-blue-800{% endif %} uppercase">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {% if colis.mode_paiement == 'ESPECE' %}bg-green-100 text-green-800{% elif colis.mode_paiement == 'ORANGE_MONEY' %}bg-orange-100 text-orange-800{% elif colis.mode_paiement == 'AVANCE' %}bg-indigo-100 text-indigo-800{% else %}bg-blue-100 text-blue-800{% endif %} uppercase">
                         {{ colis.get_mode_paiement_display|default:"—" }}
                     </span>
                 </td>
@@ -54,11 +54,13 @@
                     -
                     {% endif %}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-green-600">
-                    {% if colis.mode_paiement == 'AVANCE' and colis.net_price == 0 %}
-                        <span class="text-indigo-600 uppercase text-[10px] font-black">Avance</span>
+                <td class="amount text-green" style="font-size: 10px; font-weight: 800; text-align: right;">
+                    {% if colis.paye_en_chine %}
+                        <span style="color: var(--amber-600); font-size: 8px; font-weight: 900;">PAYÉ CHINE</span>
+                    {% elif colis.paye_par_avance %}
+                        <span style="color: var(--blue); font-size: 8px;">AVANCE</span>
                     {% else %}
-                        {{ colis.net_price|fcfa }}
+                        {{ colis.net_price|floatformat:0|intcomma }}
                     {% endif %}
                 </td>
             </tr>
