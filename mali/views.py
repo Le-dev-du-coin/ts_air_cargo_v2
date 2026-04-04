@@ -617,9 +617,10 @@ class LotsArrivesView(LotsEnTransitView):
         if not mali:
             return Lot.objects.none()
 
-        # Un lot apparaît en arrivés s'il a au moins un colis non traité (transit ou arrivé sans paiement)
+        # Un lot apparaît en arrivés s'il contient au moins un colis ARRIVE sans acompte (non payé)
+        # On exclut TRANSIT (car ils ont leur propre vue) et les colis avec acomptes (qui vont en paiements)
         pending_q = Q(
-            colis__status__in=["TRANSIT", "ARRIVE"],
+            colis__status="ARRIVE",
             colis__est_paye=False,
             colis__reste_a_payer=F("colis__prix_final") - F("colis__montant_jc")
         )
@@ -985,13 +986,13 @@ class LotArriveDetailView(LotDetailView):
 
         # Filtrage des colis listés (Seul ceux n'ayant AUCUN paiement et non soldés)
         # On ne garde que les colis qui n'ont pas été payés ni imputés
-        # Un colis est "imputé" s'il a reçu un paiement partiel (donc reste_a_payer < prix_final - montant_jc)
+        # On ne garde que les colis ARRIVE qui n'ont AUCUN paiement (ni entier, ni partiel)
         colis_qs = (
             self.object.colis.select_related("client", "client__user")
             .filter(
-                status__in=["TRANSIT", "ARRIVE"],
+                status="ARRIVE",
                 est_paye=False,
-                reste_a_payer=F("prix_final") - F("montant_jc"),
+                reste_a_payer=F("prix_final") - F("montant_jc")
             )
             .order_by("-updated_at")
         )
