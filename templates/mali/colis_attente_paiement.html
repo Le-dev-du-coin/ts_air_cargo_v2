@@ -23,6 +23,8 @@
     selectedMontant: 0,
     mixedSelectionError: false,
     isSelectionPayeChine: false,
+    showZoom: false,
+    colisPhoto: '',
     toggleAll(e) {
         const checkboxes = document.querySelectorAll('input[name=\'colis_ids\']');
         checkboxes.forEach(cb => cb.checked = e.target.checked);
@@ -87,12 +89,13 @@
                         <th scope="col" class="px-6 py-3 text-left">
                             <input type="checkbox" @change="toggleAll" class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colis</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colis</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poids/Vol</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Livraison</th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant Dû</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Autorisé par</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -107,15 +110,9 @@
                                    class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded uppercase mr-2">{{ colis.reference }}</span>
-                                <span class="text-xs text-gray-500">{{ colis.lot.numero }}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
                             <div class="h-12 w-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-inner">
                                 {% if colis.photo %}
-                                <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover">
+                                <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover cursor-zoom-in" @click="colisPhoto = '{{ colis.photo.url }}'; showZoom = true">
                                 {% else %}
                                 <div class="h-full w-full flex items-center justify-center text-gray-300">
                                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -123,6 +120,12 @@
                                     </svg>
                                 </div>
                                 {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded uppercase mr-2">{{ colis.reference }}</span>
+                                <span class="text-xs text-gray-500">{{ colis.lot.numero }}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -142,6 +145,13 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-red-600">
                             {{ colis.montant_du|fcfa }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 italic">
+                            {% if colis.sortie_sous_garantie %}
+                                {{ colis.sortie_autorisee_par|default:"N/A" }}
+                            {% else %}
+                                -
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -279,6 +289,32 @@
                             <p class="text-[10px] text-red-200 mt-1 font-bold">Mélange Chine/Standard interdit</p>
                         </template>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Zoom Photo -->
+    <div x-show="showZoom" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         aria-labelledby="modal-title" role="dialog" aria-modal="true" x-cloak>
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showZoom = false" class="fixed inset-0 bg-gray-900 bg-opacity-90 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-middle bg-transparent transition-all transform max-w-4xl w-full">
+                <div class="relative">
+                    <button @click="showZoom = false" class="absolute -top-12 right-0 text-white hover:text-gray-300 focus:outline-none">
+                        <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    <img :src="colisPhoto" alt="Zoom Colis" class="mx-auto rounded-lg shadow-2xl max-h-[85vh] object-contain">
                 </div>
             </div>
         </div>

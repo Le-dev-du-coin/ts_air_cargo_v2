@@ -617,9 +617,9 @@ class LotsArrivesView(LotsEnTransitView):
         if not mali:
             return Lot.objects.none()
 
-        # Un lot apparaît en arrivés s'il a au moins un colis ARRIVE non traité (aucun paiement)
+        # Un lot apparaît en arrivés s'il a au moins un colis non traité (transit ou arrivé sans paiement)
         pending_q = Q(
-            colis__status="ARRIVE",
+            colis__status__in=["TRANSIT", "ARRIVE"],
             colis__est_paye=False,
             colis__reste_a_payer=F("colis__prix_final") - F("colis__montant_jc")
         )
@@ -975,8 +975,8 @@ class LotArriveDetailView(LotDetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Recalcul des agrégats pour les colis ARRIVE uniquement
-        aggregates = self.object.colis.filter(status="ARRIVE").aggregate(
+        # Recalcul des agrégats pour les colis ARRIVE et TRANSIT (non pointés)
+        aggregates = self.object.colis.filter(status__in=["TRANSIT", "ARRIVE"]).aggregate(
             total_poids=Sum("poids"),
             total_montant=Sum("prix_final"),
         )
@@ -984,10 +984,16 @@ class LotArriveDetailView(LotDetailView):
         context["total_montant_colis"] = aggregates["total_montant"] or 0
 
         # Filtrage des colis listés (Seul ceux n'ayant AUCUN paiement et non soldés)
-        colis_qs = self.object.colis.filter(
-            status="ARRIVE", 
-            est_paye=False, 
-            reste_a_payer=F("prix_final") - F("montant_jc")
+        # On ne garde que les colis qui n'ont pas été payés ni imputés
+        # Un colis est "imputé" s'il a reçu un paiement partiel (donc reste_a_payer < prix_final - montant_jc)
+        colis_qs = (
+            self.object.colis.select_related("client", "client__user")
+            .filter(
+                status__in=["TRANSIT", "ARRIVE"],
+                est_paye=False,
+                reste_a_payer=F("prix_final") - F("montant_jc"),
+            )
+            .order_by("-updated_at")
         )
         qc = self.request.GET.get("qc")
         if qc:

@@ -10,24 +10,24 @@
 {% endblock %}
 
 {% block mali_content %}
-<div class="space-y-6">
+<div class="space-y-6" x-data="{ showZoom: false, colisPhoto: '' }">
 
     <!-- Stats Résumé -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white shadow rounded-lg p-4 border-l-4 border-indigo-500">
             <p class="text-xs text-gray-500 uppercase font-semibold">Ce mois-ci</p>
             <p class="text-2xl font-bold text-indigo-700 mt-1">{{ stats_month.count }}</p>
-            <p class="text-xs text-gray-400 mt-1">{{ stats_month.montant|default:0|intcomma }} FCFA</p>
+            <p class="text-xs text-gray-400 mt-1">{{ stats_month.montant|default:0|fcfa }}</p>
         </div>
         <div class="bg-white shadow rounded-lg p-4 border-l-4 border-blue-500">
             <p class="text-xs text-gray-500 uppercase font-semibold">Cette année ({{ current_year }})</p>
             <p class="text-2xl font-bold text-blue-700 mt-1">{{ stats_year.count }}</p>
-            <p class="text-xs text-gray-400 mt-1">{{ stats_year.montant|default:0|intcomma }} FCFA</p>
+            <p class="text-xs text-gray-400 mt-1">{{ stats_year.montant|default:0|fcfa }}</p>
         </div>
         <div class="bg-white shadow rounded-lg p-4 border-l-4 border-gray-400">
             <p class="text-xs text-gray-500 uppercase font-semibold">Total historique</p>
             <p class="text-2xl font-bold text-gray-700 mt-1">{{ stats_total.count }}</p>
-            <p class="text-xs text-gray-400 mt-1">{{ stats_total.montant|default:0|intcomma }} FCFA</p>
+            <p class="text-xs text-gray-400 mt-1">{{ stats_total.montant|default:0|fcfa }}</p>
         </div>
     </div>
 
@@ -49,7 +49,6 @@
             <select name="month"
                 class="border border-gray-300 rounded-md py-2 px-3 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="">Tous les mois</option>
-
                 <option value="1" {% if filter_month == "1" %}selected{% endif %}>Janvier</option>
                 <option value="2" {% if filter_month == "2" %}selected{% endif %}>Février</option>
                 <option value="3" {% if filter_month == "3" %}selected{% endif %}>Mars</option>
@@ -126,7 +125,8 @@
                                         {% if colis.photo %}
                                         <img src="{{ colis.photo.url }}"
                                              alt="Photo colis"
-                                             class="h-12 w-12 object-cover rounded-md border border-gray-200 shadow-sm">
+                                             class="h-12 w-12 object-cover rounded-md border border-gray-200 shadow-sm cursor-zoom-in"
+                                             @click="colisPhoto = '{{ colis.photo.url }}'; showZoom = true">
                                         {% else %}
                                         <div class="h-12 w-12 rounded-md bg-gray-100 flex items-center justify-center text-gray-300">
                                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -229,6 +229,32 @@
             </div>
         </div>
         {% endif %}
+    </div>
+
+    <!-- Modal Zoom Photo -->
+    <div x-show="showZoom" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         aria-labelledby="modal-title" role="dialog" aria-modal="true" x-cloak>
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="showZoom = false" class="fixed inset-0 bg-gray-900 bg-opacity-90 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-middle bg-transparent transition-all transform max-w-4xl w-full">
+                <div class="relative">
+                    <button @click="showZoom = false" class="absolute -top-12 right-0 text-white hover:text-gray-300 focus:outline-none">
+                        <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    <img :src="colisPhoto" alt="Zoom Colis" class="mx-auto rounded-lg shadow-2xl max-h-[85vh] object-contain">
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
