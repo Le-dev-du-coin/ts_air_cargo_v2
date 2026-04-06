@@ -102,7 +102,7 @@
             <button @click="activeTab = 'avoirs'"
                 :class="{ 'border-emerald-500 text-emerald-600': activeTab === 'avoirs', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'avoirs' }"
                 class="min-w-[100px] flex-1 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col items-center justify-center">
-                <span>💳 Avoirs</span>
+                <span>💳 Avances</span>
                 <span class="text-[10px] font-normal" :class="activeTab === 'avoirs' ? 'text-emerald-400' : 'text-gray-400'">+{{ rechargements_avoir_jour|fcfa }}</span>
             </button>
             <button @click="activeTab = 'sorties'"

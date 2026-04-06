@@ -95,7 +95,7 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poids/Vol</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Livraison</th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant Dû</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Autorisé par</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider font-bold bg-indigo-50">Autorisé par</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -146,11 +146,18 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-red-600">
                             {{ colis.montant_du|fcfa }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 italic">
+                        <td class="px-6 py-4 whitespace-nowrap bg-indigo-50/30">
                             {% if colis.sortie_sous_garantie %}
-                                {{ colis.sortie_autorisee_par|default:"N/A" }}
+                            <div class="flex items-center text-sm font-bold text-indigo-700">
+                                <svg class="mr-1.5 h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                {{ colis.sortie_autorisee_par|default:"Non spécifié" }}
+                            </div>
                             {% else %}
+                            <div class="text-sm font-medium text-gray-400 italic">
                                 -
+                            </div>
                             {% endif %}
                         </td>
                     </tr>

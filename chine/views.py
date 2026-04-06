@@ -1088,13 +1088,14 @@ class LotCloseView(LoginRequiredMixin, StrictAgentChineRequiredMixin, View):
                         lines = "\n".join(
                             f"   \u2022 {c.reference}" for c in colis_list
                         )
+                        transport_icon = "🚢" if lot.type_transport == "BATEAU" else "✈️"
                         msg = (
                             f"Bonjour *{nom_complet}*,\n\n"
                             f"\U0001f4e6 *Lot ferm\u00e9 \u2014 Pr\u00eat \u00e0 exp\u00e9dier !*\n\n"
                             f"Nous venons de fermer le lot *{lot.numero}* contenant "
                             f"{'votre colis' if nb == 1 else f'vos {nb} colis'} :\n"
                             f"{lines}\n\n"
-                            f"🚢 Transport : *{lot.get_type_transport_display().upper()}*\n"
+                            f"{transport_icon} Transport : *{lot.get_type_transport_display().upper()}*\n"
                             f"\u23f3 L'exp\u00e9dition est pr\u00e9vue prochainement depuis la Chine.\n"
                             f"\U0001f514 Vous recevrez une notification d\u00e8s le d\u00e9part.\n\n"
                             f"\U0001f310 Suivez vos colis : https://ts-aircargo.com/login\n"
@@ -1194,7 +1195,7 @@ class LotStatusUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Vie
                         f"{lines}\n\n"
                         f"📋 Lot : *{lot.numero}*\n"
                         f"📅 Date d'exp\u00e9dition : *{date_exp}*\n"
-                        f"📡 Transport : *{lot.get_type_transport_display()}*\n\n"
+                        f"{transport_icon} Transport : *{lot.get_type_transport_display()}*\n\n"
                         f"🔔 Vous recevrez une notification dès l'arrivée à destination.\n\n"
                         f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
                         f"\u2014\u2014\n"
@@ -1403,7 +1404,7 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
                     f"Nous venons d'enregistrer votre colis le *{date_reception}*.\n\n"
                     f"🔖 Référence : *{colis.reference}*\n"
                     f"📋 Type : *{colis.get_type_colis_display()}*\n"
-                    f"🚢 Transport : *{lot.get_type_transport_display().upper()}*\n"
+                    f"{transport_info}\n"
                     f"{quantite_info}\n"
                     + (f"{delai_info}\n" if delai_info else "")
                     + (f"{prix_info}\n" if prix_info else "")
