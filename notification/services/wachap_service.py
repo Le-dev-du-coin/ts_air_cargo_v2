@@ -29,12 +29,11 @@ class WaChapService:
     }
 
     def _get_config(self):
-        """Config singleton avec cache 5 min."""
-        config = cache.get("config_notification")
-        if not config:
-            config = ConfigurationNotification.get_solo()
-            cache.set("config_notification", config, 300)
-        return config
+        """
+        Récupère la configuration en temps réel (sans cache).
+        Évite les redémarrages de Celery (ForkPoolWorkers) lors de la modification des clés depuis l'admin.
+        """
+        return ConfigurationNotification.get_solo()
 
     def _get_accounts(self):
         """Retourne le dict {région: accountId} depuis la config BDD."""

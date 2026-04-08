@@ -163,8 +163,6 @@ class ConfigurationNotification(models.Model):
     def save(self, *args, **kwargs):
         self.pk = 1  # Singleton
         super().save(*args, **kwargs)
-        # Invalider le cache de config
-        cache.delete("config_notification")
 
     @classmethod
     def get_solo(cls):

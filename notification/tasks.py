@@ -253,6 +253,7 @@ def retry_failed_notifications_periodic(force_retry_all=False, region=None):
                 phone=notification.telephone_destinataire,
                 message=notification.message,
                 message_type=msg_type,
+                region=notification.region,
             )
 
             if success:
