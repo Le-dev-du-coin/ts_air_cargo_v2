@@ -80,7 +80,22 @@
                 <p class="mt-2 text-center text-[10px] text-gray-400 italic font-medium">
                     * Saisir les frais de douane débloque le pointage individuel des colis.
                 </p>
+            {% else %}
+            <!-- Bouton d'annulation pour les admins -->
+            {% if user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' %}
+            <div class="mt-8 pt-6 border-t border-gray-100 flex justify-end">
+                <form id="reset-douane-form-{{ lot.pk }}" action="{% url 'mali:lot_reset_douane' pk=lot.pk %}" method="POST">
+                    {% csrf_token %}
+                    <button type="button" @click="confirmAction('Annuler les Frais ?', 'Voulez-vous supprimer les frais de douane assignés à ce lot ? Cette action annulera sa disponibilité pour le pointage.', 'reset-douane-form-{{ lot.pk }}', 'Oui, annuler', '#EF4444')"
+                        class="inline-flex justify-center items-center px-4 py-2 border border-red-200 text-sm font-bold rounded-md text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 shadow-sm transition-all focus:outline-none">
+                        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Annuler Saisie Douane
+                    </button>
+                </form>
             </div>
+            {% endif %}
             {% endif %}
         </div>
     </div>

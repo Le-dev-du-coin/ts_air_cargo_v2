@@ -6,6 +6,7 @@ from .views import (
     LotsArrivesView,
     LotsLivresView,
     LotArriveView,
+    LotResetDouaneView,
     LotTransitDetailView,
     LotArriveDetailView,
     LotLivreDetailView,
@@ -100,6 +101,7 @@ urlpatterns = [
         name="lot_livre_detail",
     ),
     path("lots/<int:pk>/arrive/", LotArriveView.as_view(), name="lot_arrive"),
+    path("lots/<int:pk>/reset-douane/", LotResetDouaneView.as_view(), name="lot_reset_douane"),
     path(
         "lots/<int:pk>/notify-arrivals/",
         NotifyArrivalsView.as_view(),

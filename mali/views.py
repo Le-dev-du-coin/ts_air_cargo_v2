@@ -1328,6 +1328,29 @@ class LotArriveView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
         return redirect("mali:lot_transit_detail", pk=lot.pk)
 
 
+class LotResetDouaneView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
+    """Vue pour annuler le renseignement des frais de douane et de transport (réinitialisation en Transit strict)"""
+
+    def post(self, request, pk):
+        lot = get_object_or_404(Lot, pk=pk)
+
+        # Vérification stricte: Aucun colis ne doit être déjà arrivé, livré ou perdu
+        pointed_colis_exists = lot.colis.filter(status__in=["ARRIVE", "LIVRE", "PERDU"]).exists()
+        
+        if pointed_colis_exists:
+            messages.error(request, "Impossible d'annuler: des colis de ce lot ont déjà été pointés.")
+            return redirect("mali:lot_transit_detail", pk=lot.pk)
+
+        # Réinitialisation
+        lot.frais_douane = None
+        lot.date_arrivee = None
+        lot.save()
+
+        messages.success(request, f"Les frais du lot {lot.numero} ont été réinitialisés avec succès.")
+        return redirect("mali:lot_transit_detail", pk=lot.pk)
+
+
+
 class NotifyArrivalsView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
     """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
 
