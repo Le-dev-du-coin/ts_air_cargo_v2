@@ -16,6 +16,8 @@ from django.db.models import (
     ExpressionWrapper,
     Case,
     When,
+    OuterRef,
+    Subquery,
 )
 from django.db.models.functions import Concat, Coalesce
 from core.mixins import DestinationAgentRequiredMixin, AdminMaliRequiredMixin
@@ -346,6 +348,35 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             .select_related("client", "lot")
         )
 
+        # --- RECHERCHE ---
+        query = self.request.GET.get("q")
+        if query:
+            # Recherche multicritère : Nom, Téléphone, Poids, Référence
+            q_filter = Q(client__nom__icontains=query) | \
+                      Q(client__prenom__icontains=query) | \
+                      Q(client__telephone__icontains=query) | \
+                      Q(reference__icontains=query)
+            
+            # Essayer de chercher par poids si la requête est numérique
+            try:
+                weight_val = float(query.replace(",", "."))
+                q_filter |= Q(poids=weight_val)
+            except ValueError:
+                pass
+                
+            colis_livres_jour = colis_livres_jour.filter(q_filter)
+
+        # Annotation pour l'heure de paiement (depuis EncaissementColis)
+        # On prend le created_at du dernier encaissement de la journée cible
+        latest_enc = EncaissementColis.objects.filter(
+            colis=OuterRef("pk"),
+            date=today
+        ).order_by("-created_at")
+
+        colis_livres_jour = colis_livres_jour.annotate(
+            heure_paiement=Subquery(latest_enc.values("created_at")[:1])
+        )
+
         # Séparation par type de transport (via le Lot)
         # Note: Lot.type_transport choices: CARGO, EXPRESS, BATEAU
 
@@ -376,7 +407,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
-        ).order_by("-sort_date", "-updated_at")
+        ).order_by("-heure_paiement", "-sort_date", "-updated_at")
         context["recette_cargo_jour"] = recette_cargo
         context["poids_cargo_jour"] = poids_cargo
 
@@ -407,7 +438,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
-        ).order_by("-sort_date", "-updated_at")
+        ).order_by("-heure_paiement", "-sort_date", "-updated_at")
         context["recette_express_jour"] = recette_express
         context["poids_express_jour"] = poids_express
 
@@ -439,7 +470,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
-        ).order_by("-sort_date", "-updated_at")
+        ).order_by("-heure_paiement", "-sort_date", "-updated_at")
         context["recette_bateau_jour"] = recette_bateau
         context["poids_bateau_jour"] = poids_bateau
         context["cbm_bateau_jour"] = cbm_bateau
@@ -1255,8 +1286,8 @@ class ColisArriveBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, Vie
             date_arrive = timezone.now().strftime("%d/%m/%Y \u00e0 %H:%M")
             message = (
                 f"Bonjour *{nom_notify}*,\n\n"
-                f"📍 *{'Bonne nouvelle ! Votre colis est arriv\u00e9 !' if nb == 1 else f'Bonne nouvelle ! Vos {nb} colis sont arriv\u00e9s !'}*\n\n"
-                f"Nous venons de r\u00e9ceptionner {'votre colis' if nb == 1 else 'vos colis'} \u00e0 l'agence au Mali 🇲🇱 le *{date_arrive}* :\n"
+                f"📍 *{'Bonne nouvelle ! Votre colis est arrivé !' if nb == 1 else f'Bonne nouvelle ! Vos {nb} colis sont arrivés !'}*\n\n"
+                f"Nous venons de réceptionner {'votre colis' if nb == 1 else 'vos colis'} à l'agence au Mali 🇲🇱 le *{date_arrive}* :\n"
                 f"{liste_str}\n\n"
                 f"💰 *Total \u00e0 r\u00e9gler : {fmt_total} FCFA*\n\n"
                 f"Merci de passer {'le' if nb == 1 else 'les'} r\u00e9cup\u00e9rer \u00e0 votre convenance.\n\n"
@@ -1351,7 +1382,7 @@ class LotResetDouaneView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
 
 
 
-class NotifyArrivalsView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
+class NotifyArrivalsView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Déclenche les notifications groupées pour les colis arrivés (pointés)"""
 
     def post(self, request, pk):
@@ -1398,11 +1429,11 @@ class NotifyArrivalsView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
             nom_notify = user.get_full_name() or user.username
             message = (
                 f"Bonjour *{nom_notify}*,\n\n"
-                f"📍 *{'Bonne nouvelle ! Votre colis est arriv\u00e9 !' if nb == 1 else f'Bonne nouvelle ! Vos {nb} colis sont arriv\u00e9s !'}*\n\n"
-                f"Nous venons de r\u00e9ceptionner {'votre colis' if nb == 1 else 'vos colis'} \u00e0 l'agence au Mali 🇲🇱 :\n"
+                f"📍 *{'Bonne nouvelle ! Votre colis est arrivé !' if nb == 1 else f'Bonne nouvelle ! Vos {nb} colis sont arrivés !'}*\n\n"
+                f"Nous venons de réceptionner {'votre colis' if nb == 1 else 'vos colis'} à l'agence au Mali 🇲🇱 :\n"
                 f"{liste_str}\n\n"
                 f"💰 *Total \u00e0 r\u00e9gler : {fmt_total} FCFA*\n\n"
-                f"Merci de passer {'le' if nb == 1 else 'les'} r\u00e9cup\u00e9rer \u00e0 votre convenance.\n\n"
+                f"Merci de passer {'le' if nb == 1 else 'les'} récupérer à votre convenance.\n\n"
                 f"🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
                 f"\u2014\u2014\n"
                 f"*\u00c9quipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
@@ -1746,8 +1777,8 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             liste_str = "\n".join(lines)
             message = (
                 f"Bonjour *{nom_livre}*,\n\n"
-                f"\u2705 *{'Livraison r\u00e9ussie !' if nb == 1 else f'Livraison r\u00e9ussie pour vos {nb} colis !'}*\n\n"
-                f"{'Le colis suivant a' if nb == 1 else 'Les colis suivants ont'} bien \u00e9t\u00e9 livr\u00e9{'s' if nb > 1 else ''} avec succ\u00e8s :\n"
+                f"✅ *{'Livraison réussie !' if nb == 1 else f'Livraison réussie pour vos {nb} colis !'}*\n\n"
+                f"{'Le colis suivant a' if nb == 1 else 'Les colis suivants ont'} bien été livré{'s' if nb > 1 else ''} avec succès :\n"
                 f"{liste_str}\n\n"
                 f"Merci d'avoir choisi TS AIR CARGO pour vos envois !\n"
                 f"Nous esp\u00e9rons vous revoir tr\u00e8s prochainement. 😊\n\n"
@@ -2433,13 +2464,13 @@ class MaliNotificationListView(
         return redirect(f"{base_url}?{next_url}" if next_url else base_url)
 
 
-class MaliRetryNotificationsView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
+class MaliRetryNotificationsView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """Relance toutes les notifications en échec pour la région Mali"""
 
     def post(self, request):
         from notification.tasks import retry_failed_notifications_periodic
 
-        retry_failed_notifications_periodic.delay(force_retry_all=True)
+        retry_failed_notifications_periodic.delay(force_retry_all=True, region="mali")
         messages.success(request, "Les relances WhatsApp Mali ont été déclenchées.")
         return redirect("mali:notification_list")
 

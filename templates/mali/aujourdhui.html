@@ -6,33 +6,67 @@
 
 {% block header %}Rapport Journalier & Caisse{% endblock %}
 
-{% block actions %}
-<div class="flex flex-wrap items-center gap-4">
-    <form method="get" class="flex items-center gap-2">
-        <label for="date" class="sr-only">Date</label>
-        <input type="date" name="date" id="date" value="{{ target_date|date:'Y-m-d' }}" 
-               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-        <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-            Filtrer
-        </button>
-    </form>
-    <div class="h-8 w-px bg-gray-200 hidden sm:block"></div>
-    <a href="{% url 'mali:rapport_jour_pdf' %}?type=global&date={{ target_date|date:'Y-m-d' }}" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-        📄 Global
-    </a>
-    <a href="{% url 'mali:rapport_jour_pdf' %}?type=cargo&date={{ target_date|date:'Y-m-d' }}" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
-        ✈️ Cargo
-    </a>
-    <a href="{% url 'mali:rapport_jour_pdf' %}?type=express&date={{ target_date|date:'Y-m-d' }}" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
-        🚀 Express
-    </a>
-    <a href="{% url 'mali:rapport_jour_pdf' %}?type=bateau&date={{ target_date|date:'Y-m-d' }}" target="_blank" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
-        🚢 Bateau
-    </a>
-</div>
-{% endblock %}
+{% block actions %}{% endblock %}
 
 {% block mali_content %}
+<!-- Barre de Contrôle et Filtres -->
+<div class="bg-white shadow-sm rounded-xl border border-gray-200 p-5 mb-8">
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <!-- Filtres Principaux -->
+        <form method="get" class="flex flex-wrap items-end gap-4 flex-grow">
+            <div class="w-full sm:w-auto">
+                <label class="block text-[10px] font-black text-gray-400 uppercase mb-1.5 ml-1 tracking-widest">Période du rapport</label>
+                <input type="date" name="date" id="date" value="{{ target_date|date:'Y-m-d' }}" 
+                       class="block w-full px-4 py-2.5 bg-gray-50 border-gray-200 rounded-xl shadow-inner focus:ring-indigo-500 focus:border-indigo-500 text-sm font-bold text-gray-700">
+            </div>
+
+            <div class="w-full sm:flex-1 max-w-md">
+                <label class="block text-[10px] font-black text-gray-400 uppercase mb-1.5 ml-1 tracking-widest">Recherche Multicritère</label>
+                <div class="relative rounded-xl shadow-inner">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" name="q" id="q" value="{{ request.GET.q|default:'' }}" 
+                           class="block w-full pl-10 px-4 py-2.5 bg-gray-50 border-gray-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium"
+                           placeholder="Nom, tel, poids, référence...">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button type="submit" class="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-black rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-95">
+                    <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    Filtrer
+                </button>
+            </div>
+        </form>
+
+        <!-- Exports PDF -->
+        <div class="flex flex-col items-start lg:items-end gap-2">
+            <label class="block text-[10px] font-black text-gray-400 uppercase mb-1.5 ml-1 tracking-widest">Générer les PDFs</label>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'mali:rapport_jour_pdf' %}?type=global&date={{ target_date|date:'Y-m-d' }}" target="_blank" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-xs font-black rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all active:scale-95 border-b-4 border-b-gray-400">
+                    <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    GLOBAL
+                </a>
+                <a href="{% url 'mali:rapport_jour_pdf' %}?type=cargo&date={{ target_date|date:'Y-m-d' }}" target="_blank" 
+                   class="inline-flex items-center px-4 py-2 border border-indigo-200 shadow-sm text-xs font-black rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all active:scale-95 border-b-4 border-b-indigo-200">
+                    ✈️ CARGO
+                </a>
+                <a href="{% url 'mali:rapport_jour_pdf' %}?type=express&date={{ target_date|date:'Y-m-d' }}" target="_blank" 
+                   class="inline-flex items-center px-4 py-2 border border-purple-200 shadow-sm text-xs font-black rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 transition-all active:scale-95 border-b-4 border-b-purple-200">
+                    🚀 EXPRESS
+                </a>
+                <a href="{% url 'mali:rapport_jour_pdf' %}?type=bateau&date={{ target_date|date:'Y-m-d' }}" target="_blank" 
+                   class="inline-flex items-center px-4 py-2 border border-blue-200 shadow-sm text-xs font-black rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all active:scale-95 border-b-4 border-b-blue-200">
+                    🚢 BATEAU
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Synthèse Financière (Cartes) -->
 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
     <!-- Report Veille -->

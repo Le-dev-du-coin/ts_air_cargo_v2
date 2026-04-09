@@ -6,6 +6,7 @@
         <thead class="bg-gray-50">
             <tr>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payeur / Heure</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref. Colis</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poids/Vol</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mode</th>
@@ -20,6 +21,19 @@
             <tr>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {{ colis.client.nom }} {{ colis.client.prenom }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <div class="font-bold text-indigo-900">{{ colis.infos_recepteur|default:colis.client.nom }}</div>
+                    {% if colis.heure_paiement %}
+                        <div class="text-[10px] text-gray-400 mt-0.5 flex items-center">
+                            <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            {{ colis.heure_paiement|date:"H:i" }}
+                        </div>
+                    {% elif colis.paye_en_chine %}
+                        <div class="text-[10px] text-amber-600 font-bold uppercase mt-0.5">En Chine</div>
+                    {% else %}
+                        <div class="text-[10px] text-gray-400 mt-0.5 italic">--:--</div>
+                    {% endif %}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{{ colis.reference }}</span>
