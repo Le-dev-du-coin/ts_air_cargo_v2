@@ -243,14 +243,18 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                             </svg>
                         </span>
-                        <p class="ml-3 font-medium text-white truncate text-sm">
-                            <span class="md:hidden"> <span x-text="selectedCount"></span> colis | <span x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant)"></span> F </span>
-                            <span class="hidden md:inline"> 
-                                <span class="font-black text-indigo-100" x-text="selectedCount"></span> colis sélectionnés 
-                                <span class="mx-2 text-indigo-300">|</span>
-                                Poids : <span class="font-black text-indigo-100" x-text="selectedPoids"></span> kg
-                                <span class="mx-2 text-indigo-300">|</span>
-                                Total : <span class="font-black text-indigo-100" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant)"></span> FCFA
+                        <p class="ml-3 font-medium text-white flex items-center space-x-4">
+                            <span class="hidden lg:inline-flex flex-col">
+                                <span class="text-[10px] text-indigo-200 uppercase font-black leading-tight">Sélection</span>
+                                <span class="text-sm font-bold"><span x-text="selectedCount"></span> colis</span>
+                            </span>
+                            <span class="hidden lg:inline-flex flex-col">
+                                <span class="text-[10px] text-indigo-200 uppercase font-black leading-tight">Poids</span>
+                                <span class="text-sm font-bold"><span x-text="selectedPoids"></span> kg</span>
+                            </span>
+                            <span class="flex flex-col">
+                                <span class="text-[10px] text-indigo-200 uppercase font-black leading-tight">À Encaisser</span>
+                                <span class="text-lg sm:text-xl font-black text-white leading-tight" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant) + ' F'"></span>
                             </span>
                         </p>
                     </div>
@@ -278,10 +282,17 @@
                             </div>
                             
                             <div class="flex flex-col">
-                                <label class="text-[10px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Montant Reçu (Optionnel)</label>
+                                <label class="text-[9px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Mts Reçu</label>
                                 <input type="number" name="montant_total_recu" id="montant_total_recu"
-                                       placeholder="Total payé"
-                                       class="block w-32 border-indigo-400 bg-indigo-700 text-white placeholder-indigo-300 rounded-md shadow-sm focus:ring-white focus:border-white sm:text-xs font-bold">
+                                       placeholder="Optionnel"
+                                       class="block w-24 border-indigo-400 bg-indigo-700 text-white placeholder-indigo-400 rounded-md shadow-sm focus:ring-white focus:border-white text-xs font-bold">
+                            </div>
+
+                            <div class="flex flex-col">
+                                <label class="text-[9px] font-black text-indigo-200 uppercase mb-0.5 ml-1">Payeur</label>
+                                <input type="text" name="infos_recepteur" 
+                                       placeholder="Nom du payeur"
+                                       class="block w-36 border-indigo-400 bg-indigo-700 text-white placeholder-indigo-400 rounded-md shadow-sm focus:ring-white focus:border-white text-xs font-bold">
                             </div>
 
                             <button type="button" @click="confirmerEncaissementBulk()"

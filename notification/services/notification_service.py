@@ -80,16 +80,19 @@ class NotificationService:
                 logger.info(f"Notification {notification.id} envoyée à {phone}")
             else:
                 error_str = str(error_msg).lower()
-                if "invalide" in error_str or "n'existe pas" in error_str or "incorrect" in error_str:
-                    notification.marquer_comme_echec("Numéro incorrect ou invalide", erreur_type="permanent")
+                # 1. Vérifier si c'est un format de numéro invalide
+                if "invalide" in error_str or "incorrect" in error_str:
+                    notification.marquer_comme_echec("Numéro incorrect", erreur_type="permanent")
                 else:
-                    # Vérifier si le numéro est bien sur WhatsApp
+                    # 2. Vérifier la présence sur WhatsApp
                     is_on_wa = wachap_service.check_number_registered(phone, region=region)
                     if not is_on_wa:
-                        error_msg = "Numéro non inscrit sur WA"
-                        notification.marquer_comme_echec(error_msg, erreur_type="permanent")
+                        notification.marquer_comme_echec("Numéro non inscrit sur WhatsApp", erreur_type="permanent")
                     else:
-                        notification.marquer_comme_echec(error_msg)
+                        # 3. Échec technique mais numéro valide et inscrit
+                        # On inclut la mention 'Inscrit sur WhatsApp' pour que le template affiche le bon badge
+                        final_error = f"Échec (Inscrit sur WhatsApp) - {error_msg}"
+                        notification.marquer_comme_echec(final_error)
 
                 logger.error(f"Échec notification {notification.id}: {error_msg}")
 

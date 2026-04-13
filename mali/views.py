@@ -338,13 +338,16 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         )
 
         # --- 2. ACTIVITÉ DU JOUR (Cargo, Express, Bateau) ---
-        # On définit le périmètre du jour : date_encaissement OU repli historique
+        # On définit le périmètre du jour : 
+        # Soit un encaissement a été fait aujourd'hui (via EncaissementColis)
+        # Soit le colis a été livré gratuitement aujourd'hui (Sortie sous garantie)
         colis_livres_jour = (
-            Colis.objects.filter(lot__destination=mali, status="LIVRE")
+            Colis.objects.filter(lot__destination=mali)
             .filter(
-                Q(date_encaissement=today)
-                | Q(date_encaissement__isnull=True, date_livraison=today)
+                Q(encaissements__date=today) | 
+                Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True)
             )
+            .distinct()
             .select_related("client", "lot")
         )
 
@@ -366,15 +369,19 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
                 
             colis_livres_jour = colis_livres_jour.filter(q_filter)
 
-        # Annotation pour l'heure de paiement (depuis EncaissementColis)
-        # On prend le created_at du dernier encaissement de la journée cible
-        latest_enc = EncaissementColis.objects.filter(
+        # Annotation pour l'heure de paiement et le montant payé dans la journée
+        # On définit une sous-requête pour la somme des encaissements du jour cible
+        enc_day_qs = EncaissementColis.objects.filter(
             colis=OuterRef("pk"),
             date=today
-        ).order_by("-created_at")
+        )
+        
+        sum_enc_day = enc_day_qs.values("colis").annotate(total=Sum("montant")).values("total")
+        latest_enc = enc_day_qs.order_by("-created_at")
 
         colis_livres_jour = colis_livres_jour.annotate(
-            heure_paiement=Subquery(latest_enc.values("created_at")[:1])
+            heure_paiement=Subquery(latest_enc.values("created_at")[:1]),
+            montant_paye_jour=Coalesce(Subquery(sum_enc_day[:1]), Value(0), output_field=DecimalField())
         )
 
         # Séparation par type de transport (via le Lot)
@@ -384,26 +391,14 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         colis_cargo = colis_livres_jour.filter(lot__type_transport="CARGO")
         recette_cargo = (
             colis_cargo.aggregate(
-                total=Sum(
-                    Case(
-                        When(paye_en_chine=True, then=Value(0)),
-                        When(paye_par_avance=True, then=Value(0)),
-                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                        output_field=DecimalField(),
-                    )
-                )
+                total=Sum("montant_paye_jour")
             )["total"]
             or 0
         )
         poids_cargo = colis_cargo.aggregate(total=Sum("poids"))["total"] or 0
 
         context["colis_cargo_list"] = colis_cargo.annotate(
-            net_price=Case(
-                When(paye_en_chine=True, then=Value(0)),
-                When(paye_par_avance=True, then=Value(0)),
-                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                output_field=DecimalField(),
-            ),
+            net_price=F("montant_paye_jour"),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
@@ -415,26 +410,14 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         colis_express = colis_livres_jour.filter(lot__type_transport="EXPRESS")
         recette_express = (
             colis_express.aggregate(
-                total=Sum(
-                    Case(
-                        When(paye_en_chine=True, then=Value(0)),
-                        When(paye_par_avance=True, then=Value(0)),
-                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                        output_field=DecimalField(),
-                    )
-                )
+                total=Sum("montant_paye_jour")
             )["total"]
             or 0
         )
         poids_express = colis_express.aggregate(total=Sum("poids"))["total"] or 0
 
         context["colis_express_list"] = colis_express.annotate(
-            net_price=Case(
-                When(paye_en_chine=True, then=Value(0)),
-                When(paye_par_avance=True, then=Value(0)),
-                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                output_field=DecimalField(),
-            ),
+            net_price=F("montant_paye_jour"),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
@@ -446,14 +429,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         colis_bateau = colis_livres_jour.filter(lot__type_transport="BATEAU")
         recette_bateau = (
             colis_bateau.aggregate(
-                total=Sum(
-                    Case(
-                        When(paye_en_chine=True, then=Value(0)),
-                        When(paye_par_avance=True, then=Value(0)),
-                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                        output_field=DecimalField(),
-                    )
-                )
+                total=Sum("montant_paye_jour")
             )["total"]
             or 0
         )
@@ -461,12 +437,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         cbm_bateau = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
 
         context["colis_bateau_list"] = colis_bateau.annotate(
-            net_price=Case(
-                When(paye_en_chine=True, then=Value(0)),
-                When(paye_par_avance=True, then=Value(0)),
-                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                output_field=DecimalField(),
-            ),
+            net_price=F("montant_paye_jour"),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
@@ -1957,6 +1928,11 @@ class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, V
         else:
             colis.date_encaissement = timezone.now().date()
 
+        # Nom du payeur
+        infos_recepteur = request.POST.get("infos_recepteur")
+        if infos_recepteur:
+            colis.infos_recepteur = infos_recepteur
+
         colis.save()
 
         # Création de l'encaissement si un montant a été versé
@@ -1986,6 +1962,7 @@ class ColisEncaissementBulkView(
         date_encaissement = (
             request.POST.get("date_encaissement") or timezone.now().date()
         )
+        infos_recepteur = request.POST.get("infos_recepteur", "").strip()
 
         if not colis_ids:
             messages.warning(request, "Aucun colis sélectionné.")
@@ -2055,6 +2032,8 @@ class ColisEncaissementBulkView(
 
                 c.mode_paiement = mode_paiement
                 c.date_encaissement = date_encaissement
+                if infos_recepteur:
+                    c.infos_recepteur = infos_recepteur
                 c.updated_at = timezone.now()
                 colis_to_update.append(c)
 
