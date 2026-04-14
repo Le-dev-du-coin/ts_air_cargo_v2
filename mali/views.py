@@ -345,6 +345,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             Colis.objects.filter(lot__destination=mali)
             .filter(
                 Q(encaissements__date=today) | 
+                Q(date_encaissement=today) |
                 Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True)
             )
             .distinct()
@@ -398,11 +399,20 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         poids_cargo = colis_cargo.aggregate(total=Sum("poids"))["total"] or 0
 
         context["colis_cargo_list"] = colis_cargo.annotate(
-            net_price=F("montant_paye_jour"),
+            # Si on a des reçus aujourd'hui, on prend leur somme, sinon on prend le total payé du colis
+            net_price=Case(
+                When(montant_paye_jour__gt=0, then=F("montant_paye_jour")),
+                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                output_field=DecimalField(),
+            ),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
         ).order_by("-heure_paiement", "-sort_date", "-updated_at")
+        
+        # Ré-agrégation précise de la recette Cargo basée sur l'annotation net_price
+        # (Plus fiable que de sommer montant_paye_jour qui peut être incomplet pour les anciens colis)
+        recette_cargo = sum(c.net_price for c in context["colis_cargo_list"])
         context["recette_cargo_jour"] = recette_cargo
         context["poids_cargo_jour"] = poids_cargo
 
@@ -417,11 +427,17 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         poids_express = colis_express.aggregate(total=Sum("poids"))["total"] or 0
 
         context["colis_express_list"] = colis_express.annotate(
-            net_price=F("montant_paye_jour"),
+            net_price=Case(
+                When(montant_paye_jour__gt=0, then=F("montant_paye_jour")),
+                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                output_field=DecimalField(),
+            ),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
         ).order_by("-heure_paiement", "-sort_date", "-updated_at")
+        
+        recette_express = sum(c.net_price for c in context["colis_express_list"])
         context["recette_express_jour"] = recette_express
         context["poids_express_jour"] = poids_express
 
@@ -437,11 +453,17 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         cbm_bateau = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
 
         context["colis_bateau_list"] = colis_bateau.annotate(
-            net_price=F("montant_paye_jour"),
+            net_price=Case(
+                When(montant_paye_jour__gt=0, then=F("montant_paye_jour")),
+                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                output_field=DecimalField(),
+            ),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
         ).order_by("-heure_paiement", "-sort_date", "-updated_at")
+        
+        recette_bateau = sum(c.net_price for c in context["colis_bateau_list"])
         context["recette_bateau_jour"] = recette_bateau
         context["poids_bateau_jour"] = poids_bateau
         context["cbm_bateau_jour"] = cbm_bateau
@@ -1893,7 +1915,9 @@ class ColisAttentePaiementView(
         query = self.request.GET.get("q")
         if query:
             # (Recherche multi-mots gérée par le reste du code)
-            queryset = apply_flexible_search(queryset, query)
+            queryset = apply_flexible_search(
+                queryset, query, ["client__nom", "client__prenom", "reference"]
+            )
 
         return queryset
 
