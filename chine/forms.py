@@ -219,13 +219,12 @@ class ColisForm(forms.ModelForm):
         fields = [
             "client",
             "type_colis",
-            "prix_kilo_manuel",
-            "nombre_pieces",
             "description",
             "poids",
             "cbm",
-            "prix_final",
+            "nombre_pieces",
             "prix_kilo_manuel",
+            "prix_final",
             "est_paye",
             "photo",
         ]
@@ -244,15 +243,13 @@ class ColisForm(forms.ModelForm):
             "prix_kilo_manuel": forms.NumberInput(
                 attrs={
                     "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
-                    "placeholder": "8500",
-                    "x-show": "type_colis == 'MANUEL'",
+                    "placeholder": "...",
                     "x-model": "prix_kilo_manuel",
                 }
             ),
             "nombre_pieces": forms.NumberInput(
                 attrs={
                     "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
-                    "x-show": "type_colis == 'TELEPHONE'",
                     "x-model": "nombre_pieces",
                 }
             ),
@@ -280,13 +277,6 @@ class ColisForm(forms.ModelForm):
                 attrs={
                     "class": "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md",
                     "placeholder": "Calculé auto (modifiable)",
-                }
-            ),
-            "prix_kilo_manuel": forms.NumberInput(
-                attrs={
-                    "class": "block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm",
-                    "placeholder": "Ex: 8500",
-                    "x-model": "prix_kilo_manuel",
                 }
             ),
             "est_paye": forms.CheckboxInput(

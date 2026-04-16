@@ -201,12 +201,18 @@
                                 </div>
                             </div>
 
-                            <!-- Prix Manuel (Visible if type is MANUEL) -->
-                            <div class="border-t border-gray-100 pt-4" x-show="type_colis === 'MANUEL'">
+                            <!-- Prix Manuel (Visible if type is MANUEL or BATEAU or TELEPHONE) -->
+                            <div class="border-t border-gray-100 pt-4" x-show="type_colis === 'MANUEL' || transportType === 'BATEAU' || type_colis === 'TELEPHONE'">
                                 <div class="sm:col-span-6">
-                                    <label for="{{ colis_form.prix_kilo_manuel.id_for_label }}" class="block text-sm font-medium text-gray-700">Prix Kilo Manuel (FCFA)</label>
+                                    <label for="{{ colis_form.prix_kilo_manuel.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                                        <span x-show="transportType === 'BATEAU'">Prix CBM Manuel (FCFA)</span>
+                                        <span x-show="type_colis === 'TELEPHONE'">Prix Pièce Manuel (FCFA)</span>
+                                        <span x-show="type_colis === 'MANUEL' && transportType !== 'BATEAU' && type_colis !== 'TELEPHONE'">Prix Kilo Manuel (FCFA)</span>
+                                    </label>
                                     {{ colis_form.prix_kilo_manuel }}
-                                    <p class="mt-1 text-xs text-orange-600 font-medium">Ce prix sera multiplié par le poids pour le calcul final.</p>
+                                    <p class="mt-1 text-xs text-orange-600 font-medium" x-show="transportType === 'BATEAU'">Ce prix sera multiplié par le volume (CBM) pour le calcul final.</p>
+                                    <p class="mt-1 text-xs text-orange-600 font-medium" x-show="type_colis === 'TELEPHONE'">Ce prix sera multiplié par le nombre de pièces pour le calcul final.</p>
+                                    <p class="mt-1 text-xs text-orange-600 font-medium" x-show="type_colis === 'MANUEL' && transportType !== 'BATEAU' && type_colis !== 'TELEPHONE'">Ce prix sera multiplié par le poids pour le calcul final.</p>
                                 </div>
                             </div>
 
@@ -458,12 +464,18 @@
                                 clientId: '',
                                 
                                 init() {
+                                    // S'assurer que le type de transport est en majuscules et sans espaces
+                                    this.transportType = ('{{ lot.type_transport|escapejs }}').trim().toUpperCase();
+                                    
                                     this.$watch('clientId', () => this.calculate());
                                     this.$watch('cbm', () => this.calculate());
                                     this.$watch('poids', () => this.calculate());
                                     this.$watch('type_colis', () => this.calculate());
                                     this.$watch('prix_kilo_manuel', () => this.calculate());
                                     this.$watch('nombre_pieces', () => this.calculate());
+                                    
+                                    // Calcul initial
+                                    this.calculate();
                                 },
                                 
                                 initTomSelect(el) {
@@ -562,34 +574,42 @@
                                 },
 
                                 calculate() {
-                                    const cbmVal = parseFloat(this.cbm) || 0;
+                                    const parseNum = (val) => {
+                                        if (val === undefined || val === null || val === '') return 0;
+                                        const cleanVal = String(val).replace(',', '.').replace(/\s/g, '');
+                                        return parseFloat(cleanVal) || 0;
+                                    };
+
+                                    const cbmVal = parseNum(this.cbm);
+                                    const p = parseNum(this.poids);
+                                    const pieces = parseInt(this.nombre_pieces) || 0;
+                                    const prixManuel = parseNum(this.prix_kilo_manuel);
 
                                     if (this.type_colis === 'ELECTRONIQUE') return;
-
                                     if (!this.tarifs) return; 
+
                                     let prix = 0;
-                                    
-                                    if (this.transportType === 'BATEAU') {
-                                        if (this.tarifs.BATEAU) {
-                                            prix = cbmVal * this.tarifs.BATEAU.prix_cbm;
-                                        }
+                                    const typeT = String(this.transportType).trim().toUpperCase();
+                                    const currentTarif = this.tarifs[typeT] || {};
+
+                                    if (typeT === 'BATEAU') {
+                                        // Bateau : CBM * (Prix Manuel CBM || Tarif Standard CBM)
+                                        const unitPrice = prixManuel > 0 ? prixManuel : (currentTarif.prix_cbm || 0);
+                                        prix = cbmVal * unitPrice;
                                     } else if (this.type_colis === 'MANUEL') {
-                                        const p = parseFloat(this.poids) || 0;
-                                        const prixKiloManuel = parseFloat(this.prix_kilo_manuel) || 0;
-                                        prix = p * prixKiloManuel;
+                                        // Manuel (Poids) : Poids * Prix Manuel
+                                        prix = p * prixManuel;
                                     } else if (this.type_colis === 'TELEPHONE') {
-                                        const pieces = parseInt(this.nombre_pieces) || 0;
-                                        if (this.tarifs.TELEPHONE) {
-                                            prix = pieces * this.tarifs.TELEPHONE.prix_piece;
-                                        }
+                                        // Téléphone : Pièces * (Prix Manuel Pièce || Tarif Standard Pièce du transport actuel)
+                                        const unitPrice = prixManuel > 0 ? prixManuel : (currentTarif.prix_piece || 0);
+                                        prix = pieces * unitPrice;
                                     } else {
-                                        const p = parseFloat(this.poids) || 0;
+                                        // Standard (Cargo/Express) : Poids * (Tarif Spécial || Tarif Standard Kilo)
                                         let prixKilo = 0;
-                                        
                                         if (this.hasSpecialTarif()) {
                                             prixKilo = this.getSpecialTarif();
                                         } else {
-                                            prixKilo = (this.tarifs && this.tarifs[this.transportType]) ? this.tarifs[this.transportType].prix_kilo : 0;
+                                            prixKilo = currentTarif.prix_kilo || 0;
                                         }
                                         prix = p * prixKilo;
                                     }
@@ -597,6 +617,8 @@
                                     const prixFinalInput = document.getElementById('id_prix_final');
                                     if (prixFinalInput) {
                                         prixFinalInput.value = Math.ceil(prix);
+                                        // Déclencher l'événement input pour que d'autres scripts (si présents) captent le changement
+                                        prixFinalInput.dispatchEvent(new Event('input', { bubbles: true }));
                                     }
                                 }
                             }))

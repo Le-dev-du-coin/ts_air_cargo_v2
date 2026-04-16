@@ -434,24 +434,30 @@ class Colis(TenantAwareModel):
         if self.type_colis == "MANUEL" and self.prix_kilo_manuel:
             self.prix_transport = poids_dec * self.prix_kilo_manuel
         elif self.type_colis == "TELEPHONE":
-            # Pour le téléphone, on utilise le tarif spécifique téléphone s'il existe
-            try:
-                tarif_tel = Tarif.objects.get(
-                    destination=self.lot.destination, type_transport="TELEPHONE"
-                )
-                self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * tarif_tel.prix_piece
-            except Tarif.DoesNotExist:
-                if tarif:
-                    self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * tarif.prix_piece
-                else:
-                    self.prix_transport = Decimal('0')
+            # Priorité au prix manuel s'il existe (utilisé comme prix à la pièce)
+            if self.prix_kilo_manuel:
+                self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * self.prix_kilo_manuel
+            else:
+                try:
+                    tarif_tel = Tarif._base_manager.get(
+                        destination=self.lot.destination, type_transport="TELEPHONE"
+                    )
+                    self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * tarif_tel.prix_piece
+                except Tarif.DoesNotExist:
+                    if tarif:
+                        self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * tarif.prix_piece
+                    else:
+                        self.prix_transport = Decimal('0')
         elif self.lot.type_transport == "BATEAU":
-            if tarif:
+            # Pour le bateau, le prix manuel est traité comme prix au CBM
+            if self.prix_kilo_manuel:
+                self.prix_transport = cbm_dec * self.prix_kilo_manuel
+            elif tarif:
                 self.prix_transport = cbm_dec * tarif.prix_cbm
             else:
                 self.prix_transport = Decimal('0')
         else:
-            # Cargo / Express
+            # Cargo / Express standard
             if tarif:
                 self.prix_transport = poids_dec * tarif.prix_kilo
             else:
