@@ -80,19 +80,23 @@ class NotificationService:
                 logger.info(f"Notification {notification.id} envoyée à {phone}")
             else:
                 error_str = str(error_msg).lower()
-                # 1. Vérifier si c'est un format de numéro invalide
-                if "invalide" in error_str or "incorrect" in error_str:
-                    notification.marquer_comme_echec("Numéro incorrect", erreur_type="permanent")
+                
+                # 1. Vérifier la présence sur WhatsApp d'abord (plus précis via API Check)
+                is_on_wa = wachap_service.check_number_registered(phone, region=region)
+                
+                if not is_on_wa:
+                    # Badge: Non inscrit sur WhatsApp
+                    final_error = f"Numéro non inscrit sur WhatsApp - {error_msg}"
+                    notification.marquer_comme_echec(final_error, erreur_type="permanent")
+                elif any(word in error_str for word in ["invalid", "invalide", "incorrect"]):
+                    # Badge: Numéro incorrect
+                    final_error = f"Numéro incorrect - {error_msg}"
+                    notification.marquer_comme_echec(final_error, erreur_type="permanent")
                 else:
-                    # 2. Vérifier la présence sur WhatsApp
-                    is_on_wa = wachap_service.check_number_registered(phone, region=region)
-                    if not is_on_wa:
-                        notification.marquer_comme_echec("Numéro non inscrit sur WhatsApp", erreur_type="permanent")
-                    else:
-                        # 3. Échec technique mais numéro valide et inscrit
-                        # On inclut la mention 'Inscrit sur WhatsApp' pour que le template affiche le bon badge
-                        final_error = f"Échec (Inscrit sur WhatsApp) - {error_msg}"
-                        notification.marquer_comme_echec(final_error)
+                    # Badge: Échec (Mais inscrit sur WA)
+                    # 3. Échec technique (instance déconnectée, quota, etc.) mais numéro valide et inscrit
+                    final_error = f"Échec (Inscrit sur WhatsApp) - {error_msg}"
+                    notification.marquer_comme_echec(final_error)
 
                 logger.error(f"Échec notification {notification.id}: {error_msg}")
 

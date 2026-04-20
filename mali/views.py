@@ -1627,6 +1627,14 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
 
         colis_qs = Colis.objects.filter(id__in=colis_ids, lot=lot, status="ARRIVE")
         
+        # Si un seul colis, on peut capturer le montant_jc (remise)
+        montant_jc = Decimal("0")
+        if len(colis_ids) == 1:
+            try:
+                montant_jc = Decimal(request.POST.get("montant_jc", "0") or "0")
+            except Exception:
+                montant_jc = Decimal("0")
+
         # Sécurité Backend : Un seul client par livraison en masse
         if colis_qs.values("client").distinct().count() > 1:
             messages.error(request, "Erreur de sécurité : Vous ne pouvez pas livrer des colis de clients différents en une seule fois.")
@@ -1671,6 +1679,10 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             c.mode_livraison = mode_livraison
             c.mode_paiement = mode_paiement
             c.infos_recepteur = infos_recepteur
+            
+            # Application de la remise si 1 seul colis
+            if len(colis_list) == 1:
+                c.montant_jc = montant_jc
 
             # Application des dates
             if date_livraison:
@@ -2491,22 +2503,30 @@ class ColisUpdateMaliView(LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView
 
     def dispatch(self, request, *args, **kwargs):
         obj = self.get_object()
-        if obj.lot.status != "OUVERT":
+        # Autoriser la modification si le lot a quitté la Chine et n'est pas encore livré
+        if obj.lot.status in ["OUVERT", "FERME"]:
             messages.error(
                 request,
-                f"La modification est interdite car le lot {obj.lot.numero} est déjà {obj.lot.get_status_display().lower()}.",
+                "La modification n'est pas possible tant que le lot est encore en préparation en Chine.",
             )
-            return redirect("mali:admin_correction_lot_detail", pk=obj.lot.pk)
+            return redirect("mali:admin_dashboard")
+
+        if obj.status == "LIVRE":
+            messages.error(
+                request,
+                "La modification est interdite pour les colis déjà livrés.",
+            )
+            return redirect("mali:lot_livre_detail", pk=obj.lot.pk)
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
+        lot = self.object.lot
         messages.success(
             self.request,
             f"Le carton {self.object.reference} a été corrigé avec succès.",
         )
-        return reverse(
-            "mali:admin_correction_lot_detail", kwargs={"pk": self.object.lot.pk}
-        )
+        # Redirection systématique vers le détail du lot arrivé au Mali
+        return reverse("mali:lot_arrived_detail", kwargs={"pk": lot.pk})
 
     def form_valid(self, form):
         # On sauvegarde les anciennes valeurs pour recalculer le reste à payer si besoin
@@ -2550,48 +2570,54 @@ class MaliDouaneGestionView(AdminMaliRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         from django.core.paginator import Paginator
+        from django.db.models import Sum
 
-        # 1. Querysets complets pour les calculs
-        lots_qs = Lot.objects.filter(destination__code="ML").order_by(
-            "-date_arrivee", "-created_at"
-        )
-        transferts_qs = TransfertArgent.objects.filter(
-            pays_expediteur__code="ML", destinataire="GAOUSSOU"
-        ).order_by("-date", "-created_at")
+        # 1. Querysets Lots (ML uniquement)
+        lots_base = Lot.objects.filter(destination__code="ML")
+        
+        # Séparation Cargo / Express
+        cargo_lots_qs = lots_base.filter(type_transport="CARGO").order_by("-date_arrivee", "-created_at")
+        express_lots_qs = lots_base.filter(type_transport="EXPRESS").order_by("-date_arrivee", "-created_at")
+        bateau_lots_qs = lots_base.filter(type_transport="BATEAU").order_by("-date_arrivee", "-created_at")
 
-        # 2. Pagination des Lots
-        paginator_lots = Paginator(lots_qs, 15)
-        page_lots_num = self.request.GET.get("page_lots")
-        lots_page = paginator_lots.get_page(page_lots_num)
+        # 2. Querysets Transferts
+        transferts_base = TransfertArgent.objects.filter(pays_expediteur__code="ML")
+        
+        tc_qs = transferts_base.filter(destinataire="GAOUSSOU").order_by("-date", "-created_at")
+        te_qs = transferts_base.filter(destinataire="GUISSE").order_by("-date", "-created_at")
 
-        # 3. Pagination des Transferts
-        paginator_trans = Paginator(transferts_qs, 10)
-        page_trans_num = self.request.GET.get("page_trans")
-        trans_page = paginator_trans.get_page(page_trans_num)
+        # 3. Pagination
+        p_lots_c = Paginator(cargo_lots_qs, 10)
+        p_lots_e = Paginator(express_lots_qs, 10)
+        p_trans_c = Paginator(tc_qs, 5)
+        p_trans_e = Paginator(te_qs, 5)
 
-        # 4. Calculs financiers
-        total_douane = lots_qs.aggregate(total=Sum("frais_douane"))["total"] or 0
-        total_paye = (
-            transferts_qs.filter(statut="RECU").aggregate(total=Sum("montant"))["total"]
-            or 0
-        )
-        total_en_attente = (
-            transferts_qs.filter(statut="EN_ATTENTE").aggregate(total=Sum("montant"))[
-                "total"
-            ]
-            or 0
-        )
+        context["cargo_lots"] = p_lots_c.get_page(self.request.GET.get("page_lots_c"))
+        context["express_lots"] = p_lots_e.get_page(self.request.GET.get("page_lots_e"))
+        context["cargo_trans"] = p_trans_c.get_page(self.request.GET.get("page_trans_c"))
+        context["express_trans"] = p_trans_e.get_page(self.request.GET.get("page_trans_e"))
 
-        context.update(
-            {
-                "lots": lots_page,
-                "transferts_gaoussou": trans_page,
-                "total_douane": total_douane,
-                "total_paye": total_paye,
-                "total_en_attente": total_en_attente,
-                "reste_a_payer": total_douane - total_paye,
-            }
-        )
+        # 4. Calculs Financiers CARGO
+        c_douane = cargo_lots_qs.aggregate(total=Sum("frais_douane"))["total"] or 0
+        c_paye = tc_qs.filter(statut="RECU").aggregate(total=Sum("montant"))["total"] or 0
+        c_attente = tc_qs.filter(statut="EN_ATTENTE").aggregate(total=Sum("montant"))["total"] or 0
+
+        # 5. Calculs Financiers EXPRESS
+        e_douane = express_lots_qs.aggregate(total=Sum("frais_douane"))["total"] or 0
+        e_paye = te_qs.filter(statut="RECU").aggregate(total=Sum("montant"))["total"] or 0
+        e_attente = te_qs.filter(statut="EN_ATTENTE").aggregate(total=Sum("montant"))["total"] or 0
+
+        context.update({
+            "c_total_douane": c_douane,
+            "c_total_paye": c_paye,
+            "c_total_en_attente": c_attente,
+            "c_reste_a_payer": c_douane - c_paye,
+            
+            "e_total_douane": e_douane,
+            "e_total_paye": e_paye,
+            "e_total_en_attente": e_attente,
+            "e_reste_a_payer": e_douane - e_paye,
+        })
         return context
 
 

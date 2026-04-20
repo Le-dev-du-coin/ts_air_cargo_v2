@@ -7,146 +7,250 @@
 {% block mali_content %}
 <div class="space-y-8">
     <!-- Totaux Consolides -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Frais Douane (Lots)</p>
-                <p class="text-2xl font-black text-gray-900 mt-1">{{ total_douane|floatformat:0|intcomma }} <span class="text-sm font-medium text-gray-400">FCFA</span></p>
+<div class="space-y-6" x-data="{ tab: 'cargo' }">
+    <!-- Onglets -->
+    <div class="border-b border-gray-200 bg-white rounded-t-2xl px-4">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button @click="tab = 'cargo'"
+                    :class="tab === 'cargo' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-black text-sm uppercase tracking-widest transition-all">
+                📦 Customs Cargo (Gaoussou)
+            </button>
+            <button @click="tab = 'express'"
+                    :class="tab === 'express' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-black text-sm uppercase tracking-widest transition-all">
+                ⚡ Customs Express (Guissé)
+            </button>
+        </nav>
+    </div>
+
+    <!-- SECTION CARGO -->
+    <div x-show="tab === 'cargo'" class="space-y-8" x-transition:enter="transition ease-out duration-200">
+        <!-- Totaux CARGO -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Frais (Cargo)</p>
+                    <p class="text-2xl font-black text-gray-900 mt-1">{{ c_total_douane|floatformat:0|intcomma }} <span class="text-sm font-medium text-gray-400">FCFA</span></p>
+                </div>
+                <div class="bg-indigo-50 p-3 rounded-xl"><svg class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg></div>
             </div>
-            <div class="bg-indigo-50 p-3 rounded-xl">
-                <svg class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-green-100 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-bold text-green-600 uppercase tracking-widest">Payé (Gaoussou)</p>
+                    <p class="text-2xl font-black text-green-700 mt-1">{{ c_total_paye|floatformat:0|intcomma }} <span class="text-sm font-medium text-green-400">FCFA</span></p>
+                    {% if c_total_en_attente > 0 %}<p class="text-[10px] text-orange-500 mt-1 font-bold italic">+ {{ c_total_en_attente|floatformat:0|intcomma }} en attente</p>{% endif %}
+                </div>
+                <div class="bg-green-50 p-3 rounded-xl"><svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+            </div>
+            <div class="bg-gray-900 rounded-2xl shadow-lg p-6 border border-gray-800 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Solde Cargo</p>
+                    <p class="text-2xl font-black text-white mt-1">{{ c_reste_a_payer|floatformat:0|intcomma }} <span class="text-sm font-medium text-gray-500">FCFA</span></p>
+                </div>
+                <div class="bg-white/10 p-3 rounded-xl"><svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
             </div>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-sm p-6 border border-green-100 flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold text-green-600 uppercase tracking-wider">Total Payé (Gaussou)</p>
-                <p class="text-2xl font-black text-green-700 mt-1">{{ total_paye|floatformat:0|intcomma }} <span class="text-sm font-medium text-green-400">FCFA</span></p>
-                {% if total_en_attente > 0 %}
-                <p class="text-[10px] text-orange-500 mt-1 font-bold italic">+ {{ total_en_attente|floatformat:0|intcomma }} en attente</p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Lots Cargo -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                    <h3 class="text-xs font-black text-gray-800 uppercase tracking-widest">Lots Cargo (ML)</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-[9px] font-black text-gray-500 uppercase tracking-widest">Lot</th>
+                                <th class="px-6 py-3 text-left text-[9px] font-black text-gray-500 uppercase tracking-widest">Arrivée</th>
+                                <th class="px-6 py-3 text-right text-[9px] font-black text-gray-500 uppercase tracking-widest">Frais</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for lot in cargo_lots %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm font-bold text-indigo-600">{{ lot.numero }}</td>
+                                <td class="px-6 py-4 text-xs text-gray-500">{{ lot.date_arrivee|date:"d/m/Y" }}</td>
+                                <td class="px-6 py-4 text-right text-sm font-black">{{ lot.frais_douane|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination Cargo Lots -->
+                {% if cargo_lots.has_other_pages %}
+                <div class="px-6 py-3 bg-gray-50 flex justify-between items-center">
+                    <span class="text-[9px] font-bold text-gray-400">PAGE {{ cargo_lots.number }}/{{ cargo_lots.paginator.num_pages }}</span>
+                    <div class="flex space-x-1">
+                        {% if cargo_lots.has_previous %}<a href="?tab=cargo&page_lots_c={{ cargo_lots.previous_page_number }}&page_lots_e={{ express_lots.number }}&page_trans_c={{ cargo_trans.number }}&page_trans_e={{ express_trans.number }}" class="px-2 py-1 bg-white border rounded text-[9px] font-bold">PRÉC</a>{% endif %}
+                        {% if cargo_lots.has_next %}<a href="?tab=cargo&page_lots_c={{ cargo_lots.next_page_number }}&page_lots_e={{ express_lots.number }}&page_trans_c={{ cargo_trans.number }}&page_trans_e={{ express_trans.number }}" class="px-2 py-1 bg-white border rounded text-[9px] font-bold">SUIV</a>{% endif %}
+                    </div>
+                </div>
                 {% endif %}
             </div>
-            <div class="bg-green-50 p-3 rounded-xl">
-                <svg class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
-        </div>
 
-        <div class="bg-gray-900 rounded-2xl shadow-lg p-6 border border-gray-800 flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Reste à Payer</p>
-                <p class="text-2xl font-black text-white mt-1">{{ reste_a_payer|floatformat:0|intcomma }} <span class="text-sm font-medium text-gray-500">FCFA</span></p>
-            </div>
-            <div class="bg-white/10 p-3 rounded-xl">
-                <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <!-- Transferts Gaoussou -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                    <h3 class="text-xs font-black text-gray-800 uppercase tracking-widest">Paiements Gaoussou</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-[9px] font-black text-gray-500 uppercase tracking-widest">Date</th>
+                                <th class="px-6 py-3 text-left text-[9px] font-black text-gray-500 uppercase tracking-widest">Statut</th>
+                                <th class="px-6 py-3 text-right text-[9px] font-black text-gray-500 uppercase tracking-widest">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for t in cargo_trans %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-xs text-gray-600">{{ t.date|date:"d/m/Y" }}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-0.5 rounded text-[9px] font-black {% if t.statut == 'RECU' %}bg-green-100 text-green-700{% elif t.statut == 'EN_ATTENTE' %}bg-yellow-100 text-yellow-700{% else %}bg-gray-100 text-gray-700{% endif %} tracking-tighter">{{ t.get_statut_display }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-right text-sm font-black">{{ t.montant|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination Cargo Trans -->
+                {% if cargo_trans.has_other_pages %}
+                <div class="px-6 py-3 bg-gray-50 flex justify-between items-center">
+                    <span class="text-[9px] font-bold text-gray-400">PAGE {{ cargo_trans.number }}/{{ cargo_trans.paginator.num_pages }}</span>
+                    <div class="flex space-x-1">
+                        {% if cargo_trans.has_previous %}<a href="?tab=cargo&page_trans_c={{ cargo_trans.previous_page_number }}&page_lots_c={{ cargo_lots.number }}&page_lots_e={{ express_lots.number }}&page_trans_e={{ express_trans.number }}" class="px-2 py-1 bg-white border rounded text-[9px] font-bold">PRÉC</a>{% endif %}
+                        {% if cargo_trans.has_next %}<a href="?tab=cargo&page_trans_c={{ cargo_trans.next_page_number }}&page_lots_c={{ cargo_lots.number }}&page_lots_e={{ express_lots.number }}&page_trans_e={{ express_trans.number }}" class="px-2 py-1 bg-white border rounded text-[9px] font-bold">SUIV</a>{% endif %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <!-- Liste des Lots -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-                <h3 class="font-black text-gray-800 uppercase tracking-tight">Détail des Frais par Lot</h3>
-                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">Page {{ lots.number }}/{{ lots.paginator.num_pages }}</span>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-[10px] font-black text-gray-500 uppercase">Lot</th>
-                            <th class="px-6 py-3 text-left text-[10px] font-black text-gray-500 uppercase">Date Arrivée</th>
-                            <th class="px-6 py-3 text-right text-[10px] font-black text-gray-500 uppercase">Frais Douane</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        {% for lot in lots %}
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="font-bold text-indigo-600">{{ lot.numero }}</span>
-                                <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold
-                                    {% if lot.type_transport == 'CARGO' %}bg-orange-100 text-orange-800
-                                    {% elif lot.type_transport == 'EXPRESS' %}bg-blue-100 text-blue-800
-                                    {% elif lot.type_transport == 'BATEAU' %}bg-teal-100 text-teal-800
-                                    {% endif %}">{{ lot.get_type_transport_display }}</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ lot.date_arrivee|date:"d/m/Y"|default:"En route" }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-black text-gray-900">{{ lot.frais_douane|floatformat:0|intcomma }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="3" class="px-6 py-8 text-center text-gray-400 italic">Aucun lot trouvé.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <!-- Pagination Lots -->
-            {% if lots.has_other_pages %}
-            <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+    <!-- SECTION EXPRESS -->
+    <div x-show="tab === 'express'" class="space-y-8" x-transition:enter="transition ease-out duration-200">
+        <!-- Totaux EXPRESS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex items-center justify-between">
                 <div>
-                    <p class="text-[10px] text-gray-700 font-bold uppercase">Page {{ lots.number }} / {{ lots.paginator.num_pages }}</p>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Frais (Express)</p>
+                    <p class="text-2xl font-black text-gray-900 mt-1">{{ e_total_douane|floatformat:0|intcomma }} <span class="text-sm font-medium text-gray-400">FCFA</span></p>
                 </div>
-                <div class="flex space-x-2">
-                    {% if lots.has_previous %}
-                    <a href="?page_lots={{ lots.previous_page_number }}&page_trans={{ transferts_gaoussou.number }}" class="p-1 px-2 bg-white border rounded text-[10px] hover:bg-gray-100 font-bold tracking-tighter transition-colors">« PRÉC</a>
-                    {% endif %}
-                    {% if lots.has_next %}
-                    <a href="?page_lots={{ lots.next_page_number }}&page_trans={{ transferts_gaoussou.number }}" class="p-1 px-2 bg-white border rounded text-[10px] hover:bg-gray-100 font-bold tracking-tighter transition-colors">SUIV »</a>
-                    {% endif %}
-                </div>
+                <div class="bg-orange-50 p-3 rounded-xl"><svg class="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div>
             </div>
-            {% endif %}
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-green-100 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-bold text-green-600 uppercase tracking-widest">Payé (Guissé)</p>
+                    <p class="text-2xl font-black text-green-700 mt-1">{{ e_total_paye|floatformat:0|intcomma }} <span class="text-sm font-medium text-green-400">FCFA</span></p>
+                    {% if e_total_en_attente > 0 %}<p class="text-[10px] text-orange-500 mt-1 font-bold italic">+ {{ e_total_en_attente|floatformat:0|intcomma }} en attente</p>{% endif %}
+                </div>
+                <div class="bg-green-50 p-3 rounded-xl"><svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+            </div>
+            <div class="bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-700 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Solde Express</p>
+                    <p class="text-2xl font-black text-white mt-1">{{ e_reste_a_payer|floatformat:0|intcomma }} <span class="text-sm font-medium text-gray-500">FCFA</span></p>
+                </div>
+                <div class="bg-orange-500/20 p-3 rounded-xl"><svg class="h-6 w-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+            </div>
         </div>
 
-        <!-- Liste des Transferts Gaussou -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-                <h3 class="font-black text-gray-800 uppercase tracking-tight">Paiements Gaussou</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-[10px] font-black text-gray-500 uppercase">Date</th>
-                            <th class="px-6 py-3 text-left text-[10px] font-black text-gray-500 uppercase">Statut</th>
-                            <th class="px-6 py-3 text-right text-[10px] font-black text-gray-500 uppercase">Montant</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        {% for t in transferts_gaoussou %}
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ t.date|date:"d/m/Y" }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold
-                                    {% if t.statut == 'RECU' %}bg-green-100 text-green-700
-                                    {% elif t.statut == 'EN_ATTENTE' %}bg-yellow-100 text-yellow-700
-                                    {% else %}bg-gray-100 text-gray-700{% endif %}">
-                                    {{ t.get_statut_display }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-black text-gray-900">{{ t.montant|floatformat:0|intcomma }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="3" class="px-6 py-8 text-center text-gray-400 italic">Aucun transfert enregistré.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <!-- Pagination Transferts -->
-            {% if transferts_gaoussou.has_other_pages %}
-            <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                <div>
-                    <p class="text-[10px] text-gray-700 font-bold uppercase">Page {{ transferts_gaoussou.number }} / {{ transferts_gaoussou.paginator.num_pages }}</p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Lots Express -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                    <h3 class="text-xs font-black text-gray-800 uppercase tracking-widest">Lots Express (ML)</h3>
                 </div>
-                <div class="flex space-x-2">
-                    {% if transferts_gaoussou.has_previous %}
-                    <a href="?page_trans={{ transferts_gaoussou.previous_page_number }}&page_lots={{ lots.number }}" class="p-1 px-2 bg-white border rounded text-[10px] hover:bg-gray-100 font-bold tracking-tighter transition-colors">« PRÉC</a>
-                    {% endif %}
-                    {% if transferts_gaoussou.has_next %}
-                    <a href="?page_trans={{ transferts_gaoussou.next_page_number }}&page_lots={{ lots.number }}" class="p-1 px-2 bg-white border rounded text-[10px] hover:bg-gray-100 font-bold tracking-tighter transition-colors">SUIV »</a>
-                    {% endif %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-[9px] font-black text-gray-500 uppercase tracking-widest">Lot</th>
+                                <th class="px-6 py-3 text-left text-[9px] font-black text-gray-500 uppercase tracking-widest">Arrivée</th>
+                                <th class="px-6 py-3 text-right text-[9px] font-black text-gray-500 uppercase tracking-widest">Frais</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for lot in express_lots %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm font-bold text-orange-600">{{ lot.numero }}</td>
+                                <td class="px-6 py-4 text-xs text-gray-500">{{ lot.date_arrivee|date:"d/m/Y" }}</td>
+                                <td class="px-6 py-4 text-right text-sm font-black">{{ lot.frais_douane|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
+                <!-- Pagination Express Lots -->
+                {% if express_lots.has_other_pages %}
+                <div class="px-6 py-3 bg-gray-50 flex justify-between items-center">
+                    <span class="text-[9px] font-bold text-gray-400">PAGE {{ express_lots.number }}/{{ express_lots.paginator.num_pages }}</span>
+                    <div class="flex space-x-1">
+                        {% if express_lots.has_previous %}<a href="?tab=express&page_lots_e={{ express_lots.previous_page_number }}&page_lots_c={{ cargo_lots.number }}&page_trans_c={{ cargo_trans.number }}&page_trans_e={{ express_trans.number }}" class="px-2 py-1 bg-white border rounded text-[9px] font-bold">PRÉC</a>{% endif %}
+                        {% if express_lots.has_next %}<a href="?tab=express&page_lots_e={{ express_lots.next_page_number }}&page_lots_c={{ cargo_lots.number }}&page_trans_c={{ cargo_trans.number }}&page_trans_e={{ express_trans.number }}" class="px-2 py-1 bg-white border rounded text-[9px] font-bold">SUIV</a>{% endif %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
+
+            <!-- Transferts Guissé -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                    <h3 class="text-xs font-black text-gray-800 uppercase tracking-widest">Paiements Guissé</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-[9px] font-black text-gray-500 uppercase tracking-widest">Date</th>
+                                <th class="px-6 py-3 text-left text-[9px] font-black text-gray-500 uppercase tracking-widest">Statut</th>
+                                <th class="px-6 py-3 text-right text-[9px] font-black text-gray-500 uppercase tracking-widest">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for t in express_trans %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-xs text-gray-600">{{ t.date|date:"d/m/Y" }}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-0.5 rounded text-[9px] font-black {% if t.statut == 'RECU' %}bg-green-100 text-green-700{% elif t.statut == 'EN_ATTENTE' %}bg-yellow-100 text-yellow-700{% else %}bg-gray-100 text-gray-700{% endif %} tracking-tighter">{{ t.get_statut_display }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-right text-sm font-black">{{ t.montant|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination Express Trans -->
+                {% if express_trans.has_other_pages %}
+                <div class="px-6 py-3 bg-gray-50 flex justify-between items-center">
+                    <span class="text-[9px] font-bold text-gray-400">PAGE {{ express_trans.number }}/{{ express_trans.paginator.num_pages }}</span>
+                    <div class="flex space-x-1">
+                        {% if express_trans.has_previous %}<a href="?tab=express&page_trans_e={{ express_trans.previous_page_number }}&page_lots_c={{ cargo_lots.number }}&page_lots_e={{ express_lots.number }}&page_trans_c={{ cargo_trans.number }}" class="px-2 py-1 bg-white border rounded text-[9px] font-bold">PRÉC</a>{% endif %}
+                        {% if express_trans.has_next %}<a href="?tab=express&page_trans_e={{ express_trans.next_page_number }}&page_lots_c={{ cargo_lots.number }}&page_lots_e={{ express_lots.number }}&page_trans_c={{ cargo_trans.number }}" class="px-2 py-1 bg-white border rounded text-[9px] font-bold">SUIV</a>{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
+</div>
+
+<script>
+    // Animation simple des onglets via Alpine.js ou injectée si besoin
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = urlParams.get('tab');
+        if (activeTab) {
+            // Si on utilise Alpine.js via x-data, il faudra s'assurer que tab est mis à jour
+            // Ici, x-data="{ tab: 'cargo' }" définit l'état initial.
+            // On peut injecter une valeur initiale via Django si nécessaire :
+            // x-data="{ tab: '{{ request.GET.tab|default:'cargo' }}' }"
+        }
+    });
+</script>
 </div>
 {% endblock %}

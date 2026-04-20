@@ -263,26 +263,28 @@
                 </div>
                 
                 <div class="flex flex-col items-end space-y-2" x-show="hasSelection" x-cloak>
-                    <div class="flex items-center space-x-4 mb-1">
-                        <span class="text-xs font-bold text-gray-500 uppercase">Sélection : </span>
-                        <span class="text-sm font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded" x-text="selectedCount + ' colis'"></span>
-                        <span class="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded" x-text="selectedPoids + ' kg'"></span>
-                        <span class="text-sm font-black text-green-600 bg-green-50 px-2 py-0.5 rounded" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant) + ' FCFA'"></span>
+                    <div class="flex items-center space-x-2 sm:space-x-4 mb-1 flex-wrap justify-end">
+                        <span class="text-[10px] font-bold text-gray-500 uppercase hidden sm:inline">Sélection : </span>
+                        <span class="text-[11px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100" x-text="selectedCount + ' colis'"></span>
+                        <span class="text-[11px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100" x-text="selectedPoids + ' kg'"></span>
+                        <span class="text-[11px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant) + ' FCFA'"></span>
                     </div>
-                    <div class="flex space-x-2">
+                    <div class="flex space-x-2 w-full sm:w-auto">
                         <button type="button" @click="showBulkDeliveryModal = true"
-                                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors">
-                            <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                class="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-transparent shadow-sm text-xs font-bold rounded-lg text-white bg-green-600 hover:bg-green-700 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                            <svg class="h-4 w-4 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            Livrer la sélection
+                            <span class="hidden sm:inline">Livrer la sélection</span>
+                            <span class="sm:hidden ml-1">Livrer</span>
                         </button>
                         <button type="button" @click="showBulkSortieModal = true"
-                                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-amber-600 hover:bg-amber-700 transition-colors">
-                            <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                class="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-transparent shadow-sm text-xs font-bold rounded-lg text-white bg-amber-600 hover:bg-amber-700 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                            <svg class="h-4 w-4 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                             </svg>
-                            Sortie de la sélection
+                            <span class="hidden sm:inline">Sortie de la sélection</span>
+                            <span class="sm:hidden ml-1">Sortie</span>
                         </button>
                     </div>
                 </div>
@@ -587,6 +589,7 @@
                                     <option value="ESPECE" selected>💵 Espèce</option>
                                     <option value="ORANGE_MONEY">📱 Orange Money</option>
                                     <option value="SARALI">💳 Sarali</option>
+                                    <option value="WAVE">🌊 Wave</option>
                                 </select>
                             </div>
 
@@ -596,7 +599,15 @@
                                 <input type="number" name="montant_encaisse" x-model="bulkEncaisse"
                                        class="block w-full border-amber-300 bg-amber-50 rounded-md focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-black">
                             </div>
-                            <div class="col-span-1" x-show="bulkPaiement === 'PARTIEL'">
+
+                            <!-- Champ JC (Affiché uniquement si 1 colis sélectionné) -->
+                            <div class="col-span-1" x-show="selectedCount === 1">
+                                <label class="block text-xs font-black text-indigo-700 uppercase mb-1 italic">Remise / JC</label>
+                                <input type="number" name="montant_jc" placeholder="0"
+                                       class="block w-full border-indigo-200 bg-indigo-50 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-black">
+                            </div>
+
+                            <div class="col-span-1" x-show="bulkPaiement === 'PARTIEL'" :class="selectedCount === 1 ? '' : 'col-span-2'">
                                 <label class="block text-xs font-black text-red-700 uppercase mb-1 italic">Reste Global</label>
                                 <input type="number" name="reste_a_payer" readonly
                                        :value="Math.max(0, selectedMontant - bulkEncaisse)"

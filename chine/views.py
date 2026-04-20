@@ -1379,18 +1379,20 @@ class ColisCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateV
                 date_reception = timezone.now().strftime("%d/%m/%Y à %H:%M")
 
                 # Détermination des infos de quantité et transport
+                display_transport = lot.get_type_transport_display().upper()
+                transport_icon = "🚢" if lot.type_transport == "BATEAU" else "✈️"
+                
                 if lot.type_transport == "BATEAU":
                     quantite_info = f"📦 Volume : *{colis.cbm} CBM*"
                     delai_info = "⚡ Délai estimé : *3 à 4 mois*"
-                    transport_info = "🚢 Transport : *BATEAU*"
                 elif colis.type_colis == "TELEPHONE":
                     quantite_info = f"📱 Quantité : *{colis.nombre_pieces} pièce(s)*"
                     delai_info = ""
-                    transport_info = "✈️ Transport : *AVION*"
                 else:
                     quantite_info = f"⚖️ Poids : *{colis.poids} kg*"
                     delai_info = ""
-                    transport_info = "✈️ Transport : *AVION*"
+                
+                transport_info = f"{transport_icon} Transport : *{display_transport}*"
 
                 prix_info = (
                     f"💰 Prix : *{colis.prix_final:,.0f} FCFA*".replace(",", " ")

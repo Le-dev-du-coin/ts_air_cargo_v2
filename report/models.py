@@ -58,6 +58,7 @@ class TransfertArgent(models.Model):
     class Destinataire(models.TextChoices):
         CHINE = "CHINE", _("Chine")
         GAOUSSOU = "GAOUSSOU", _("Gaoussou")
+        GUISSE = "GUISSE", _("Guissé")
 
     date = models.DateField(default=timezone.now)
     montant = models.DecimalField(
