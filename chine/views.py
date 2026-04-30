@@ -371,12 +371,24 @@ class TransportStatsDetailView(
         context = super().get_context_data(**kwargs)
         now = timezone.now()
 
-        try:
-            selected_year = int(self.request.GET.get("year", now.year))
-            selected_month = int(self.request.GET.get("month", now.month))
-        except (ValueError, TypeError):
-            selected_year = now.year
-            selected_month = now.month
+        selected_year_raw = self.request.GET.get("year", str(now.year))
+        selected_month_raw = self.request.GET.get("month", str(now.month))
+
+        if selected_year_raw == "all":
+            selected_year = "all"
+        else:
+            try:
+                selected_year = int(selected_year_raw)
+            except (ValueError, TypeError):
+                selected_year = now.year
+
+        if selected_month_raw == "all":
+            selected_month = "all"
+        else:
+            try:
+                selected_month = int(selected_month_raw)
+            except (ValueError, TypeError):
+                selected_month = now.month
 
         context["selected_year"] = selected_year
         context["selected_month"] = selected_month
@@ -397,8 +409,13 @@ class TransportStatsDetailView(
             (12, "Décembre"),
         ]
 
-        context["stats_ml"] = get_country_stats("ML", selected_year, selected_month)
-        context["stats_ci"] = get_country_stats("CI", selected_year, selected_month)
+        if selected_year == "all" or selected_month == "all":
+            context["stats_ml"] = get_country_stats("ML")
+            context["stats_ci"] = get_country_stats("CI")
+        else:
+            context["stats_ml"] = get_country_stats("ML", selected_year, selected_month)
+            context["stats_ci"] = get_country_stats("CI", selected_year, selected_month)
+
         context["stats_ml_global"] = get_country_stats("ML")
         context["stats_ci_global"] = get_country_stats("CI")
 
