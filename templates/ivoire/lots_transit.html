@@ -57,6 +57,7 @@
                         <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Date Exp.</th>
                         <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Transport</th>
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Colis</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Poids (kg)</th>
                         <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Recettes Est.</th>
                         <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Actions</th>
                     </tr>
@@ -84,6 +85,9 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             <span class="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-full">{{ lot.nb_colis_transit }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-sm font-bold text-gray-900 bg-blue-50 text-blue-700 px-2 py-1 rounded-full">{{ lot.poids_total_transit|default:"0"|floatformat:1 }} kg</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <span class="text-xs font-bold text-gray-400 mr-2">Est.</span>
