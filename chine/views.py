@@ -1639,7 +1639,7 @@ class NotificationListView(LoginRequiredMixin, AgentChineRequiredMixin, ListView
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Statistiques pour les filtres rapides
-        context["stats_notif"] = Notification.objects.aggregate(
+        context["stats_notif"] = Notification.objects.filter(region="chine").aggregate(
             total=Count("id"),
             envoye=Count("id", filter=Q(statut="envoye")),
             echec=Count("id", filter=Q(statut="echec")),
@@ -1833,7 +1833,7 @@ class AgentDeleteView(LoginRequiredMixin, AdminChineRequiredMixin, DeleteView):
 # --- MODULE FINANCE CHINE ---
 
 
-class ChinaDepenseListView(LoginRequiredMixin, StrictAgentChineRequiredMixin, ListView):
+class ChinaDepenseListView(LoginRequiredMixin, AgentChineRequiredMixin, ListView):
     model = Depense
     template_name = "chine/finance/depenses.html"
     context_object_name = "depenses"
@@ -1879,7 +1879,7 @@ class ChinaDepenseListView(LoginRequiredMixin, StrictAgentChineRequiredMixin, Li
 
 
 class ChinaDepenseCreateView(
-    LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateView
+    LoginRequiredMixin, AgentChineRequiredMixin, CreateView
 ):
     model = Depense
     fields = ["date", "pays", "categorie", "description", "montant", "piece_jointe"]
@@ -1896,7 +1896,7 @@ class ChinaDepenseCreateView(
 
 
 class ChinaDepenseDeleteView(
-    LoginRequiredMixin, StrictAgentChineRequiredMixin, DeleteView
+    LoginRequiredMixin, AgentChineRequiredMixin, DeleteView
 ):
     model = Depense
     success_url = reverse_lazy("chine:depenses_list")

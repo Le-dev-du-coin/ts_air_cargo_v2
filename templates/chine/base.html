@@ -61,7 +61,7 @@
                         </a>
 
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Finances</h3></div>
-                        {% if user.role == 'AGENT_CHINE' %}
+                        {% if user.role == 'AGENT_CHINE' or user.role == 'ADMIN_CHINE' %}
                         <a href="{% url 'chine:depenses_list' %}" class="{% if 'finance' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Dépenses
                         </a>
@@ -194,7 +194,7 @@
                         <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Finances</h3>
                     </div>
 
-                    {% if user.role == 'AGENT_CHINE' %}
+                    {% if user.role == 'AGENT_CHINE' or user.role == 'ADMIN_CHINE' %}
                     <a href="{% url 'chine:depenses_list' %}"
                         class="{% if 'finance' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'finance' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
