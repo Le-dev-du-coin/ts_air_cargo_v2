@@ -212,13 +212,13 @@
                                     </div>
                                 </dl>
                                 
-                                {% if notif.erreur_details %}
+                                {% if notif.erreur_envoi %}
                                 <div class="mt-4 pt-4 border-t border-gray-200">
                                     <h5 class="text-sm font-semibold text-red-600 mb-1 flex items-center gap-1">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Erreur Retournée (Type: {{ notif.erreur_envoi|default:'Inconnu' }})
+                                        Erreur Retournée
                                     </h5>
-                                    <p class="text-xs text-red-500 font-mono bg-red-50 p-2 rounded border border-red-100">{{ notif.erreur_details }}</p>
+                                    <p class="text-xs text-red-500 font-mono bg-red-50 p-2 rounded border border-red-100">{{ notif.erreur_envoi }}</p>
                                 </div>
                                 {% endif %}
                             </div>

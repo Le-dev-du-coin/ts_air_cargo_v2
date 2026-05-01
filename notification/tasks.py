@@ -478,7 +478,7 @@ def send_daily_report_mali():
 def cleanup_old_notifications_periodic():
     """
     Supprime de la base de données toutes les notifications avec statut 'envoye'
-    et 'echec_permanent' datant de plus de 7 jours, afin d'économiser de l'espace disque.
+    datant de plus de 7 jours, afin d'économiser de l'espace disque.
     """
     from .models import Notification
 
@@ -486,7 +486,7 @@ def cleanup_old_notifications_periodic():
 
     try:
         deleted_count, _ = Notification.objects.filter(
-            statut="envoye", created_at__lte=threshold_date
+            statut="envoye", date_creation__lte=threshold_date
         ).delete()
 
         logger.info(

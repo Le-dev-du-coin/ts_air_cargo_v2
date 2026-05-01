@@ -1606,7 +1606,7 @@ class RetryFailedNotificationsView(LoginRequiredMixin, TaskMixin, View):
         return redirect("chine:notification_list")
 
 
-class NotificationListView(LoginRequiredMixin, TaskMixin, ListView):
+class NotificationListView(LoginRequiredMixin, AgentChineRequiredMixin, ListView):
     model = Notification
     template_name = "chine/notifications/list.html"
     context_object_name = "notifications"
