@@ -218,9 +218,12 @@ def get_country_stats(country_code, year=None, month=None):
             total_commissions += montant
 
         # Calcul du déjà payé sur la période via PaiementAgent
+        # IMPORTANT : On ne déduit les avances et paiements globaux que dans le pays d'origine de l'agent
+        # pour éviter qu'un agent multi-pays (ex: Admin Chine) ne voie ses avances déduites plusieurs fois.
         deja_paye = 0
         avances_total = 0
-        if year and month:
+        
+        if year and month and agent.country and agent.country.code == country_code:
             paiements = PaiementAgent.objects.filter(
                 agent=agent, periode_annee=year, periode_mois=month
             )

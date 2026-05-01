@@ -5,7 +5,7 @@
 {% block header %}Ajouter un colis manquant — Lot {{ lot.numero }}{% endblock %}
 
 {% block actions %}
-<a href="{% url 'mali:admin_correction_lot_detail' lot.pk %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+<a href="{% url 'mali:lot_arrived_detail' lot.pk %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-colors">
     <svg class="-ml-1 mr-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
     Retour au lot
 </a>

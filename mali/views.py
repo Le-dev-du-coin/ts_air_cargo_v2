@@ -3159,7 +3159,7 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
         return redirect("mali:admin_correction_lot_detail", pk=colis.lot.pk)
 
 
-class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
+class MaliColisAddToArrivalView(DestinationAgentRequiredMixin, View):
     """Permet à l'Admin Mali d'ajouter un colis manquant dans un lot arrivé.
     Ces colis seront marqués 'ajoute_par_mali=True' et auront un badge spécial."""
 
@@ -3167,6 +3167,11 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
         from .forms import MaliAddColisForm
 
         lot = get_object_or_404(Lot, pk=lot_pk, destination=request.user.country)
+        
+        if lot.type_transport != Lot.TypeTransport.BATEAU:
+            messages.error(request, "L'ajout direct de colis n'est autorisé que pour les lots BATEAU.")
+            return redirect("mali:lot_arrived_detail", pk=lot.pk)
+
         form = MaliAddColisForm(country=request.user.country)
         return render(
             request, "mali/admin/add_colis_to_lot.html", {"lot": lot, "form": form}
@@ -3176,6 +3181,10 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
         from .forms import MaliAddColisForm
 
         lot = get_object_or_404(Lot, pk=lot_pk, destination=request.user.country)
+
+        if lot.type_transport != Lot.TypeTransport.BATEAU:
+            messages.error(request, "L'ajout direct de colis n'est autorisé que pour les lots BATEAU.")
+            return redirect("mali:lot_arrived_detail", pk=lot.pk)
         form = MaliAddColisForm(
             request.POST, request.FILES, country=request.user.country
         )
@@ -3250,7 +3259,7 @@ class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):
                 request,
                 f"✅ Colis {colis.reference} ajouté avec succès dans le lot {lot.numero}. [Ajouté Mali]",
             )
-            return redirect("mali:admin_correction_lot_detail", pk=lot.pk)
+            return redirect("mali:lot_arrived_detail", pk=lot.pk)
 
         return render(
             request, "mali/admin/add_colis_to_lot.html", {"lot": lot, "form": form}
