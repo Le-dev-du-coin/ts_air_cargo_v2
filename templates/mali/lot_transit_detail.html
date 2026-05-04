@@ -55,8 +55,10 @@
                 </div>
                 <!-- Volume/Poids -->
                 <div class="space-y-1">
-                    <p class="text-xs font-bold text-gray-500 uppercase">Total Colis</p>
-                    <p class="text-sm font-bold text-gray-900">{{ lot.colis.count }} colis</p>
+                    <p class="text-xs font-bold text-gray-500 uppercase">{% if lot.type_transport == 'BATEAU' %}Volume Total{% else %}Poids Total{% endif %}</p>
+                    <p class="text-sm font-bold text-gray-900">
+                        {% if lot.type_transport == 'BATEAU' %}{{ lot.cbm_total_transit|default:"0"|floatformat:3 }} m³{% else %}{{ lot.poids_total_transit|default:"0"|floatformat:1 }} kg{% endif %}
+                    </p>
                 </div>
             </div>
 
@@ -206,7 +208,7 @@
                     <div class="flex items-center space-x-2 sm:space-x-4 mb-1 flex-wrap justify-end">
                         <span class="text-[10px] font-bold text-gray-500 uppercase hidden sm:inline">Sélection : </span>
                         <span class="text-[11px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100" x-text="selectedCount + ' colis'"></span>
-                        <span class="text-[11px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100" x-text="selectedPoids + ' {% if lot.type_transport == 'BATEAU' %}CBM{% else %}kg{% endif %}'"></span>
+                        <span class="text-[11px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100" x-text="selectedPoids + ' {% if lot.type_transport == 'BATEAU' %}m³{% else %}kg{% endif %}'"></span>
                         <span class="text-[11px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100" x-text="new Intl.NumberFormat('fr-FR').format(selectedMontant) + ' FCFA'"></span>
                     </div>
 
@@ -236,7 +238,7 @@
                         <div class="mr-4">
                             {% if colis.status == 'EXPEDIE' %}
                                 <input type="checkbox" name="colis_ids" value="{{ colis.pk }}" 
-                                       data-poids="{{ colis.poids|stringformat:".2f" }}"
+                                       data-poids="{% if lot.type_transport == 'BATEAU' %}{{ colis.cbm|stringformat:".3f" }}{% else %}{{ colis.poids|stringformat:".2f" }}{% endif %}"
                                        data-prix="{{ colis.prix_final|stringformat:".2f" }}"
                                        @change="updateSelection()"
                                        class="colis-checkbox h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
@@ -246,7 +248,7 @@
                         </div>
                         <!-- Vignette image cliquable → modal détail -->
                         <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner cursor-pointer"
-                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} {% if lot.type_transport == 'BATEAU' %}CBM{% else %}kg{% endif %}{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
+                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if lot.type_transport == "BATEAU" %}{{ colis.cbm|floatformat:3 }} m³{% elif colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
                             {% if colis.photo %}
                             <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover">
                             {% else %}

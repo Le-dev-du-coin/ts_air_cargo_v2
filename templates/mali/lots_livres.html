@@ -36,6 +36,29 @@
 
 {% block mali_content %}
 <div class="space-y-6">
+    <!-- Transport Filter Tabs -->
+    <div class="flex space-x-1 bg-white p-1 rounded-2xl shadow-sm border border-gray-100">
+        <a href="?transport={% if q %}&q={{ q }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.year %}&year={{ request.GET.year }}{% endif %}"
+           class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
+                  {% if not active_transport %}bg-green-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
+            🌍 Tous
+        </a>
+        <a href="?transport=CARGO{% if q %}&q={{ q }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.year %}&year={{ request.GET.year }}{% endif %}"
+           class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
+                  {% if active_transport == 'CARGO' %}bg-orange-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
+            ✈ Cargo
+        </a>
+        <a href="?transport=EXPRESS{% if q %}&q={{ q }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.year %}&year={{ request.GET.year }}{% endif %}"
+           class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
+                  {% if active_transport == 'EXPRESS' %}bg-blue-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
+            ⚡ Express
+        </a>
+        <a href="?transport=BATEAU{% if q %}&q={{ q }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.year %}&year={{ request.GET.year }}{% endif %}"
+           class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
+                  {% if active_transport == 'BATEAU' %}bg-teal-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
+            🚢 Bateau
+        </a>
+    </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {% for lot in lots %}
@@ -54,6 +77,16 @@
                 <div class="flex justify-between items-center text-sm">
                     <span class="text-gray-500 flex items-center"><svg class="w-3.5 h-3.5 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Colis livrés</span>
                     <span class="font-bold text-gray-800">{{ lot.nb_colis_livre }}</span>
+                </div>
+                <!-- Poids ou CBM total -->
+                <div class="flex justify-between items-center text-sm">
+                    {% if lot.type_transport == 'BATEAU' %}
+                    <span class="text-gray-500 flex items-center"><svg class="w-3.5 h-3.5 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>Volume</span>
+                    <span class="font-bold text-gray-800">{{ lot.cbm_total_livre|default:"0"|floatformat:3 }} m³</span>
+                    {% else %}
+                    <span class="text-gray-500 flex items-center"><svg class="w-3.5 h-3.5 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>Poids</span>
+                    <span class="font-bold text-gray-800">{{ lot.poids_total_livre|default:"0"|floatformat:1 }} kg</span>
+                    {% endif %}
                 </div>
                 <div class="flex justify-between items-center text-sm">
                     <span class="text-gray-500 flex items-center"><svg class="w-3.5 h-3.5 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Montant total net</span>

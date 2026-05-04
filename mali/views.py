@@ -580,6 +580,9 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
                 total_recettes_transit=Sum(
                     "colis__prix_final", filter=Q(colis__status="EXPEDIE")
                 ),
+                cbm_total_transit=Sum(
+                    "colis__cbm", filter=Q(colis__status="EXPEDIE")
+                ),
                 # Nombre de colis déjà payés en Chine dans ce lot (parmi les colis en transit)
                 nb_colis_payes_chine=Count(
                     "colis",
@@ -620,11 +623,17 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
 
+        # Filtrage par type de transport
+        transport = self.request.GET.get("transport")
+        if transport in ["CARGO", "EXPRESS", "BATEAU"]:
+            queryset = queryset.filter(type_transport=transport)
+
         return queryset.order_by("-date_expedition")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["q"] = self.request.GET.get("q", "")
+        context["active_transport"] = self.request.GET.get("transport", "")
         # On peut aussi ajouter total_lots car il semble utilisé dans le template
         context["total_lots"] = self.get_queryset().count()
         return context
@@ -661,6 +670,7 @@ class LotsArrivesView(LotsEnTransitView):
                     "colis",
                     filter=pending_q & Q(colis__paye_en_chine=True),
                 ),
+                cbm_total_arrive=Sum("colis__cbm", filter=pending_q),
             )
             .annotate(
                 benefice_calcule=ExpressionWrapper(
@@ -695,6 +705,11 @@ class LotsArrivesView(LotsEnTransitView):
                 "prenom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
+
+        # Filtrage par type de transport
+        transport = self.request.GET.get("transport")
+        if transport in ["CARGO", "EXPRESS", "BATEAU"]:
+            queryset = queryset.filter(type_transport=transport)
 
         return queryset.order_by("-date_arrivee", "-created_at")
 
@@ -732,6 +747,12 @@ class LotsLivresView(LotsEnTransitView):
                         colis__status__in=["LIVRE", "PERDU"], colis__paye_en_chine=True
                     ),
                 ),
+                cbm_total_livre=Sum(
+                    "colis__cbm", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                ),
+                poids_total_livre=Sum(
+                    "colis__poids", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                ),
             )
             .annotate(
                 benefice_calcule=ExpressionWrapper(
@@ -746,6 +767,11 @@ class LotsLivresView(LotsEnTransitView):
             .filter(nb_colis_livre__gt=0)
             .distinct()
         )
+
+        # Filtrage par type de transport
+        transport = self.request.GET.get("transport")
+        if transport in ["CARGO", "EXPRESS", "BATEAU"]:
+            queryset = queryset.filter(type_transport=transport)
 
         # Filtrage par mois/année
         month = self.request.GET.get("month")
@@ -2990,8 +3016,13 @@ class MaliCorrectionLotListView(AdminMaliRequiredMixin, ListView):
 
     def get_queryset(self):
         mali = self.request.user.country
-        qs = Lot.objects.filter(destination=mali).order_by(
-            "-date_arrivee", "-created_at"
+        qs = (
+            Lot.objects.filter(destination=mali)
+            .annotate(
+                total_poids_colis=Sum("colis__poids"),
+                total_cbm_colis=Sum("colis__cbm"),
+            )
+            .order_by("-date_arrivee", "-created_at")
         )
         search = self.request.GET.get("q")
         if search:
@@ -3003,12 +3034,19 @@ class MaliCorrectionLotListView(AdminMaliRequiredMixin, ListView):
             qs = qs.filter(colis__status__in=["LIVRE", "PERDU"]).distinct()
         else:  # arrive (default)
             qs = qs.filter(colis__status="ARRIVE").distinct()
+
+        # Filtrage par type de transport
+        transport = self.request.GET.get("transport")
+        if transport in ["CARGO", "EXPRESS", "BATEAU"]:
+            qs = qs.filter(type_transport=transport)
+
         return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["q"] = self.request.GET.get("q", "")
         context["active_tab"] = self.request.GET.get("tab", "arrive")
+        context["active_transport"] = self.request.GET.get("transport", "")
         mali = self.request.user.country
         # Comptes par statut pour les badges de nav
         qs_base = Lot.objects.filter(destination=mali)

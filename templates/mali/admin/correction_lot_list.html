@@ -24,21 +24,45 @@
         </form>
     </div>
 
-    <!-- Tabs Navigation -->
+    <!-- Transport Filter Tabs -->
     <div class="flex space-x-1 bg-white p-1 rounded-2xl shadow-sm border border-gray-100">
-        <a href="?tab=transit{% if q %}&q={{ q }}{% endif %}"
+        <a href="?tab={{ active_tab }}{% if q %}&q={{ q }}{% endif %}"
+           class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
+                  {% if not active_transport %}bg-green-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
+            🌍 Tous
+        </a>
+        <a href="?tab={{ active_tab }}&transport=CARGO{% if q %}&q={{ q }}{% endif %}"
+           class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
+                  {% if active_transport == 'CARGO' %}bg-orange-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
+            ✈ Cargo
+        </a>
+        <a href="?tab={{ active_tab }}&transport=EXPRESS{% if q %}&q={{ q }}{% endif %}"
+           class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
+                  {% if active_transport == 'EXPRESS' %}bg-blue-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
+            ⚡ Express
+        </a>
+        <a href="?tab={{ active_tab }}&transport=BATEAU{% if q %}&q={{ q }}{% endif %}"
+           class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
+                  {% if active_transport == 'BATEAU' %}bg-teal-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
+            🚢 Bateau
+        </a>
+    </div>
+
+    <!-- Tabs Navigation (Transit, Arrive, Livre) -->
+    <div class="flex space-x-1 bg-white p-1 rounded-2xl shadow-sm border border-gray-100">
+        <a href="?tab=transit{% if q %}&q={{ q }}{% endif %}{% if active_transport %}&transport={{ active_transport }}{% endif %}"
            class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
                   {% if active_tab == 'transit' %}bg-blue-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
             🚚 En Transit
             {% if count_transit %}<span class="ml-2 {% if active_tab == 'transit' %}bg-blue-500{% else %}bg-gray-200 text-gray-600{% endif %} text-xs rounded-full px-2 py-0.5">{{ count_transit }}</span>{% endif %}
         </a>
-        <a href="?tab=arrive{% if q %}&q={{ q }}{% endif %}"
+        <a href="?tab=arrive{% if q %}&q={{ q }}{% endif %}{% if active_transport %}&transport={{ active_transport }}{% endif %}"
            class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
                   {% if active_tab == 'arrive' %}bg-green-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
             📦 Arrivés
             {% if count_arrive %}<span class="ml-2 {% if active_tab == 'arrive' %}bg-green-500{% else %}bg-gray-200 text-gray-600{% endif %} text-xs rounded-full px-2 py-0.5">{{ count_arrive }}</span>{% endif %}
         </a>
-        <a href="?tab=livre{% if q %}&q={{ q }}{% endif %}"
+        <a href="?tab=livre{% if q %}&q={{ q }}{% endif %}{% if active_transport %}&transport={{ active_transport }}{% endif %}"
            class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all
                   {% if active_tab == 'livre' %}bg-indigo-600 text-white shadow-sm{% else %}text-gray-500 hover:text-gray-700 hover:bg-gray-50{% endif %}">
             ✅ Livrés
@@ -74,6 +98,15 @@
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-500">Expédition</span>
                     <span class="font-semibold text-gray-800">{{ lot.date_expedition|date:"d M Y"|default:"—" }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    {% if lot.type_transport == 'BATEAU' %}
+                    <span class="text-gray-500">Volume Total</span>
+                    <span class="font-bold text-teal-600">{{ lot.total_cbm_colis|default:"0"|floatformat:3 }} m³</span>
+                    {% else %}
+                    <span class="text-gray-500">Poids Total</span>
+                    <span class="font-bold text-orange-600">{{ lot.total_poids_colis|default:"0"|floatformat:1 }} kg</span>
+                    {% endif %}
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-500">Total Colis</span>
