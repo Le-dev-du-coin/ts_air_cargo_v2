@@ -138,21 +138,37 @@ class FinanceEngine:
     @staticmethod
     def get_monthly_performance(year, month, country_code):
         """
-        Calcule la performance économique (Bénéfice) pour un mois.
+        Calcule la performance économique (Bénéfice) pour une période.
         Utilisé pour l'Admin Chine et les archives mensuelles.
         """
-        # 1. CHIFFRE D'AFFAIRES (Recettes théoriques basées sur les arrivées)
-        date_filter = {"lot__date_arrivee__year": year, "lot__date_arrivee__month": month}
-        if country_code == "CN":
-            date_filter = {"lot__date_expedition__year": year, "lot__date_expedition__month": month}
-            
-        colis_periode = Colis.objects.filter(lot__destination__code=country_code).filter(**date_filter)
-        lots_periode = Lot.objects.filter(destination__code=country_code).filter(
-            date_arrivee__year=year, date_arrivee__month=month
-        ) if country_code != "CN" else Lot.objects.filter(date_expedition__year=year, date_expedition__month=month)
+        # 1. CHIFFRE D'AFFAIRES (Recettes locales basées sur les arrivées)
+        # On ne compte que les colis qui ne sont PAS payés en Chine car c'est la performance locale
+        date_filter_colis = {}
+        date_filter_lots = {}
 
-        ca_brut = colis_periode.aggregate(total=Sum("prix_final"))["total"] or 0
-        total_jc = colis_periode.aggregate(total=Sum("montant_jc"))["total"] or 0
+        if year and month and str(year) != "all" and str(month) != "all":
+            if country_code == "CN":
+                date_filter_colis = {"lot__date_expedition__year": year, "lot__date_expedition__month": month}
+                date_filter_lots = {"date_expedition__year": year, "date_expedition__month": month}
+            else:
+                date_filter_colis = {"lot__date_arrivee__year": year, "lot__date_arrivee__month": month}
+                date_filter_lots = {"date_arrivee__year": year, "date_arrivee__month": month}
+        elif year and str(year) != "all":
+             if country_code == "CN":
+                date_filter_colis = {"lot__date_expedition__year": year}
+                date_filter_lots = {"date_expedition__year": year}
+             else:
+                date_filter_colis = {"lot__date_arrivee__year": year}
+                date_filter_lots = {"date_arrivee__year": year}
+
+        colis_periode = Colis.objects.filter(lot__destination__code=country_code).filter(**date_filter_colis)
+        # EXCLUSION CRITIQUE : Les colis payés en Chine n'entrent pas dans le CA local
+        colis_ca = colis_periode.exclude(paye_en_chine=True)
+
+        lots_periode = Lot.objects.filter(destination__code=country_code).filter(**date_filter_lots)
+
+        ca_brut = colis_ca.aggregate(total=Sum("prix_final"))["total"] or 0
+        total_jc = colis_ca.aggregate(total=Sum("montant_jc"))["total"] or 0
         ca_net = Decimal(ca_brut) - Decimal(total_jc)
 
         # 2. COÛTS DIRECTS (Fret + Douane)
@@ -161,24 +177,22 @@ class FinanceEngine:
         benefice_brut = ca_net - Decimal(total_fret) - Decimal(total_douane)
 
         # 3. CHARGES D'EXPLOITATION (Dépenses + RH)
-        depenses_exploit = Depense.objects.filter(
-            pays__code=country_code, 
-            date__year=year, 
-            date__month=month,
-            is_china_indicative=False
-        ).aggregate(total=Sum("montant"))["total"] or 0
+        depenses_exploit_qs = Depense.objects.filter(pays__code=country_code, is_china_indicative=False)
+        avances_rh_qs = AvanceSalaire.objects.filter(agent__country__code=country_code)
+        salaires_rh_qs = PaiementAgent.objects.filter(agent__country__code=country_code)
 
-        avances_rh = AvanceSalaire.objects.filter(
-            agent__country__code=country_code,
-            date__year=year,
-            date__month=month
-        ).aggregate(total=Sum("montant"))["total"] or 0
-        
-        salaires_rh = PaiementAgent.objects.filter(
-            agent__country__code=country_code,
-            periode_annee=year,
-            periode_mois=month
-        ).aggregate(total=Sum("montant"))["total"] or 0
+        if year and str(year) != "all":
+            depenses_exploit_qs = depenses_exploit_qs.filter(date__year=year)
+            avances_rh_qs = avances_rh_qs.filter(date__year=year)
+            salaires_rh_qs = salaires_rh_qs.filter(periode_annee=year)
+            if month and str(month) != "all":
+                depenses_exploit_qs = depenses_exploit_qs.filter(date__month=month)
+                avances_rh_qs = avances_rh_qs.filter(date__month=month)
+                salaires_rh_qs = salaires_rh_qs.filter(periode_mois=month)
+
+        depenses_exploit = depenses_exploit_qs.aggregate(total=Sum("montant"))["total"] or 0
+        avances_rh = avances_rh_qs.aggregate(total=Sum("montant"))["total"] or 0
+        salaires_rh = salaires_rh_qs.aggregate(total=Sum("montant"))["total"] or 0
 
         total_charges = Decimal(depenses_exploit) + Decimal(avances_rh) + Decimal(salaires_rh)
         benefice_net = benefice_brut - total_charges
@@ -186,11 +200,16 @@ class FinanceEngine:
         # 4. DÉTAILS AVION / BATEAU
         colis_avion = colis_periode.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
         colis_bateau = colis_periode.filter(lot__type_transport="BATEAU")
+        
+        # Pour le CA, on ré-applique l'exclusion payé en Chine
+        colis_ca_avion = colis_avion.exclude(paye_en_chine=True)
+        colis_ca_bateau = colis_bateau.exclude(paye_en_chine=True)
+
         lots_avion = lots_periode.filter(type_transport__in=["CARGO", "EXPRESS"])
         lots_bateau = lots_periode.filter(type_transport="BATEAU")
 
-        ca_avion = (colis_avion.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_avion.aggregate(total=Sum("montant_jc"))["total"] or 0)
-        ca_bateau = (colis_bateau.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0)
+        ca_avion = (colis_ca_avion.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_ca_avion.aggregate(total=Sum("montant_jc"))["total"] or 0)
+        ca_bateau = (colis_ca_bateau.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_ca_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0)
         
         brut_avion = Decimal(ca_avion) - (lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_avion.aggregate(total=Sum("frais_douane"))["total"] or 0)
         brut_bateau = Decimal(ca_bateau) - (lots_bateau.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_bateau.aggregate(total=Sum("frais_douane"))["total"] or 0)

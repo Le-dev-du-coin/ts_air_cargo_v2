@@ -20,6 +20,7 @@
                     <div class="sm:col-span-3">
                         <label for="month" class="block text-sm font-medium text-gray-700">Mois</label>
                         <select id="month" name="month" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="all" {% if selected_month == 'all' %}selected{% endif %}>Tous les mois</option>
                             {% for m_num, m_name in months %}
                                 <option value="{{ m_num }}" {% if m_num == selected_month %}selected{% endif %}>{{ m_name }}</option>
                             {% endfor %}
@@ -29,6 +30,7 @@
                     <div class="sm:col-span-3">
                         <label for="year" class="block text-sm font-medium text-gray-700">Année</label>
                         <select id="year" name="year" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="all" {% if selected_year == 'all' %}selected{% endif %}>Toutes les années</option>
                             {% for y in years %}
                                 <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
                             {% endfor %}
@@ -47,7 +49,11 @@
 
     <!-- En-tête des résultats -->
     <div class="flex items-center justify-between mt-8 mb-4">
-        <h3 class="text-xl font-bold text-gray-900">Résultats pour {{ selected_month }}/{{ selected_year }}</h3>
+        <h3 class="text-xl font-bold text-gray-900">
+            Résultats pour 
+            {% if selected_month == 'all' %}Tous les mois{% else %}{{ selected_month }}{% endif %} / 
+            {% if selected_year == 'all' %}Toutes les années{% else %}{{ selected_year }}{% endif %}
+        </h3>
     </div>
 
     <!-- Section Transferts -->

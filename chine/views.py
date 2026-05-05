@@ -375,28 +375,16 @@ class TransportStatsDetailView(
         context["selected_year"] = selected_year
         context["selected_month"] = selected_month
         context["current_year"] = now.year
-        context["years"] = list(range(now.year, now.year - 4, -1))
+        context["years"] = list(range(now.year, now.year - 8, -1)) # Historique sur 8 ans
         context["months"] = [
-            (1, "Janvier"),
-            (2, "Février"),
-            (3, "Mars"),
-            (4, "Avril"),
-            (5, "Mai"),
-            (6, "Juin"),
-            (7, "Juillet"),
-            (8, "Août"),
-            (9, "Septembre"),
-            (10, "Octobre"),
-            (11, "Novembre"),
-            (12, "Décembre"),
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
         ]
 
-        if selected_year == "all" or selected_month == "all":
-            context["stats_ml"] = get_country_stats("ML")
-            context["stats_ci"] = get_country_stats("CI")
-        else:
-            context["stats_ml"] = get_country_stats("ML", selected_year, selected_month)
-            context["stats_ci"] = get_country_stats("CI", selected_year, selected_month)
+        # On passe selected_year et selected_month tels quels, get_country_stats gérera le cas 'all'
+        context["stats_ml"] = get_country_stats("ML", selected_year, selected_month)
+        context["stats_ci"] = get_country_stats("CI", selected_year, selected_month)
 
         context["stats_ml_global"] = get_country_stats("ML")
         context["stats_ci_global"] = get_country_stats("CI")
@@ -418,18 +406,24 @@ class MonthlyArchivesView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateV
 
         # Récupération des paramètres ou par défaut mois en cours
         now = timezone.now()
-        try:
-            selected_year = int(self.request.GET.get("year", now.year))
-            selected_month = int(self.request.GET.get("month", now.month))
-        except ValueError:
-            selected_year = now.year
-            selected_month = now.month
+        selected_year_raw = self.request.GET.get("year", str(now.year))
+        selected_month_raw = self.request.GET.get("month", str(now.month))
 
-        # Validation basique
-        if not (2000 <= selected_year <= 2100):
-            selected_year = now.year
-        if not (1 <= selected_month <= 12):
-            selected_month = now.month
+        if selected_year_raw == "all":
+            selected_year = "all"
+        else:
+            try:
+                selected_year = int(selected_year_raw)
+            except (ValueError, TypeError):
+                selected_year = now.year
+
+        if selected_month_raw == "all":
+            selected_month = "all"
+        else:
+            try:
+                selected_month = int(selected_month_raw)
+            except (ValueError, TypeError):
+                selected_month = now.month
 
         context["selected_year"] = selected_year
         context["selected_month"] = selected_month
@@ -442,36 +436,30 @@ class MonthlyArchivesView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateV
         from django.db.models import Sum
 
         # Transferts vers la Chine
-        context["transferts_chine_recu"] = TransfertArgent.objects.filter(
-            destinataire="CHINE", date__year=selected_year, date__month=selected_month, statut="RECU"
-        ).aggregate(total=Sum("montant"))["total"] or 0
-        context["transferts_chine_attente"] = TransfertArgent.objects.filter(
-            destinataire="CHINE", date__year=selected_year, date__month=selected_month, statut="EN_ATTENTE"
-        ).aggregate(total=Sum("montant"))["total"] or 0
+        # Transferts vers la Chine
+        transferts_chine = TransfertArgent.objects.filter(destinataire="CHINE")
+        transferts_gaoussou = TransfertArgent.objects.filter(destinataire="GAOUSSOU")
+
+        if selected_year != "all":
+            transferts_chine = transferts_chine.filter(date__year=selected_year)
+            transferts_gaoussou = transferts_gaoussou.filter(date__year=selected_year)
+            if selected_month != "all":
+                transferts_chine = transferts_chine.filter(date__month=selected_month)
+                transferts_gaoussou = transferts_gaoussou.filter(date__month=selected_month)
+
+        context["transferts_chine_recu"] = transferts_chine.filter(statut="RECU").aggregate(total=Sum("montant"))["total"] or 0
+        context["transferts_chine_attente"] = transferts_chine.filter(statut="EN_ATTENTE").aggregate(total=Sum("montant"))["total"] or 0
 
         # Transferts vers Gaoussou (Frais Douane Mali)
-        context["transferts_gaoussou_recu"] = TransfertArgent.objects.filter(
-            destinataire="GAOUSSOU", date__year=selected_year, date__month=selected_month, statut="RECU"
-        ).aggregate(total=Sum("montant"))["total"] or 0
-        context["transferts_gaoussou_attente"] = TransfertArgent.objects.filter(
-            destinataire="GAOUSSOU", date__year=selected_year, date__month=selected_month, statut="EN_ATTENTE"
-        ).aggregate(total=Sum("montant"))["total"] or 0
+        context["transferts_gaoussou_recu"] = transferts_gaoussou.filter(statut="RECU").aggregate(total=Sum("montant"))["total"] or 0
+        context["transferts_gaoussou_attente"] = transferts_gaoussou.filter(statut="EN_ATTENTE").aggregate(total=Sum("montant"))["total"] or 0
 
         # Listes pour les sélecteurs
-        context["years"] = range(2023, now.year + 2)
+        context["years"] = list(range(now.year, now.year - 8, -1))
         context["months"] = [
-            (1, "Janvier"),
-            (2, "Février"),
-            (3, "Mars"),
-            (4, "Avril"),
-            (5, "Mai"),
-            (6, "Juin"),
-            (7, "Juillet"),
-            (8, "Août"),
-            (9, "Septembre"),
-            (10, "Octobre"),
-            (11, "Novembre"),
-            (12, "Décembre"),
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
         ]
 
         return context
