@@ -80,10 +80,17 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-# Database
+import sys
+
 DATABASES = {
     "default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3"),
 }
+
+# Configuration pour utiliser PostgreSQL pendant les tests si souhaité
+if 'test' in sys.argv and env.bool("USE_POSTGRES_TEST", default=False):
+    DATABASES["default"] = env.db("TEST_DATABASE_URL", default="postgres://postgres@localhost/ts_air_cargo_test")
+    # On s'assure que le moteur est bien postgres
+    DATABASES["default"]["ENGINE"] = "django.db.backends.postgresql"
 
 AUTH_USER_MODEL = "core.User"
 
@@ -209,6 +216,11 @@ CELERY_BEAT_SCHEDULE = {
     "cleanup_old_notifications_periodic": {
         "task": "notification.tasks.cleanup_old_notifications_periodic",
         "schedule": crontab(hour=17, minute=0),
+    },
+    # Rappel du contrat de maintenance (Tous les 6 du mois à 9h00 du matin)
+    "send_maintenance_reminder_periodic": {
+        "task": "notification.tasks.send_maintenance_reminder_periodic",
+        "schedule": crontab(day_of_month=6, hour=9, minute=0),
     },
 }
 # Logging

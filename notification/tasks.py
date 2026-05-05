@@ -320,7 +320,8 @@ def send_daily_report_mali():
 
     try:
         from django.db.models import Sum, F, Q
-        from core.models import Country, Colis
+        from core.models import User, Client, Lot, Colis, AvoirMouvement
+        from report.finance_engine import FinanceEngine
 
         today = timezone.now().date()
 
@@ -330,101 +331,43 @@ def send_daily_report_mali():
             logger.error("[RapportJour] Pays Mali (code=ML) non trouvé en BDD.")
             return "Erreur : pays Mali non configuré."
 
-        # --- Colis livrés aujourd'hui ---
-        colis_livres = Colis.objects.filter(
-            lot__destination=mali,
-            status="LIVRE"
-        ).filter(
-            Q(date_encaissement=today) |
-            Q(date_encaissement__isnull=True, date_livraison=today)
-        )
+        # --- CALCULS VIA LE MOTEUR CENTRALISÉ ---
+        fin_stats = FinanceEngine.get_daily_summary(today, mali)
 
-        def stat(qs):
-            from django.db.models import Case, When, Value, DecimalField
+        # Détails par type (pour le message)
+        def get_nb_ca(transport_type):
+            qs = Colis.objects.filter(
+                lot__destination=mali,
+                lot__type_transport=transport_type
+            ).filter(
+                Q(encaissements__date=today) | 
+                Q(date_encaissement=today) |
+                Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True)
+            ).distinct()
+            
             nb = qs.count()
-            ca = (
-                qs.aggregate(
-                    total=Sum(
-                        Case(
-                            When(paye_en_chine=True, then=Value(0)),
-                            When(paye_par_avance=True, then=Value(0)),
-                            default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                            output_field=DecimalField()
-                        )
-                    )
-                )["total"] or 0
-            )
+            # On somme les encaissements RÉELS du jour pour ce type
+            from core.models import EncaissementColis
+            ca = EncaissementColis.objects.filter(
+                colis__in=qs,
+                date=today
+            ).exclude(methode="AVANCE").aggregate(total=Sum("montant"))["total"] or 0
             return nb, ca
 
-        nb_cargo, ca_cargo = stat(colis_livres.filter(lot__type_transport="CARGO"))
-        nb_express, ca_express = stat(
-            colis_livres.filter(lot__type_transport="EXPRESS")
-        )
-        nb_bateau, ca_bateau = stat(colis_livres.filter(lot__type_transport="BATEAU"))
-        total_recettes = ca_cargo + ca_express + ca_bateau
+        nb_cargo, ca_cargo = get_nb_ca("CARGO")
+        nb_express, ca_express = get_nb_ca("EXPRESS")
+        nb_bateau, ca_bateau = get_nb_ca("BATEAU")
 
-        # --- Dépenses & Transferts ---
-        try:
-            from report.models import Depense, TransfertArgent
+        total_recettes_colis = ca_cargo + ca_express + ca_bateau
+        total_rechargements = fin_stats["total_rechargements_avoir"]
+        total_recettes_global = fin_stats["total_recettes_jour"]
+        
+        total_depenses = fin_stats["total_depenses"]
+        total_transferts = fin_stats["total_transferts"]
+        total_sorties = fin_stats["total_sorties_jour"]
 
-            total_depenses = (
-                Depense.objects.filter(pays=mali, is_china_indicative=False, date=today).aggregate(
-                    total=Sum("montant")
-                )["total"]
-                or 0
-            )
-            total_transferts = (
-                TransfertArgent.objects.filter(
-                    pays_expediteur=mali, date=today
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-        except Exception:
-            total_depenses = 0
-            total_transferts = 0
-
-        total_sorties = total_depenses + total_transferts
-
-        # --- Solde de la veille ---
-        from django.db.models import Case, When, Value, DecimalField
-        recettes_avant = (
-            Colis.objects.filter(
-                lot__destination=mali,
-                status="LIVRE",
-            ).filter(
-                Q(date_encaissement__lt=today) |
-                Q(date_encaissement__isnull=True, date_livraison__lt=today) |
-                Q(date_encaissement__isnull=True, date_livraison__isnull=True)
-            ).aggregate(
-                total=Sum(
-                    Case(
-                        When(paye_en_chine=True, then=Value(0)),
-                        When(paye_par_avance=True, then=Value(0)),
-                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                        output_field=DecimalField()
-                    )
-                )
-            )["total"]
-            or 0
-        )
-        try:
-            dep_avant = (
-                Depense.objects.filter(pays=mali, is_china_indicative=False, date__lt=today).aggregate(
-                    total=Sum("montant")
-                )["total"]
-                or 0
-            )
-            trans_avant = (
-                TransfertArgent.objects.filter(
-                    pays_expediteur=mali, date__lt=today
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-        except Exception:
-            dep_avant = trans_avant = 0
-
-        solde_veille = recettes_avant - (dep_avant + trans_avant)
-        solde_jour = solde_veille + total_recettes - total_sorties
+        solde_veille = fin_stats["solde_veille"]
+        solde_caisse = fin_stats["solde_caisse_actuel"]
 
         # --- Construction du message ---
         date_str = today.strftime("%d/%m/%Y")
@@ -440,13 +383,15 @@ def send_daily_report_mali():
             f"🚢 *BATEAU*\n"
             f"   • Colis livrés : {nb_bateau}\n"
             f"   • Recette : {ca_bateau:,.0f} FCFA\n\n"
+            f"💳 *RECHARGEMENTS AVOIR*\n"
+            f"   • Total : {total_rechargements:,.0f} FCFA\n\n"
             f"{'─' * 30}\n"
-            f"💰 *Total Recettes :* {total_recettes:,.0f} FCFA\n"
+            f"💰 *Total Recettes :* {total_recettes_global:,.0f} FCFA\n"
             f"💸 *Dépenses :* {total_depenses:,.0f} FCFA\n"
             f"🔄 *Transferts :* {total_transferts:,.0f} FCFA\n"
             f"{'─' * 30}\n"
             f"🏦 *Solde Veille :* {solde_veille:,.0f} FCFA\n"
-            f"✅ *Solde Caisse :* {solde_jour:,.0f} FCFA"
+            f"✅ *Solde Caisse :* {solde_caisse:,.0f} FCFA"
         )
 
         # --- Envoi WhatsApp ---
@@ -660,3 +605,61 @@ def impute_avoirs_lot_async(lot_id, user_id):
 
     except Exception as e:
         logger.error(f"Erreur CRITIQUE imputation async lot {lot_id}: {e}")
+
+
+@shared_task
+def send_maintenance_reminder_periodic():
+    """
+    Rappel automatique du contrat de maintenance tous les 6 du mois.
+    Message personnalisé et pro-humoristique pour l'Admin Mali.
+    """
+    config = ConfigurationNotification.get_solo()
+    
+    if not config.activer_rappel_maintenance:
+        logger.info("[Maintenance] Rappel désactivé dans les paramètres.")
+        return "Rappel désactivé."
+
+    # Destinataire principal de l'admin Mali
+    target_phone = config.admin_mali_phone
+    if not target_phone:
+        logger.warning("[Maintenance] Aucun numéro admin_mali_phone configuré.")
+        return "Échec : Aucun numéro configuré."
+
+    # Personnalisation avec le nom de l'admin Mali
+    from core.models import User
+    admin = User.objects.filter(role="ADMIN_MALI", is_active=True).first()
+    admin_name = f"{admin.first_name} {admin.last_name}".strip() if admin else "Gérant"
+    if not admin_name:
+        admin_name = admin.username if admin else "Gérant"
+
+    # Mois en cours en français
+    import locale
+    try:
+        locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
+    except:
+        pass
+    mois_actuel = timezone.now().strftime("%B %Y").capitalize()
+
+    message = (
+        f"Bonjour **Patron {admin_name}** ! 🛠️\n\n"
+        f"C'est déjà le **6 du mois** ! L'heure est venue de faire le **paiement du contrat de maintenance** du système TS Air Cargo pour le mois de **{mois_actuel}**. 💳\n\n"
+        f"Le développeur, c'est-à-dire moi **Salif SANOGO**, a pris la liberté d'ajouter ce petit rappel car il paraît que parfois vous **oubliez souvent** ! 😉\n\n"
+        f"Bon début de journée et courage pour la gestion !\n"
+        f"À très bientôt le mois prochain pour un nouveau message (et une nouvelle relance si besoin) ! 😂\n\n"
+        f"——\n"
+        f"_📩 Notification automatique ajoutée par votre développeur préféré pour vous aider à vous rappeler du paiement._"
+    )
+
+    from .services.wachap_service import wachap_service
+    success, error, message_id = wachap_service.send_message(
+        phone=target_phone,
+        message=message,
+        region="mali"
+    )
+
+    if success:
+        logger.info(f"[Maintenance] Rappel envoyé avec succès à {target_phone}.")
+        return f"Succès : Rappel envoyé à {admin_name}."
+    else:
+        logger.error(f"[Maintenance] Échec envoi rappel : {error}")
+        return f"Échec : {error}"

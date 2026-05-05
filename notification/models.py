@@ -109,6 +109,12 @@ class ConfigurationNotification(models.Model):
         help_text="Numéro supplémentaire pour la réception du rapport journalier WhatsApp",
     )
 
+    activer_rappel_maintenance = models.BooleanField(
+        "Activer le rappel du contrat de maintenance",
+        default=False,
+        help_text="Envoie un rappel automatique tous les 6 du mois à l'Admin Mali.",
+    )
+
     test_phone_number = models.CharField(
         "Téléphone de Test (Override)",
         max_length=20,

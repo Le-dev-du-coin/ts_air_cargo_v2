@@ -87,6 +87,7 @@ class NotificationConfigForm(forms.ModelForm):
             "admin_mali_phone",
             "admin_mali_phone_2",
             "admin_mali_phone_3",
+            "activer_rappel_maintenance",
         ]
         widgets = {
             "template_rappel": forms.Textarea(

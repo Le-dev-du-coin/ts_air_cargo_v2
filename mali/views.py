@@ -30,8 +30,10 @@ from core.models import (
     AvanceSalaire,
     ClientLotTarif,
     EncaissementColis,
+    AvoirMouvement,
 )
 from report.models import Depense, TransfertArgent, PaiementAgent
+from report.finance_engine import FinanceEngine
 from django.contrib import messages
 
 from notification.models import ConfigurationNotification
@@ -278,64 +280,25 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
 
         context["target_date"] = target_date
         today = target_date
-        from report.models import TransfertArgent
-
-        # --- 1. SOLDE VEILLE (Report) ---
-        # Calcul : Total Recettes (depuis début) - Total Dépenses (depuis début) jusqu'à hier
-        from django.db.models import Case, When, Value, DecimalField
-
-        recettes_globales = (
-            Colis.objects.filter(
-                lot__destination=mali,
-                status="LIVRE",
-            )
-            .filter(
-                Q(date_encaissement__lt=today)
-                | Q(date_encaissement__isnull=True, date_livraison__lt=today)
-                | Q(date_encaissement__isnull=True, date_livraison__isnull=True)
-            )
-            .aggregate(
-                total=Sum(
-                    Case(
-                        When(paye_en_chine=True, then=Value(0)),
-                        When(paye_par_avance=True, then=Value(0)),
-                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                        output_field=DecimalField(),
-                    )
-                )
-            )["total"]
-            or 0
-        )
-
-        depenses_globales = (
-            Depense.objects.filter(
-                pays=mali, is_china_indicative=False, date__lt=today
-            ).aggregate(total=Sum("montant"))["total"]
-            or 0
-        )
-
-        # Les transferts sont considérés comme des dépenses (sorties de caisse)
-        transferts_globaux = (
-            TransfertArgent.objects.filter(
-                pays_expediteur=mali, date__lt=today
-            ).aggregate(total=Sum("montant"))["total"]
-            or 0
-        )
-
-        from core.models import AvoirMouvement
-
-        rechargements_avoir_globaux = (
-            AvoirMouvement.objects.filter(
-                client__country=mali, type="DEPOT", created_at__date__lt=today
-            ).aggregate(total=Sum("montant"))["total"]
-            or 0
-        )
-
-        context["solde_veille"] = (
-            recettes_globales
-            + rechargements_avoir_globaux
-            - (depenses_globales + transferts_globaux)
-        )
+        today = target_date
+        mali = self.get_current_country()
+        
+        # --- 1. CALCULS FINANCIERS VIA LE MOTEUR CENTRALISÉ ---
+        fin_stats = FinanceEngine.get_daily_summary(today, mali)
+        
+        context["solde_veille"] = fin_stats["solde_veille"]
+        context["total_recettes_jour"] = fin_stats["total_recettes_jour"]
+        context["total_sorties_jour"] = fin_stats["total_sorties_jour"]
+        context["solde_caisse_actuel"] = fin_stats["solde_caisse_actuel"]
+        
+        context["total_depenses_only"] = fin_stats["total_depenses"]
+        context["total_transferts_only"] = fin_stats["total_transferts"]
+        context["total_paiements_agents"] = fin_stats["total_paiements_agents"]
+        
+        context["rechargements_avoir_jour"] = fin_stats["total_rechargements_avoir"]
+        context["rechargements_avoir_list"] = fin_stats["rechargements_list"]
+        context["depenses_jour_reelles"] = fin_stats["depenses_list"]
+        context["transferts_list"] = fin_stats["transferts_list"]
 
         # --- 2. ACTIVITÉ DU JOUR (Cargo, Express, Bateau) ---
         # On définit le périmètre du jour : 
@@ -390,166 +353,65 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
 
         # A. Cargo (Air)
         colis_cargo = colis_livres_jour.filter(lot__type_transport="CARGO")
-        recette_cargo = (
-            colis_cargo.aggregate(
-                total=Sum("montant_paye_jour")
-            )["total"]
-            or 0
-        )
-        poids_cargo = colis_cargo.aggregate(total=Sum("poids"))["total"] or 0
-
         context["colis_cargo_list"] = colis_cargo.annotate(
-            # Si on a des reçus aujourd'hui, on prend leur somme, sinon on prend le total payé du colis
-            net_price=Case(
-                When(montant_paye_jour__gt=0, then=F("montant_paye_jour")),
-                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                output_field=DecimalField(),
-            ),
+            # On n'affiche QUE ce qui a été payé aujourd'hui pour la cohérence caisse
+            net_price=F("montant_paye_jour"),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
         ).order_by("-heure_paiement", "-sort_date", "-updated_at")
         
-        # Ré-agrégation précise de la recette Cargo basée sur l'annotation net_price
-        # (Plus fiable que de sommer montant_paye_jour qui peut être incomplet pour les anciens colis)
-        recette_cargo = sum(c.net_price for c in context["colis_cargo_list"])
-        context["recette_cargo_jour"] = recette_cargo
-        context["poids_cargo_jour"] = poids_cargo
+        context["recette_cargo_jour"] = (colis_cargo.aggregate(total=Sum("montant_paye_jour"))["total"] or 0)
+        context["poids_cargo_jour"] = colis_cargo.aggregate(total=Sum("poids"))["total"] or 0
 
         # B. Express (Air)
         colis_express = colis_livres_jour.filter(lot__type_transport="EXPRESS")
-        recette_express = (
-            colis_express.aggregate(
-                total=Sum("montant_paye_jour")
-            )["total"]
-            or 0
-        )
-        poids_express = colis_express.aggregate(total=Sum("poids"))["total"] or 0
-
         context["colis_express_list"] = colis_express.annotate(
-            net_price=Case(
-                When(montant_paye_jour__gt=0, then=F("montant_paye_jour")),
-                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                output_field=DecimalField(),
-            ),
+            net_price=F("montant_paye_jour"),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
         ).order_by("-heure_paiement", "-sort_date", "-updated_at")
         
-        recette_express = sum(c.net_price for c in context["colis_express_list"])
-        context["recette_express_jour"] = recette_express
-        context["poids_express_jour"] = poids_express
+        context["recette_express_jour"] = (colis_express.aggregate(total=Sum("montant_paye_jour"))["total"] or 0)
+        context["poids_express_jour"] = colis_express.aggregate(total=Sum("poids"))["total"] or 0
 
         # C. Bateau (Maritime)
         colis_bateau = colis_livres_jour.filter(lot__type_transport="BATEAU")
-        recette_bateau = (
-            colis_bateau.aggregate(
-                total=Sum("montant_paye_jour")
-            )["total"]
-            or 0
-        )
-        poids_bateau = colis_bateau.aggregate(total=Sum("poids"))["total"] or 0
-        cbm_bateau = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
-
         context["colis_bateau_list"] = colis_bateau.annotate(
-            net_price=Case(
-                When(montant_paye_jour__gt=0, then=F("montant_paye_jour")),
-                default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                output_field=DecimalField(),
-            ),
+            net_price=F("montant_paye_jour"),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
         ).order_by("-heure_paiement", "-sort_date", "-updated_at")
         
-        recette_bateau = sum(c.net_price for c in context["colis_bateau_list"])
-        context["recette_bateau_jour"] = recette_bateau
-        context["poids_bateau_jour"] = poids_bateau
-        context["cbm_bateau_jour"] = cbm_bateau
-
-        # Dépôts Avoir du Jour
-        rechargements_avoir_jour_qs = AvoirMouvement.objects.filter(
-            client__country=mali, type="DEPOT", created_at__date=today
-        ).order_by("-created_at")
-
-        rechargements_avoir_jour = (
-            rechargements_avoir_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
-        )
-        context["rechargements_avoir_jour"] = rechargements_avoir_jour
-        context["rechargements_avoir_list"] = rechargements_avoir_jour_qs
-
-        # Total Recettes Jour
-        context["total_recettes_jour"] = (
-            recette_cargo + recette_express + recette_bateau + rechargements_avoir_jour
-        )
+        context["recette_bateau_jour"] = (colis_bateau.aggregate(total=Sum("montant_paye_jour"))["total"] or 0)
+        context["poids_bateau_jour"] = colis_bateau.aggregate(total=Sum("poids"))["total"] or 0
+        context["cbm_bateau_jour"] = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
 
         # Poids Total Jour (Kilos livrés du jour)
-        context["total_poids_jour"] = poids_cargo + poids_express + poids_bateau
+        context["total_poids_jour"] = context["poids_cargo_jour"] + context["poids_express_jour"] + context["poids_bateau_jour"]
 
         # Total JC Jour (Pour info)
         context["total_jc_jour"] = (
             colis_livres_jour.aggregate(total=Sum("montant_jc"))["total"] or 0
         )
 
-        # --- 3. DÉPENSES & TRANSFERTS DU JOUR ---
-        # Dépenses - On inclut les dépenses indicatives Chine (même avec pays=Chine)
-        depenses_jour_qs = Depense.objects.filter(
-            Q(pays=mali) | Q(is_china_indicative=True), date=today
+        # --- 3. DÉPENSES INDICATIVES (CHINE) ---
+        # Note : Les dépenses réelles Mali sont déjà gérées par FinanceEngine
+        context["depenses_indicatives_jour"] = Depense.objects.filter(
+            is_china_indicative=True, date=today
         ).order_by("-created_at")
-
-        # Dépenses Jour (Réelles Mali)
-        context["depenses_jour_reelles"] = depenses_jour_qs.filter(
-            is_china_indicative=False
-        )
-        total_depenses_mali = (
-            context["depenses_jour_reelles"].aggregate(total=Sum("montant"))["total"]
-            or 0
-        )
-
-        # Dépenses Jour (Indicatives Chine)
-        context["depenses_indicatives_jour"] = depenses_jour_qs.filter(
-            is_china_indicative=True
-        )
+        
         context["total_depenses_indicatives"] = (
-            context["depenses_indicatives_jour"].aggregate(total=Sum("montant"))[
-                "total"
-            ]
-            or 0
+            context["depenses_indicatives_jour"].aggregate(total=Sum("montant"))["total"] or 0
         )
 
-        # Transferts (considérés comme dépenses jour)
-        transferts_jour_qs = TransfertArgent.objects.filter(
-            pays_expediteur=mali, date=today
-        ).order_by("-created_at")
+        # Séparation des transferts pour l'affichage (déjà filtrés par FinanceEngine)
+        context["transferts_chine_list"] = context["transferts_list"].filter(destinataire="CHINE")
+        context["transferts_gaoussou_list"] = context["transferts_list"].filter(destinataire="GAOUSSOU")
 
-        total_transferts = (
-            transferts_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
-        )
-
-        context["depenses_jour_list"] = depenses_jour_qs
-        context["transferts_jour_list"] = transferts_jour_qs
-
-        # Séparation des transferts pour l'affichage
-        context["transferts_chine_list"] = transferts_jour_qs.filter(
-            destinataire="CHINE"
-        )
-        context["transferts_gaoussou_list"] = transferts_jour_qs.filter(
-            destinataire="GAOUSSOU"
-        )
-
-        # Sorties Jour réelles (pour solde caisse)
-        context["total_sorties_jour"] = total_depenses_mali + total_transferts
-        context["total_depenses_only"] = total_depenses_mali
-        context["total_transferts_only"] = total_transferts
-
-        # --- 4. SOLDE CAISSE ACTUEL ---
-        # Solde Veille + Recettes Jour - Sorties Jour (Réelles)
-        context["solde_caisse_actuel"] = (
-            context["solde_veille"]
-            + context["total_recettes_jour"]
-            - context["total_sorties_jour"]
-        )
+        return context
 
         return context
 
@@ -2198,146 +2060,54 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         elif report_type == "bateau":
             titre_rapport = "Rapport Journalier - BATEAU"
 
-        # --- 1. IDENTIFICATION DES COLIS DU JOUR (Même logique que AujourdhuiView) ---
+        # --- 1. CALCULS FINANCIERS VIA LE MOTEUR CENTRALISÉ ---
         mali = self.get_current_country()
-        colis_livres_jour_base = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE"
-        ).filter(
-            Q(date_encaissement=today)
-            | Q(date_encaissement__isnull=True, date_livraison=today)
-        )
+        fin_stats = FinanceEngine.get_daily_summary(today, mali)
+        
+        # --- 2. IDENTIFICATION DES COLIS DU JOUR ---
+        # On définit le périmètre : soit un encaissement aujourd'hui, soit livré aujourd'hui sans encaissement précédent
+        colis_livres_jour_base = Colis.objects.filter(lot__destination=mali).filter(
+            Q(encaissements__date=today) | 
+            Q(date_encaissement=today) |
+            Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True)
+        ).distinct()
 
         if report_type in ["cargo", "express", "bateau"]:
             colis_livres_jour_base = colis_livres_jour_base.filter(
                 lot__type_transport=report_type.upper()
             )
 
+        # Annotation pour le montant payé dans la journée (pour la liste détaillée)
+        enc_day_qs = EncaissementColis.objects.filter(colis=OuterRef("pk"), date=today)
+        sum_enc_day = enc_day_qs.values("colis").annotate(total=Sum("montant")).values("total")
+        
         colis_qs = (
             colis_livres_jour_base.select_related("client", "lot")
             .annotate(
-                net_price=Case(
-                    When(paye_en_chine=True, then=Value(0)),
-                    When(est_paye=True, mode_paiement="AVANCE", then=Value(0)),
-                    default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                    output_field=DecimalField(),
-                )
+                montant_paye_jour=Coalesce(Subquery(sum_enc_day[:1]), Value(0), output_field=DecimalField()),
+                # net_price pour le template
+                net_price=F("montant_paye_jour")
             )
             .order_by("-date_livraison", "-updated_at")
         )
 
-        # Recettes du jour (Somme des net_price des colis identifiés)
-        total_encaissements = (
-            colis_qs.aggregate(
-                total=Sum(
-                    Case(
-                        When(paye_en_chine=True, then=Value(0)),
-                        default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
-                        output_field=DecimalField(),
-                    )
-                )
-            )["total"]
-            or 0
-        )
+        # Totaux pour le rapport
+        total_encaissements = Decimal(0)
+        if report_type == "global":
+            total_encaissements = fin_stats["total_encaissements_colis"]
+        else:
+            # Pour les rapports spécifiques, on somme les encaissements du jour pour ce type
+            total_encaissements = colis_qs.aggregate(total=Sum("montant_paye_jour"))["total"] or 0
 
         total_jc = colis_qs.aggregate(total=Sum("montant_jc"))["total"] or 0
-
-        # --- 2. SOLDE VEILLE & ACTIVITÉ AVOIR ---
-        solde_veille = 0
-        total_depenses = 0
-        total_transferts = 0
-        rechargements_avoir_jour = 0
-
-        if report_type == "global":
-            # Recettes Globales Veille (Colis)
-            recettes_globales = (
-                Colis.objects.filter(lot__destination=mali, status="LIVRE")
-                .filter(
-                    Q(date_encaissement__lt=today)
-                    | Q(date_encaissement__isnull=True, date_livraison__lt=today)
-                )
-                .aggregate(
-                    total=Sum(
-                        Case(
-                            When(paye_en_chine=True, then=Value(0)),
-                            When(est_paye=True, mode_paiement="AVANCE", then=Value(0)),
-                            default=F("prix_final")
-                            - F("montant_jc")
-                            - F("reste_a_payer"),
-                            output_field=DecimalField(),
-                        )
-                    )
-                )["total"]
-                or 0
-            )
-
-            # Avoirs Globaux Veille (Dépôts)
-            from core.models import AvoirMouvement
-
-            avoirs_global_veille = (
-                AvoirMouvement.objects.filter(
-                    client__country=mali, type="DEPOT", created_at__date__lt=today
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-
-            # Dépenses Globales Veille
-            depenses_globales = (
-                Depense.objects.filter(
-                    pays=mali, is_china_indicative=False, date__lt=today
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-
-            # Transferts Globaux Veille
-            transferts_globaux = (
-                TransfertArgent.objects.filter(
-                    pays_expediteur=mali, date__lt=today
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-
-            solde_veille = (recettes_globales + avoirs_global_veille) - (
-                depenses_globales + transferts_globaux
-            )
-
-            # Activité du Jour
-            from core.models import AvoirMouvement as AM_Day
-
-            rechargements_avoir_jour_qs = AM_Day.objects.filter(
-                client__country=mali, type="DEPOT", created_at__date=today
-            )
-            rechargements_avoir_jour = (
-                rechargements_avoir_jour_qs.aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-
-            total_depenses = (
-                Depense.objects.filter(
-                    pays=mali, date=today, is_china_indicative=False
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-
-            total_transferts = (
-                TransfertArgent.objects.filter(
-                    pays_expediteur=mali, date=today
-                ).aggregate(total=Sum("montant"))["total"]
-                or 0
-            )
-
-        # Calcul du solde final
-        if report_type == "global":
-            solde_final = (
-                solde_veille
-                + total_encaissements
-                + rechargements_avoir_jour
-                - (total_depenses + total_transferts)
-            )
-        else:
-            solde_final = total_encaissements
-
-        # Calcul du poids total pour le rapport
         total_poids = colis_qs.aggregate(total=Sum("poids"))["total"] or 0
+        
+        solde_veille = fin_stats["solde_veille"]
+        solde_final = fin_stats["solde_caisse_actuel"]
+        
+        total_depenses = fin_stats["total_depenses"]
+        total_transferts = fin_stats["total_transferts"]
+        rechargements_avoir_jour = fin_stats["total_rechargements_avoir"]
 
         # Contexte pour le template
         context = {
@@ -2348,7 +2118,7 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             "total_encaissements": total_encaissements,
             "rechargements_avoir_jour": rechargements_avoir_jour,
             "rechargements_avoir_list": (
-                AM_Day.objects.filter(
+                AvoirMouvement.objects.filter(
                     client__country=mali, type="DEPOT", created_at__date=today
                 ).select_related("client")
                 if report_type == "global"

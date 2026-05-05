@@ -24,6 +24,7 @@ from django.views.generic import edit as delete
 
 from core.models import Client, Lot, Colis, BackgroundTask, Country, AvanceSalaire, User as CoreUser
 from report.models import Depense, TransfertArgent, PaiementAgent
+from report.finance_engine import FinanceEngine
 from .forms import ClientForm, LotForm, ColisForm, CountryForm, AgentForm, LotNoteForm
 from .tasks import process_colis_creation
 from django.core.cache import cache
@@ -122,69 +123,47 @@ def get_country_stats(country_code, year=None, month=None):
     # (I'll keep the rest as is but I need to make sure I don't break the existing code)
     # Actually, I should use the specific logic for agents filtering too.
 
-    # Calcul des montants avec déduction des jetons cédés (JC)
-    montant_brut = colis.aggregate(total=Sum("prix_final"))["total"] or 0
-    total_jc = colis.aggregate(total=Sum("montant_jc"))["total"] or 0
-    montant_net_colis = montant_brut - total_jc
+    # --- CALCULS VIA LE MOTEUR FINANCIER CENTRALISÉ ---
+    perf = FinanceEngine.get_monthly_performance(year, month, country_code)
 
     stats = {}
-    stats["montant_colis"] = montant_net_colis
-    stats["poids_total"] = colis.aggregate(total=Sum("poids"))["total"] or 0
+    stats["montant_colis"] = perf["chiffre_affaires"]
+    stats["poids_total"] = perf["poids_total"]
+    
+    # Pour info seulement, les transferts ne sont plus déduits du bénéfice
+    transferts = TransfertArgent.objects.filter(pays_expediteur__code=country_code)
+    if year and month:
+        transferts = transferts.filter(date__year=year, date__month=month)
     stats["total_transferts"] = transferts.aggregate(total=Sum("montant"))["total"] or 0
 
     if country_code != "CN":
         stats["cout_transport"] = 0
         stats["cout_douane"] = 0
-        stats["autres_depenses"] = depenses.filter(is_china_indicative=False).aggregate(total=Sum("montant"))["total"] or 0
+        stats["autres_depenses"] = perf["total_depenses"]
     else:
-        stats["cout_transport"] = lots.aggregate(total=Sum("frais_transport"))["total"] or 0
-        stats["cout_douane"] = lots.aggregate(total=Sum("frais_douane"))["total"] or 0
-        stats["autres_depenses"] = depenses.aggregate(total=Sum("montant"))["total"] or 0
+        stats["cout_transport"] = perf["cout_fret"]
+        stats["cout_douane"] = perf["cout_douane"]
+        stats["autres_depenses"] = perf["total_depenses"]
 
-    # Calcul des charges RH du pays (Salaires fixes + Avances) pour la période
-    # Cela permet d'aligner la formule sur la "Caisse Nette" du dashboard Mali
-    total_avances_pays = 0
-    total_salaires_pays = 0
-    if year and month:
-        total_avances_pays = AvanceSalaire.objects.filter(
-            agent__country__code=country_code, date__year=year, date__month=month
-        ).aggregate(total=Sum("montant"))["total"] or 0
-        total_salaires_pays = PaiementAgent.objects.filter(
-            agent__country__code=country_code, periode_annee=year, periode_mois=month
-        ).aggregate(total=Sum("montant"))["total"] or 0
+    stats["total_rh"] = perf["total_rh"]
+    stats["total_depenses_global"] = stats["autres_depenses"] + stats["total_rh"] # Note: On n'inclut plus les transferts ici
     
-    stats["total_rh"] = total_avances_pays + total_salaires_pays
+    # Le Bénéfice Net = Recettes - (Fret + Douane + Dépenses + RH)
+    stats["benefice"] = perf["benefice_net"]
 
-    # Total regroupé des charges (hors transport/douane) pour le dashboard
-    stats["total_depenses_global"] = stats["autres_depenses"] + stats["total_transferts"] + stats["total_rh"]
+    # Détails Avion / Bateau
+    stats["ca_avion"] = perf["ca_avion"]
+    stats["ca_bateau"] = perf["ca_bateau"]
+    stats["benefice_brut_avion"] = perf["benefice_brut_avion"]
+    stats["benefice_brut_bateau"] = perf["benefice_brut_bateau"]
 
-    # Le Bénéfice Net (partageable) = Recettes - (Fret + Douane + Dépenses + Transferts + RH)
-    # Formule alignée sur la Caisse Nette du Dashboard
-    stats["benefice"] = (
-        stats["montant_colis"]
-        - stats["cout_transport"]
-        - stats["cout_douane"]
-        - stats["total_depenses_global"]
-    )
-
-    # ------------------ SEPARATION AVION / BATEAU ------------------
-    colis_avion = colis.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
-    colis_bateau = colis.filter(lot__type_transport="BATEAU")
-    lots_avion = lots.filter(type_transport__in=["CARGO", "EXPRESS"])
-    lots_bateau = lots.filter(type_transport="BATEAU")
-
-    stats["ca_avion"] = (colis_avion.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_avion.aggregate(total=Sum("montant_jc"))["total"] or 0)
-    stats["ca_bateau"] = (colis_bateau.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0)
+    stats["nb_colis_expedies_avion"] = perf["nb_colis_avion"]
+    stats["nb_colis_expedies_bateau"] = perf["nb_colis_bateau"]
+    stats["nb_colis_livres_avion"] = perf["nb_colis_livres_avion"]
+    stats["nb_colis_livres_bateau"] = perf["nb_colis_livres_bateau"]
     
-    stats["benefice_brut_avion"] = stats["ca_avion"] - (lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_avion.aggregate(total=Sum("frais_douane"))["total"] or 0)
-    stats["benefice_brut_bateau"] = stats["ca_bateau"] - (lots_bateau.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_bateau.aggregate(total=Sum("frais_douane"))["total"] or 0)
-
-    stats["nb_colis_expedies_avion"] = colis_avion.count()
-    stats["nb_colis_expedies_bateau"] = colis_bateau.count()
-    stats["nb_colis_livres_avion"] = colis_avion.filter(status="LIVRE").count()
-    stats["nb_colis_livres_bateau"] = colis_bateau.filter(status="LIVRE").count()
-    stats["nb_lots"] = lots.count()
-    stats["nb_colis"] = colis.count()
+    stats["nb_lots"] = perf["nb_lots"]
+    stats["nb_colis"] = perf["nb_colis"]
 
     # Filtrage des agents par rôle spécifique au pays
     # On inclut ADMIN_CHINE dans tous les pays car ils peuvent avoir une commission sur tous les bénéfices
