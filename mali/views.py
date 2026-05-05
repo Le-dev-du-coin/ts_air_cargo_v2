@@ -345,7 +345,16 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
 
         colis_livres_jour = colis_livres_jour.annotate(
             heure_paiement=Subquery(latest_enc.values("created_at")[:1]),
-            montant_paye_jour=Coalesce(Subquery(sum_enc_day[:1]), Value(0), output_field=DecimalField())
+            # Somme des encaissements réels du jour
+            sum_enc=Coalesce(Subquery(sum_enc_day[:1]), Value(0), output_field=DecimalField()),
+            # Valeur théorique si c'est un ancien colis (legacy) payé ce jour sans objet EncaissementColis
+            val_legacy=Case(
+                When(date_encaissement=today, encaissements__isnull=True, then=F("prix_final") - Coalesce(F("montant_jc"), Value(0))),
+                default=Value(0),
+                output_field=DecimalField()
+            ),
+            # Le montant payé affiché est la somme des deux
+            montant_paye_jour=F("sum_enc") + F("val_legacy")
         )
 
         # Séparation par type de transport (via le Lot)

@@ -27,7 +27,19 @@ class FinanceEngine:
             colis__lot__destination=country
         ).exclude(methode="AVANCE")
 
-        total_encaissements_colis = encaissements_jour.aggregate(total=Sum("montant"))["total"] or 0
+        total_encaissements_colis_reels = encaissements_jour.aggregate(total=Sum("montant"))["total"] or 0
+
+        # On ajoute les encaissements "Legacy" (anciens colis sans objets EncaissementColis)
+        # Un colis est considéré legacy s'il a une date_encaissement mais AUCUN objet EncaissementColis lié.
+        legacy_encaissements_jour = Colis.objects.filter(
+            date_encaissement=target_date,
+            lot__destination=country,
+            encaissements__isnull=True
+        ).annotate(
+            net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
+        ).aggregate(total=Sum("net_val"))["total"] or 0
+
+        total_encaissements_colis = Decimal(total_encaissements_colis_reels) + Decimal(legacy_encaissements_jour)
 
         # On compte les rechargements de portefeuille (DEPOT) du jour
         rechargements_avoir = AvoirMouvement.objects.filter(
@@ -65,11 +77,20 @@ class FinanceEngine:
         total_sorties_jour = Decimal(total_depenses) + Decimal(total_transferts) + Decimal(total_paiements_agents)
 
         # 3. SOLDE VEILLE (Calcul)
-        # Recettes cumulées avant aujourd'hui
-        recettes_avant = EncaissementColis.objects.filter(
+        recettes_reelles_avant = EncaissementColis.objects.filter(
             date__lt=target_date,
             colis__lot__destination=country
         ).exclude(methode="AVANCE").aggregate(total=Sum("montant"))["total"] or 0
+        
+        legacy_recettes_avant = Colis.objects.filter(
+            date_encaissement__lt=target_date,
+            lot__destination=country,
+            encaissements__isnull=True
+        ).annotate(
+            net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
+        ).aggregate(total=Sum("net_val"))["total"] or 0
+
+        recettes_avant = Decimal(recettes_reelles_avant) + Decimal(legacy_recettes_avant)
         
         depôts_avant = AvoirMouvement.objects.filter(
             created_at__date__lt=target_date,
