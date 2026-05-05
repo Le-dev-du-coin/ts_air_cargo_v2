@@ -169,7 +169,11 @@ class FinanceEngine:
 
         ca_brut = colis_ca.aggregate(total=Sum("prix_final"))["total"] or 0
         total_jc = colis_ca.aggregate(total=Sum("montant_jc"))["total"] or 0
-        ca_net = Decimal(ca_brut) - Decimal(total_jc)
+        total_reste = colis_ca.aggregate(total=Sum("reste_a_payer"))["total"] or 0
+        
+        # CA Net = (Total théorique - Jetons de présence) - Reste à payer
+        # Cela correspond exactement à l'argent encaissé.
+        ca_net = Decimal(ca_brut) - Decimal(total_jc) - Decimal(total_reste)
 
         # 2. COÛTS DIRECTS (Fret + Douane)
         total_fret = lots_periode.aggregate(total=Sum("frais_transport"))["total"] or 0
@@ -208,8 +212,16 @@ class FinanceEngine:
         lots_avion = lots_periode.filter(type_transport__in=["CARGO", "EXPRESS"])
         lots_bateau = lots_periode.filter(type_transport="BATEAU")
 
-        ca_avion = (colis_ca_avion.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_ca_avion.aggregate(total=Sum("montant_jc"))["total"] or 0)
-        ca_bateau = (colis_ca_bateau.aggregate(total=Sum("prix_final"))["total"] or 0) - (colis_ca_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0)
+        ca_avion = (
+            (colis_ca_avion.aggregate(total=Sum("prix_final"))["total"] or 0) - 
+            (colis_ca_avion.aggregate(total=Sum("montant_jc"))["total"] or 0) -
+            (colis_ca_avion.aggregate(total=Sum("reste_a_payer"))["total"] or 0)
+        )
+        ca_bateau = (
+            (colis_ca_bateau.aggregate(total=Sum("prix_final"))["total"] or 0) - 
+            (colis_ca_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0) -
+            (colis_ca_bateau.aggregate(total=Sum("reste_a_payer"))["total"] or 0)
+        )
         
         brut_avion = Decimal(ca_avion) - (lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_avion.aggregate(total=Sum("frais_douane"))["total"] or 0)
         brut_bateau = Decimal(ca_bateau) - (lots_bateau.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_bateau.aggregate(total=Sum("frais_douane"))["total"] or 0)
