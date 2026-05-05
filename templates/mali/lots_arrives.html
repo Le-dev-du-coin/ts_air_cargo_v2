@@ -77,6 +77,11 @@
                     <p class="text-[10px] text-gray-500 mt-0.5">
                         Arr. {% if lot.date_arrivee %}{{ lot.date_arrivee|date:"d M Y" }}{% else %}{{ lot.created_at|date:"d M Y" }}{% endif %}
                     </p>
+                    {% if lot.numero|slice:":3" == "ML-" %}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200 mt-1 uppercase">
+                        Créé au Mali
+                    </span>
+                    {% endif %}
                 </div>
                 {% if lot.type_transport == 'CARGO' %}
                 <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-orange-100 text-orange-800 border border-orange-200 uppercase">✈ Cargo</span>

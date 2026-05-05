@@ -270,9 +270,8 @@ class LotBateauMaliForm(forms.ModelForm):
     class Meta:
         from core.models import Lot
         model = Lot
-        fields = ["numero", "frais_transport", "frais_douane", "date_arrivee"]
+        fields = ["frais_transport", "frais_douane", "date_arrivee"]
         widgets = {
-            "numero": forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': 'Ex: BATEAU-001'}),
             "frais_transport": forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': 'Frais de transport (Fret)'}),
             "frais_douane": forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': 'Frais de douane'}),
             "date_arrivee": forms.DateInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'type': 'date'}),

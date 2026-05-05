@@ -3409,24 +3409,28 @@ class PaiementsHistoriqueView(LoginRequiredMixin, DestinationAgentRequiredMixin,
 
     def get_queryset(self):
         mali = self.get_current_country()
-        # On combine les encaissements réels et les dépôts d'avoir
-        encaissements = EncaissementColis.objects.filter(colis__lot__destination=mali).annotate(
-            type_mouvement=Value("ENCAISSEMENT"),
-            client_name=F("colis__client__nom")
-        ).values("date", "montant", "methode", "type_mouvement", "client_name", "enregistre_par__username")
-
-        depots = AvoirMouvement.objects.filter(client__country=mali, type="DEPOT").annotate(
-            type_mouvement=Value("DEPOT_AVOIR"),
-            client_name=F("client__nom"),
-            # On mappe date_creation__date sur 'date' pour l'union
-            date_mouvement=F("created_at__date"),
-            methode=Value("ESPECE") # Par défaut
-        ).values("date_mouvement", "montant", "methode", "type_mouvement", "client_name", "enregistre_par__username")
-
-        # Note: Union nécessite les mêmes colonnes. 
-        # C'est un peu complexe en ORM pur pour un audit simple, on va rester sur les encaissements pour l'instant
-        # ou faire deux querysets séparés dans le contexte.
-        return EncaissementColis.objects.filter(colis__lot__destination=mali).select_related("colis", "colis__client", "enregistre_par").order_by("-date", "-created_at")
+        qs = EncaissementColis.objects.filter(colis__lot__destination=mali).select_related("colis", "colis__client", "enregistre_par")
+        
+        # Recherche par texte
+        q = self.request.GET.get("q")
+        if q:
+            qs = qs.filter(
+                Q(colis__reference__icontains=q) | 
+                Q(colis__client__nom__icontains=q) |
+                Q(colis__client__prenom__icontains=q) |
+                Q(colis__client__phone__icontains=q)
+            )
+            
+        # Filtre par date
+        date_start = self.request.GET.get("date_start")
+        if date_start:
+            qs = qs.filter(date__gte=date_start)
+            
+        date_end = self.request.GET.get("date_end")
+        if date_end:
+            qs = qs.filter(date__lte=date_end)
+            
+        return qs.order_by("-date", "-created_at")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -3444,10 +3448,26 @@ class LotBateauMaliCreateView(LoginRequiredMixin, DestinationAgentRequiredMixin,
 
     def form_valid(self, form):
         mali = self.get_current_country()
-        form.instance.country = mali # Origine fictive ou Mali
+        
+        # Génération automatique du numéro : ML-BT-ANNÉE-SÉQUENCE
+        year = timezone.now().year
+        prefix = f"ML-BT-{year}-"
+        last_lot = Lot.objects.filter(numero__startswith=prefix).order_by("-numero").first()
+        
+        if last_lot:
+            try:
+                last_seq = int(last_lot.numero.split("-")[-1])
+                new_seq = last_seq + 1
+            except (ValueError, IndexError):
+                new_seq = 1
+        else:
+            new_seq = 1
+            
+        form.instance.numero = f"{prefix}{new_seq:03d}"
+        form.instance.country = mali 
         form.instance.destination = mali
         form.instance.type_transport = "BATEAU"
         form.instance.status = "ARRIVE"
         form.instance.created_by = self.request.user
-        messages.success(self.request, f"Lot Bateau {form.instance.numero} créé avec succès.")
+        messages.success(self.request, f"Lot Bateau {form.instance.numero} créé avec succès (Badge créé au Mali).")
         return super().form_valid(form)

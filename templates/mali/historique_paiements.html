@@ -23,8 +23,24 @@
 
         <!-- 1. Encaissements Colis -->
         <div x-show="activeTab === 'encaissements'" class="mt-6 bg-white shadow rounded-xl overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h3 class="text-lg font-bold text-gray-900">Paiements Directs (Colis)</h3>
+                
+                <!-- Formulaire de Filtre -->
+                <form method="get" class="flex flex-wrap items-center gap-2">
+                    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Ref, Client, Tel..." class="text-sm border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <div class="flex items-center gap-1">
+                        <input type="date" name="date_start" value="{{ request.GET.date_start }}" class="text-sm border-gray-300 rounded-lg px-2 py-2">
+                        <span class="text-gray-400">à</span>
+                        <input type="date" name="date_end" value="{{ request.GET.date_end }}" class="text-sm border-gray-300 rounded-lg px-2 py-2">
+                    </div>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors">
+                        Filtrer
+                    </button>
+                    {% if request.GET.q or request.GET.date_start or request.GET.date_end %}
+                    <a href="{% url 'mali:historique_paiements' %}" class="text-xs text-red-600 hover:underline">Réinitialiser</a>
+                    {% endif %}
+                </form>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
