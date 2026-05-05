@@ -42,6 +42,7 @@ from .forms import (
     AvanceSalaireForm,
     MaliAgentForm,
     MaliClientLotTarifForm,
+    LotBateauMaliForm,
 )
 from chine.views import get_country_stats
 
@@ -372,6 +373,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         
         context["recette_cargo_jour"] = (colis_cargo.aggregate(total=Sum("montant_paye_jour"))["total"] or 0)
         context["poids_cargo_jour"] = colis_cargo.aggregate(total=Sum("poids"))["total"] or 0
+        context["nb_cargo_jour"] = colis_cargo.count()
 
         # B. Express (Air)
         colis_express = colis_livres_jour.filter(lot__type_transport="EXPRESS")
@@ -384,6 +386,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         
         context["recette_express_jour"] = (colis_express.aggregate(total=Sum("montant_paye_jour"))["total"] or 0)
         context["poids_express_jour"] = colis_express.aggregate(total=Sum("poids"))["total"] or 0
+        context["nb_express_jour"] = colis_express.count()
 
         # C. Bateau (Maritime)
         colis_bateau = colis_livres_jour.filter(lot__type_transport="BATEAU")
@@ -397,6 +400,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         context["recette_bateau_jour"] = (colis_bateau.aggregate(total=Sum("montant_paye_jour"))["total"] or 0)
         context["poids_bateau_jour"] = colis_bateau.aggregate(total=Sum("poids"))["total"] or 0
         context["cbm_bateau_jour"] = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
+        context["nb_bateau_jour"] = colis_bateau.count()
 
         # Poids Total Jour (Kilos livrés du jour)
         context["total_poids_jour"] = context["poids_cargo_jour"] + context["poids_express_jour"] + context["poids_bateau_jour"]
@@ -3395,3 +3399,55 @@ class MaliConfirmerRetraitBulkView(
 
         messages.success(request, f"{updated} colis marqués comme retirés (Livrés).")
         return redirect("mali:prets_retrait")
+
+
+class PaiementsHistoriqueView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """Historique global des paiements et dépôts d'avoir pour audit"""
+    template_name = "mali/historique_paiements.html"
+    context_object_name = "paiements"
+    paginate_by = 50
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        # On combine les encaissements réels et les dépôts d'avoir
+        encaissements = EncaissementColis.objects.filter(colis__lot__destination=mali).annotate(
+            type_mouvement=Value("ENCAISSEMENT"),
+            client_name=F("colis__client__nom")
+        ).values("date", "montant", "methode", "type_mouvement", "client_name", "enregistre_par__username")
+
+        depots = AvoirMouvement.objects.filter(client__country=mali, type="DEPOT").annotate(
+            type_mouvement=Value("DEPOT_AVOIR"),
+            client_name=F("client__nom"),
+            # On mappe date_creation__date sur 'date' pour l'union
+            date_mouvement=F("created_at__date"),
+            methode=Value("ESPECE") # Par défaut
+        ).values("date_mouvement", "montant", "methode", "type_mouvement", "client_name", "enregistre_par__username")
+
+        # Note: Union nécessite les mêmes colonnes. 
+        # C'est un peu complexe en ORM pur pour un audit simple, on va rester sur les encaissements pour l'instant
+        # ou faire deux querysets séparés dans le contexte.
+        return EncaissementColis.objects.filter(colis__lot__destination=mali).select_related("colis", "colis__client", "enregistre_par").order_by("-date", "-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.get_current_country()
+        context["depots_avoir"] = AvoirMouvement.objects.filter(client__country=mali, type="DEPOT").select_related("client", "enregistre_par").order_by("-created_at")[:50]
+        return context
+
+
+class LotBateauMaliCreateView(LoginRequiredMixin, DestinationAgentRequiredMixin, CreateView):
+    """Permet à l'agent Mali de créer un lot bateau pour régulariser des anciens envois"""
+    model = Lot
+    form_class = LotBateauMaliForm
+    template_name = "mali/lot_bateau_create.html"
+    success_url = reverse_lazy("mali:lots_arrives")
+
+    def form_valid(self, form):
+        mali = self.get_current_country()
+        form.instance.country = mali # Origine fictive ou Mali
+        form.instance.destination = mali
+        form.instance.type_transport = "BATEAU"
+        form.instance.status = "ARRIVE"
+        form.instance.created_by = self.request.user
+        messages.success(self.request, f"Lot Bateau {form.instance.numero} créé avec succès.")
+        return super().form_valid(form)

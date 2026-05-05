@@ -156,7 +156,7 @@
             <h3 class="text-lg font-medium text-gray-900">Livraisons Cargo ({{ target_date|date:"d/m/Y" }})</h3>
              <div class="flex gap-2">
                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    {{ poids_cargo_jour|floatformat:2 }} kg
+                    {{ nb_cargo_jour }} colis | {{ poids_cargo_jour|floatformat:2 }} kg
                 </span>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     {{ recette_cargo_jour|fcfa }}
@@ -172,7 +172,7 @@
             <h3 class="text-lg font-medium text-gray-900">Livraisons Express ({{ target_date|date:"d/m/Y" }})</h3>
              <div class="flex gap-2">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    {{ poids_express_jour|floatformat:2 }} kg
+                    {{ nb_express_jour }} colis | {{ poids_express_jour|floatformat:2 }} kg
                 </span>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     {{ recette_express_jour|fcfa }}
@@ -188,7 +188,7 @@
             <h3 class="text-lg font-medium text-gray-900">Livraisons Bateau ({{ target_date|date:"d/m/Y" }})</h3>
              <div class="flex gap-2">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    {{ cbm_bateau_jour|floatformat:3 }} m³
+                    {{ nb_bateau_jour }} colis | {{ cbm_bateau_jour|floatformat:3 }} m³
                 </span>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     {{ recette_bateau_jour|fcfa }}

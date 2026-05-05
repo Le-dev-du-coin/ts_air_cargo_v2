@@ -50,6 +50,8 @@ from .views import (
     MaliClientAvoirView,
     ManualImputeView,
     LotManualImputeView,
+    PaiementsHistoriqueView,
+    LotBateauMaliCreateView,
 )
 from report.views import (
     DepenseListView,
@@ -102,6 +104,7 @@ urlpatterns = [
     ),
     path("lots/<int:pk>/arrive/", LotArriveView.as_view(), name="lot_arrive"),
     path("lots/<int:pk>/reset-douane/", LotResetDouaneView.as_view(), name="lot_reset_douane"),
+    path("lots/creer-bateau/", LotBateauMaliCreateView.as_view(), name="lot_bateau_create"),
     path(
         "lots/<int:pk>/notify-arrivals/",
         NotifyArrivalsView.as_view(),
@@ -187,6 +190,11 @@ urlpatterns = [
         "finance/avoir/",
         MaliClientAvoirView.as_view(),
         name="client_avoir",
+    ),
+    path(
+        "finance/historique/",
+        PaiementsHistoriqueView.as_view(),
+        name="historique_paiements",
     ),
     path(
         "finance/avoir/<int:client_id>/imputer/",

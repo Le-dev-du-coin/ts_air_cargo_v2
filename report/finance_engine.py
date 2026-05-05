@@ -52,12 +52,12 @@ class FinanceEngine:
         total_entrees_jour = Decimal(total_encaissements_colis) + Decimal(total_rechargements_avoir)
 
         # 2. SORTIES DE CAISSE (Liquidités sortantes)
-        # Dépenses réelles du pays (exclut les indicatives Chine)
+        # Dépenses réelles du pays (exclut les indicatives Chine ET celles saisies par le staff Chine)
         depenses_jour = Depense.objects.filter(
             date=target_date,
             pays=country,
             is_china_indicative=False
-        )
+        ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"])
         total_depenses = depenses_jour.aggregate(total=Sum("montant"))["total"] or 0
 
         # Transferts sortants
@@ -82,8 +82,10 @@ class FinanceEngine:
             colis__lot__destination=country
         ).exclude(methode="AVANCE").aggregate(total=Sum("montant"))["total"] or 0
         
+        # Recettes Legacy : On prend ce qui a une date_encaissement < target_date
+        # ET les "Ghost payments" (colis payés mais sans aucune date ni objet encaissement)
         legacy_recettes_avant = Colis.objects.filter(
-            date_encaissement__lt=target_date,
+            Q(date_encaissement__lt=target_date) | Q(est_paye=True, date_encaissement__isnull=True),
             lot__destination=country,
             encaissements__isnull=True
         ).annotate(
@@ -103,7 +105,7 @@ class FinanceEngine:
             date__lt=target_date,
             pays=country,
             is_china_indicative=False
-        ).aggregate(total=Sum("montant"))["total"] or 0
+        ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"]).aggregate(total=Sum("montant"))["total"] or 0
         
         transferts_avant = TransfertArgent.objects.filter(
             date__lt=target_date,

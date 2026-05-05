@@ -262,3 +262,23 @@ class MaliClientLotTarifForm(forms.ModelForm):
         if lot:
             from core.models import Client
             self.fields["client"].queryset = Client.objects.filter(country=lot.destination)
+
+
+class LotBateauMaliForm(forms.ModelForm):
+    """Formulaire pour que l'agent Mali crée un lot bateau (données historiques)"""
+    from core.models import Lot
+    class Meta:
+        from core.models import Lot
+        model = Lot
+        fields = ["numero", "frais_transport", "frais_douane", "date_arrivee"]
+        widgets = {
+            "numero": forms.TextInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': 'Ex: BATEAU-001'}),
+            "frais_transport": forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': 'Frais de transport (Fret)'}),
+            "frais_douane": forms.NumberInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'placeholder': 'Frais de douane'}),
+            "date_arrivee": forms.DateInput(attrs={'class': 'w-full border-gray-300 rounded-xl', 'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from django.utils import timezone
+        self.fields["date_arrivee"].initial = timezone.now().date()

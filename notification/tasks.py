@@ -296,10 +296,11 @@ def retry_failed_notifications_periodic(force_retry_all=False, region=None):
 
 
 @shared_task
-def send_daily_report_mali():
+def send_daily_report_mali(target_date_str=None):
     """
-    Rapport journalier Mali envoyé à 23h50 via WhatsApp au numéro admin_mali_phone.
-    Calcule les données du jour : Cargo, Express, Bateau, Dépenses, Transferts, Solde.
+    Rapport journalier Mali envoyé via WhatsApp.
+    Si target_date_str est fourni (format 'YYYY-MM-DD'), calcule pour cette date.
+    Sinon, calcule pour la date actuelle.
     """
     from .services.wachap_service import wachap_service
 
@@ -323,7 +324,14 @@ def send_daily_report_mali():
         from core.models import User, Client, Lot, Colis, AvoirMouvement
         from report.finance_engine import FinanceEngine
 
-        today = timezone.now().date()
+        if target_date_str:
+            try:
+                from datetime import datetime
+                today = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                today = timezone.now().date()
+        else:
+            today = timezone.now().date()
 
         try:
             mali = Country.objects.get(code="ML")
@@ -348,11 +356,20 @@ def send_daily_report_mali():
             nb = qs.count()
             # On somme les encaissements RÉELS du jour pour ce type
             from core.models import EncaissementColis
-            ca = EncaissementColis.objects.filter(
+            ca_reels = EncaissementColis.objects.filter(
                 colis__in=qs,
                 date=today
             ).exclude(methode="AVANCE").aggregate(total=Sum("montant"))["total"] or 0
-            return nb, ca
+            
+            # On ajoute les legacy pour la cohérence
+            ca_legacy = qs.filter(
+                date_encaissement=today,
+                encaissements__isnull=True
+            ).annotate(
+                val=F("prix_final") - Coalesce(F("montant_jc"), Value(0))
+            ).aggregate(total=Sum("val"))["total"] or 0
+
+            return nb, Decimal(ca_reels) + Decimal(ca_legacy)
 
         nb_cargo, ca_cargo = get_nb_ca("CARGO")
         nb_express, ca_express = get_nb_ca("EXPRESS")

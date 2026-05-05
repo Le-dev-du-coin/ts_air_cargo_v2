@@ -1,0 +1,107 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block title %}Historique des Paiements - TS Air Cargo{% endblock %}
+
+{% block header %}Audit & Historique des Paiements{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-6">
+    <!-- Onglets -->
+    <div x-data="{ activeTab: 'encaissements' }">
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8">
+                <button @click="activeTab = 'encaissements'" :class="activeTab === 'encaissements' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    Encaissements Colis
+                </button>
+                <button @click="activeTab = 'depots'" :class="activeTab === 'depots' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    Dépôts d'Avoir
+                </button>
+            </nav>
+        </div>
+
+        <!-- 1. Encaissements Colis -->
+        <div x-show="activeTab === 'encaissements'" class="mt-6 bg-white shadow rounded-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-900">Paiements Directs (Colis)</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Client</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Colis</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Méthode</th>
+                            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Montant</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Agent</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for p in paiements %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">{{ p.date|date:"d/m/Y" }} <span class="text-gray-400 text-xs">{{ p.created_at|date:"H:i" }}</span></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">{{ p.colis.client.nom }} {{ p.colis.client.prenom }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 font-bold">{{ p.colis.reference }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-[10px] font-bold rounded-full {% if p.methode == 'ESPECE' %}bg-green-100 text-green-800{% elif p.methode == 'AVANCE' %}bg-indigo-100 text-indigo-800{% else %}bg-orange-100 text-orange-800{% endif %}">
+                                    {{ p.get_methode_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-black text-gray-900">{{ p.montant|fcfa }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 italic">{{ p.enregistre_par.username }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-400 italic">Aucun encaissement enregistré.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if is_paginated %}
+            <div class="px-6 py-4 border-t border-gray-100">
+                {% include "partials/pagination.html" %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 2. Dépôts Avoir -->
+        <div x-show="activeTab === 'depots'" x-cloak class="mt-6 bg-white shadow rounded-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-emerald-50">
+                <h3 class="text-lg font-bold text-emerald-900">Rechargements Portefeuilles</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date / Heure</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Client</th>
+                            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Montant Rechargé</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Note</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Agent</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for d in depots_avoir %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">{{ d.created_at|date:"d/m/Y H:i" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-emerald-800">{{ d.client.nom }} {{ d.client.prenom }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-black text-emerald-600">+{{ d.montant|fcfa }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 italic">{{ d.commentaire|default:"-" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 italic">{{ d.enregistre_par.username }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-400 italic">Aucun dépôt d'avoir enregistré.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
