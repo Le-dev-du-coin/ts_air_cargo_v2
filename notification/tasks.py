@@ -413,21 +413,31 @@ def send_daily_report_mali(target_date_str=None):
 
         # --- Envoi WhatsApp ---
         results = []
-        for phone in valid_phones:
-            success, error, message_id = wachap_service.send_message(
-                phone=phone,
-                message=message,
-                region="mali",
-            )
+        import time
 
-            if success:
-                logger.info(
-                    f"[RapportJour] Rapport envoyé à {phone} (ID: {message_id})"
+        for phone in valid_phones:
+            try:
+                logger.info(f"[RapportJour] Envoi en cours vers {phone}...")
+                success, error, message_id = wachap_service.send_message(
+                    phone=phone,
+                    message=message,
+                    region="mali",
                 )
-                results.append(f"Succès ({phone})")
-            else:
-                logger.error(f"[RapportJour] Échec envoi à {phone}: {error}")
-                results.append(f"Échec ({phone}: {error})")
+
+                if success:
+                    logger.info(
+                        f"[RapportJour] Rapport envoyé à {phone} (ID: {message_id})"
+                    )
+                    results.append(f"Succès ({phone})")
+                else:
+                    logger.error(f"[RapportJour] Échec envoi à {phone}: {error}")
+                    results.append(f"Échec ({phone}: {error})")
+
+                # Délai de sécurité pour éviter les blocages API
+                time.sleep(2)
+            except Exception as e:
+                logger.error(f"[RapportJour] Erreur critique lors de l'envoi à {phone}: {e}")
+                results.append(f"Erreur critique ({phone}: {str(e)})")
 
         return " | ".join(results)
 
