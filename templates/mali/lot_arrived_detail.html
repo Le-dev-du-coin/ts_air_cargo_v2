@@ -15,7 +15,7 @@
         </svg>
         Retour Historique
     </a>
-    {% if lot.type_transport == 'BATEAU' %}
+    {% if user.role == 'AGENT_MALI' or user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' %}
     <a href="{% url 'mali:admin_lot_add_colis' lot.pk %}" 
        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-amber-600 hover:bg-amber-700 transition-all shadow-sm">
         <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

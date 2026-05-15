@@ -248,10 +248,10 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         # Stats communes (Non filtrées par défaut ?) - User said "ne touche pas aux total globaux"
         # The existing code did:
         context["lots_ouverts_count"] = Lot.objects.filter(
-            status=Lot.Status.OUVERT
+            country__code="CN", status=Lot.Status.OUVERT
         ).count()
         context["lots_fermes_count"] = Lot.objects.filter(
-            status=Lot.Status.FERME
+            country__code="CN", status=Lot.Status.FERME
         ).count()
         context["colis_total_count"] = Colis.objects.count()
         context["total_clients_count"] = Client.objects.count()
@@ -259,9 +259,10 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         # Stats spécifiques Agent Chine (Reste inchangé ?)
         if self.request.user.role == "AGENT_CHINE":
             context["lots_transit_count"] = Lot.objects.filter(
-                status="EN_TRANSIT"
+                country__code="CN", status="EN_TRANSIT"
             ).count()
             context["lots_arrives_mali_count"] = Lot.objects.filter(
+                country__code="CN",
                 status__in=[Lot.Status.ARRIVE, Lot.Status.DOUANE, Lot.Status.DISPONIBLE]
             ).count()
 
@@ -271,7 +272,7 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
             )
 
             context["montant_total_transport_agent"] = (
-                Lot.objects.aggregate(total=Sum("frais_transport"))["total"] or 0
+                Lot.objects.filter(country__code="CN").aggregate(total=Sum("frais_transport"))["total"] or 0
             )
 
         # Stats avancées pour l'Admin Chine
@@ -303,7 +304,7 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
                 stats_ml_global["benefice"] + stats_ci_global["benefice"]
             )
 
-            context["total_lots"] = Lot.objects.count()
+            context["total_lots"] = Lot.objects.filter(country__code="CN").count()
             context["total_colis"] = Colis.objects.count()
             context["total_agents_count"] = (
                 User.objects.exclude(role="CLIENT").exclude(is_superuser=True).count()
@@ -326,7 +327,8 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
 
         # Pagination pour les lots récents
         lots_list = (
-            Lot.objects.prefetch_related("colis")
+            Lot.objects.filter(country__code="CN")
+            .prefetch_related("colis")
             .annotate(total_recettes=Sum("colis__prix_final"))
             .order_by("-created_at")
         )
@@ -898,6 +900,7 @@ class LotListView(LoginRequiredMixin, ListView):
         queryset = (
             super()
             .get_queryset()
+            .filter(country__code="CN")
             .select_related("destination", "created_by")
             .prefetch_related("colis")
         )

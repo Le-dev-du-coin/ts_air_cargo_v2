@@ -525,22 +525,25 @@ class LotsArrivesView(LotsEnTransitView):
         if not mali:
             return Lot.objects.none()
 
-        # Un lot apparaît en arrivés s'il contient au moins un colis au statut ARRIVE (Logique Master)
-        # Cela garantit que le lot ne disparaît pas s'il est en cours de traitement
+        # Un lot apparaît en arrivés dans deux cas :
+        # 1. Il contient au moins un colis au statut ARRIVE (lots standards Chine→Mali)
+        # 2. C'est un lot créé localement au Mali (ex: régularisation Bateau) avec statut ARRIVE
         pending_q = Q(colis__status="ARRIVE")
+        # Lots locaux Mali avec statut ARRIVE (bateau régularisation, etc.)
+        local_arrive_q = Q(status=Lot.Status.ARRIVE, country=mali)
 
         queryset = (
             Lot.objects.filter(destination=mali)
-            .filter(pending_q)
+            .filter(pending_q | local_arrive_q)
             .distinct()
             .select_related("destination")
             .prefetch_related("colis")
             .annotate(
-                # On ne compte que les colis "vierges" pour ce lot dans cette vue
+                # Pour les lots locaux sans colis ARRIVE, nb_colis_arrive sera 0
+                # mais le lot sera quand même visible grâce au filtre local_arrive_q
                 nb_colis_arrive=Count("colis", filter=pending_q),
                 poids_total_arrive=Sum("colis__poids", filter=pending_q),
                 total_recettes_arrive=Sum("colis__prix_final", filter=pending_q),
-                # Note: payé en Chine et imputés n'apparaissent plus ici
                 nb_colis_payes_chine=Count(
                     "colis",
                     filter=pending_q & Q(colis__paye_en_chine=True),
@@ -557,7 +560,6 @@ class LotsArrivesView(LotsEnTransitView):
                     output_field=DecimalField(),
                 )
             )
-            .filter(nb_colis_arrive__gt=0)
             .distinct()
         )
 
@@ -2988,26 +2990,21 @@ class MaliColisAddToArrivalView(DestinationAgentRequiredMixin, View):
         from .forms import MaliAddColisForm
 
         lot = get_object_or_404(Lot, pk=lot_pk, destination=request.user.country)
-        
-        if lot.type_transport != Lot.TypeTransport.BATEAU:
-            messages.error(request, "L'ajout direct de colis n'est autorisé que pour les lots BATEAU.")
-            return redirect("mali:lot_arrived_detail", pk=lot.pk)
 
-        form = MaliAddColisForm(country=request.user.country)
+        form = MaliAddColisForm(country=request.user.country, lot=lot)
         return render(
             request, "mali/admin/add_colis_to_lot.html", {"lot": lot, "form": form}
         )
 
     def post(self, request, lot_pk):
         from .forms import MaliAddColisForm
+        from django.http import JsonResponse
 
         lot = get_object_or_404(Lot, pk=lot_pk, destination=request.user.country)
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.POST.get("_ajax") == "1"
 
-        if lot.type_transport != Lot.TypeTransport.BATEAU:
-            messages.error(request, "L'ajout direct de colis n'est autorisé que pour les lots BATEAU.")
-            return redirect("mali:lot_arrived_detail", pk=lot.pk)
         form = MaliAddColisForm(
-            request.POST, request.FILES, country=request.user.country
+            request.POST, request.FILES, country=request.user.country, lot=lot
         )
 
         if form.is_valid():
@@ -3015,8 +3012,8 @@ class MaliColisAddToArrivalView(DestinationAgentRequiredMixin, View):
             colis = Colis(
                 lot=lot,
                 client=data["client"],
-                country=lot.destination,  # Fix: Assigner le pays (Mali) pour le TenantAwareModel
-                type_colis=data["type_colis"],
+                country=lot.destination,
+                type_colis=data.get("type_colis") or Colis.TypeColis.STANDARD,
                 poids=data.get("poids") or 0,
                 cbm=data.get("cbm") or 0,
                 nombre_pieces=data.get("nombre_pieces") or 1,
@@ -3059,9 +3056,9 @@ class MaliColisAddToArrivalView(DestinationAgentRequiredMixin, View):
                 from notification.tasks import send_notification_async
 
                 if colis.client and colis.client.user:
+                    transport_icon = "⛵" if lot.type_transport == "BATEAU" else "✈️"
                     message = (
-                        f"Votre colis {colis.reference} est arrivé à Bamako ! 🎉\n"
-                        f"Poids : {colis.poids} kg\n"
+                        f"{transport_icon} Votre colis {colis.reference} est arrivé à Bamako !\n"
                         f"Montant à payer : {colis.prix_final} FCFA\n\n"
                         "Vous pouvez passer le récupérer à l'agence."
                     )
@@ -3076,11 +3073,22 @@ class MaliColisAddToArrivalView(DestinationAgentRequiredMixin, View):
             except Exception:
                 pass  # Notification non bloquante
 
-            messages.success(
-                request,
-                f"✅ Colis {colis.reference} ajouté avec succès dans le lot {lot.numero}. [Ajouté Mali]",
-            )
+            success_msg = f"✅ Colis {colis.reference} ajouté avec succès dans le lot {lot.numero}. [Ajouté Mali]"
+
+            if is_ajax:
+                return JsonResponse({
+                    "success": True,
+                    "message": success_msg,
+                    "colis_reference": colis.reference,
+                    "redirect_url": reverse_lazy("mali:lot_arrived_detail", kwargs={"pk": lot.pk}),
+                })
+
+            messages.success(request, success_msg)
             return redirect("mali:lot_arrived_detail", pk=lot.pk)
+
+        if is_ajax:
+            errors = {field: list(errs) for field, errs in form.errors.items()}
+            return JsonResponse({"success": False, "errors": errors}, status=400)
 
         return render(
             request, "mali/admin/add_colis_to_lot.html", {"lot": lot, "form": form}

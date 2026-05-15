@@ -320,9 +320,11 @@ def send_daily_report_mali(target_date_str=None):
         return "Rapport non envoyé : aucun numéro d'admin Mali configuré."
 
     try:
-        from django.db.models import Sum, F, Q
-        from core.models import User, Client, Lot, Colis, AvoirMouvement
+        from django.db.models import Sum, F, Q, Value
+        from django.db.models.functions import Coalesce
+        from core.models import User, Client, Lot, Colis, AvoirMouvement, Country
         from report.finance_engine import FinanceEngine
+        from decimal import Decimal
 
         if target_date_str:
             try:

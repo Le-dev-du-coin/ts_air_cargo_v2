@@ -184,10 +184,15 @@ class MaliAddColisForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         country = kwargs.pop('country', None)
+        self.lot = kwargs.pop('lot', None)
         super().__init__(*args, **kwargs)
         if country:
             from core.models import Client
             self.fields['client'].queryset = Client.objects.filter(country=country)
+        # Pour les lots BATEAU, le type_colis n'est pas pertinent (pas de notion de type Standard/Téléphone)
+        if self.lot and self.lot.type_transport == 'BATEAU':
+            self.fields['type_colis'].required = False
+            self.fields['type_colis'].initial = 'STANDARD'
 
 class MaliAgentForm(forms.ModelForm):
     acces_systeme = forms.BooleanField(

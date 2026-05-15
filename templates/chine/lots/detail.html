@@ -736,7 +736,7 @@
                                         {{ colis.get_status_display }}
                                     </span>
                                 </div>
-                                {% if lot.status == 'OUVERT' and user.role != 'CLIENT' %}
+                                {% if (lot.status == 'OUVERT' and user.role != 'CLIENT') or (user.role == 'ADMIN_CHINE' and colis.status != 'LIVRE') %}
                                 <div class="mt-2 flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
                                     <a href="{% url 'chine:colis_update' colis.pk %}" 
                                        class="text-xs text-indigo-600 hover:text-indigo-900 font-medium flex items-center bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition-colors">
