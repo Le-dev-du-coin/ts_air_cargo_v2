@@ -1,4 +1,7 @@
 import logging
+import io
+import os
+from django.core import management
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
@@ -441,13 +444,16 @@ class MonthlyArchivesView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateV
         # Transferts vers la Chine
         transferts_chine = TransfertArgent.objects.filter(destinataire="CHINE")
         transferts_gaoussou = TransfertArgent.objects.filter(destinataire="GAOUSSOU")
+        transferts_guisse = TransfertArgent.objects.filter(destinataire="GUISSE")
 
         if selected_year != "all":
             transferts_chine = transferts_chine.filter(date__year=selected_year)
             transferts_gaoussou = transferts_gaoussou.filter(date__year=selected_year)
+            transferts_guisse = transferts_guisse.filter(date__year=selected_year)
             if selected_month != "all":
                 transferts_chine = transferts_chine.filter(date__month=selected_month)
                 transferts_gaoussou = transferts_gaoussou.filter(date__month=selected_month)
+                transferts_guisse = transferts_guisse.filter(date__month=selected_month)
 
         context["transferts_chine_recu"] = transferts_chine.filter(statut="RECU").aggregate(total=Sum("montant"))["total"] or 0
         context["transferts_chine_attente"] = transferts_chine.filter(statut="EN_ATTENTE").aggregate(total=Sum("montant"))["total"] or 0
@@ -455,6 +461,10 @@ class MonthlyArchivesView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateV
         # Transferts vers Gaoussou (Frais Douane Mali)
         context["transferts_gaoussou_recu"] = transferts_gaoussou.filter(statut="RECU").aggregate(total=Sum("montant"))["total"] or 0
         context["transferts_gaoussou_attente"] = transferts_gaoussou.filter(statut="EN_ATTENTE").aggregate(total=Sum("montant"))["total"] or 0
+
+        # Transferts vers Guissé (Frais Douane Mali Express)
+        context["transferts_guisse_recu"] = transferts_guisse.filter(statut="RECU").aggregate(total=Sum("montant"))["total"] or 0
+        context["transferts_guisse_attente"] = transferts_guisse.filter(statut="EN_ATTENTE").aggregate(total=Sum("montant"))["total"] or 0
 
         # Listes pour les sélecteurs
         context["years"] = list(range(now.year, now.year - 8, -1))
@@ -2050,3 +2060,72 @@ class ColisEtiquettePDFView(LoginRequiredMixin, StrictAgentChineRequiredMixin, V
         )
 
         return render_to_pdf_playwright("chine/etiquette_pdf.html", context, request)
+
+
+from core.models import DatabaseBackup
+
+class DatabaseBackupView(LoginRequiredMixin, AdminChineRequiredMixin, ListView):
+    model = DatabaseBackup
+    template_name = "chine/database/backup_list.html"
+    context_object_name = "backups"
+
+    def post(self, request, *args, **kwargs):
+        # Trigger Export
+        buffer = io.StringIO()
+        try:
+            management.call_command(
+                "dumpdata",
+                exclude=[
+                    "contenttypes",
+                    "auth.permission",
+                    "sessions",
+                    "admin.logentry",
+                ],
+                indent=2,
+                stdout=buffer,
+            )
+            
+            # Save to model
+            filename = f"db_backup_{timezone.now().strftime('%Y%m%d_%H%M%S')}.json"
+            content = buffer.getvalue().encode("utf-8")
+            
+            backup = DatabaseBackup(created_by=request.user)
+            backup.file.save(filename, ContentFile(content))
+            backup.save()
+            
+            messages.success(request, "Sauvegarde créée avec succès !")
+        except Exception as e:
+            messages.error(request, f"Erreur lors de l'exportation : {str(e)}")
+            
+        return redirect("chine:database_backup")
+
+
+class DatabaseImportView(LoginRequiredMixin, AdminChineRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        if "db_file" not in request.FILES:
+            messages.error(request, "Veuillez sélectionner un fichier JSON.")
+            return redirect("chine:dashboard")
+
+        json_file = request.FILES["db_file"]
+        if not json_file.name.endswith(".json"):
+            messages.error(request, "Format de fichier invalide. Utilisez un fichier JSON.")
+            return redirect("chine:dashboard")
+
+        temp_path = "temp_db_import.json"
+        try:
+            # Save the file temporarily
+            with open(temp_path, "wb+") as destination:
+                for chunk in json_file.chunks():
+                    destination.write(chunk)
+
+            # Use management command to load data
+            management.call_command("loaddata", temp_path)
+
+            messages.success(request, "Base de données importée avec succès !")
+        except Exception as e:
+            messages.error(request, f"Erreur lors de l'importation : {str(e)}")
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+        return redirect("chine:dashboard")

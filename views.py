@@ -457,6 +457,9 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         context["transferts_gaoussou_list"] = transferts_jour_qs.filter(
             destinataire="GAOUSSOU"
         )
+        context["transferts_guisse_list"] = transferts_jour_qs.filter(
+            destinataire="GUISSE"
+        )
 
         # Sorties Jour réelles (pour solde caisse)
         context["total_sorties_jour"] = total_depenses_mali + total_transferts

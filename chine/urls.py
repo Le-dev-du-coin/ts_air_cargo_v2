@@ -46,12 +46,16 @@ from .views import (
     RemunerationListView,
     PaiementAgentCreateView,
     ColisEtiquettePDFView,
+    DatabaseBackupView,
+    DatabaseImportView,
 )
 
 app_name = "chine"
 
 urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path("database/backups/", DatabaseBackupView.as_view(), name="database_backup"),
+    path("database/import/", DatabaseImportView.as_view(), name="database_import"),
     path("archives/", MonthlyArchivesView.as_view(), name="monthly_archives"),
     path("stats/transport/", TransportStatsDetailView.as_view(), name="transport_stats"),
     # Background Tasks

@@ -232,6 +232,12 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
             ]
             or 0
         )
+        total_transferts_guisse = (
+            transferts_qs.filter(destinataire="GUISSE").aggregate(Sum("montant"))[
+                "montant__sum"
+            ]
+            or 0
+        )
 
         # 4. Solde
         # Solde = Recettes - (Dépenses Réelles + Transferts)
@@ -243,6 +249,7 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
                 "total_depenses": total_depenses_reelles,
                 "total_transferts_chine": total_transferts_chine,
                 "total_transferts_gaoussou": total_transferts_gaoussou,
+                "total_transferts_guisse": total_transferts_guisse,
                 "total_transferts": total_transferts,
                 "total_sorties": total_depenses_reelles + total_transferts,
                 "solde": solde,
@@ -308,12 +315,17 @@ class TransfertListView(LoginRequiredMixin, ListView):
         # Séparation des transferts
         context["transferts_chine"] = qs_all.filter(destinataire="CHINE")
         context["transferts_gaoussou"] = qs_all.filter(destinataire="GAOUSSOU")
+        context["transferts_guisse"] = qs_all.filter(destinataire="GUISSE")
 
         context["total_chine"] = (
             context["transferts_chine"].aggregate(Sum("montant"))["montant__sum"] or 0
         )
         context["total_gaoussou"] = (
             context["transferts_gaoussou"].aggregate(Sum("montant"))["montant__sum"]
+            or 0
+        )
+        context["total_guisse"] = (
+            context["transferts_guisse"].aggregate(Sum("montant"))["montant__sum"]
             or 0
         )
 
@@ -440,6 +452,12 @@ class RapportExportView(LoginRequiredMixin, View):
             ]
             or 0
         )
+        total_transferts_guisse = (
+            transferts_qs.filter(destinataire="GUISSE").aggregate(Sum("montant"))[
+                "montant__sum"
+            ]
+            or 0
+        )
 
         # 4. Solde
         solde = total_recettes - (total_depenses_reelles + total_transferts)
@@ -452,6 +470,7 @@ class RapportExportView(LoginRequiredMixin, View):
             "total_transferts": total_transferts,
             "total_transferts_chine": total_transferts_chine,
             "total_transferts_gaoussou": total_transferts_gaoussou,
+            "total_transferts_guisse": total_transferts_guisse,
             "solde": solde,
             "depenses_by_category": depenses_qs.values("categorie")
             .annotate(total=Sum("montant"))

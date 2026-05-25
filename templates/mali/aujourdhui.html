@@ -81,7 +81,7 @@
     <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-green-500">
         <div class="px-4 py-5 sm:p-6">
             <dt class="text-xs font-medium text-gray-500 truncate uppercase">Recettes Jour</dt>
-            <dd class="mt-1 text-xl font-bold text-green-600 truncate" title="{{ total_recettes_jour|fcfa }}">{{ total_recettes_jour|fcfa }}</dd>
+            <dd class="mt-1 text-2xl font-black text-green-600 truncate" title="{{ total_recettes_jour|fcfa }}">{{ total_recettes_jour|fcfa }}</dd>
             <div class="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
                 <p class="text-[10px] text-green-500 font-medium">Dont JC: -{{ total_jc_jour|fcfa }}</p>
                 <p class="text-[10px] text-emerald-600 font-bold">| Avances: +{{ rechargements_avoir_jour|fcfa }}</p>
@@ -273,6 +273,12 @@
                             {% for transfert in transferts_gaoussou_list %}
                             <li class="py-2 text-sm flex justify-between">
                                 <span class="text-purple-600">Vers Gaoussou</span>
+                                <span class="font-bold text-gray-900">-{{ transfert.montant|fcfa }}</span>
+                            </li>
+                            {% endfor %}
+                            {% for transfert in transferts_guisse_list %}
+                            <li class="py-2 text-sm flex justify-between">
+                                <span class="text-cyan-600">Vers Guissé</span>
                                 <span class="font-bold text-gray-900">-{{ transfert.montant|fcfa }}</span>
                             </li>
                             {% endfor %}

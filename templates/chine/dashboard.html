@@ -77,9 +77,9 @@
                             <dt class="text-sm font-medium text-gray-500 truncate">Total Dépenses</dt>
                             <dd class="mt-1 text-xl font-semibold text-red-600">- {{ stats_ml.cout_transport|add:stats_ml.cout_douane|add:stats_ml.total_depenses_global|floatformat:0|intcomma }} FCFA</dd>
                         </div>
-                        <div class="px-4 py-5 bg-green-50 shadow rounded-lg overflow-hidden sm:p-6">
-                            <dt class="text-sm font-medium text-green-800 truncate">Bénéfice Net</dt>
-                            <dd class="mt-1 text-xl font-bold text-green-900">{{ stats_ml.benefice|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                        <div class="px-4 py-5 {% if stats_ml.benefice >= 0 %}bg-green-50{% else %}bg-red-50{% endif %} shadow rounded-lg overflow-hidden sm:p-6">
+                            <dt class="text-sm font-medium {% if stats_ml.benefice >= 0 %}text-green-800{% else %}text-red-800{% endif %} truncate">Bénéfice Net</dt>
+                            <dd class="mt-1 text-xl font-bold {% if stats_ml.benefice >= 0 %}text-green-900{% else %}text-red-900{% endif %}">{{ stats_ml.benefice|default:"0"|floatformat:0|intcomma }} FCFA</dd>
                         </div>
                     </dl>
 
@@ -207,9 +207,9 @@
                             <dt class="text-sm font-medium text-gray-500 truncate">Total Dépenses</dt>
                             <dd class="mt-1 text-xl font-semibold text-red-600">- {{ stats_ci.cout_transport|add:stats_ci.cout_douane|add:stats_ci.total_depenses_global|floatformat:0|intcomma }} FCFA</dd>
                         </div>
-                        <div class="px-4 py-5 bg-green-50 shadow rounded-lg overflow-hidden sm:p-6">
-                            <dt class="text-sm font-medium text-green-800 truncate">Bénéfice Net</dt>
-                            <dd class="mt-1 text-xl font-bold text-green-900">{{ stats_ci.benefice|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                        <div class="px-4 py-5 {% if stats_ci.benefice >= 0 %}bg-green-50{% else %}bg-red-50{% endif %} shadow rounded-lg overflow-hidden sm:p-6">
+                            <dt class="text-sm font-medium {% if stats_ci.benefice >= 0 %}text-green-800{% else %}text-red-800{% endif %} truncate">Bénéfice Net</dt>
+                            <dd class="mt-1 text-xl font-bold {% if stats_ci.benefice >= 0 %}text-green-900{% else %}text-red-900{% endif %}">{{ stats_ci.benefice|default:"0"|floatformat:0|intcomma }} FCFA</dd>
                         </div>
                     </dl>
 
@@ -327,14 +327,14 @@
                 <div class="bg-white overflow-hidden shadow rounded-lg">
                     <div class="p-5">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                            <div class="flex-shrink-0 {% if benefice_global >= 0 %}bg-green-500{% else %}bg-red-500{% endif %} rounded-md p-3">
                                 <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
                             </div>
                             <div class="ml-5 w-0 flex-1">
                                 <dt class="text-sm font-medium text-gray-500 truncate" title="Bénéfice net calculé sur le Mali et la Côte d'Ivoire uniquement">Bénéfice Total (Mali & CI)</dt>
-                                <dd class="text-lg font-medium text-gray-900">{{ benefice_global|default:"0"|floatformat:0|intcomma }}</dd>
+                                <dd class="text-lg font-medium {% if benefice_global >= 0 %}text-green-600{% else %}text-red-600{% endif %}">{{ benefice_global|default:"0"|floatformat:0|intcomma }}</dd>
                             </div>
                         </div>
                     </div>

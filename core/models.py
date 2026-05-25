@@ -629,3 +629,18 @@ class AvoirMouvement(models.Model):
     def __str__(self):
         return f"{self.type} - {self.montant} FCFA - {self.client}"
 
+
+class DatabaseBackup(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    file = models.FileField(upload_to="backups/")
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = _("Sauvegarde Base de Données")
+        verbose_name_plural = _("Sauvegardes Base de Données")
+
+    def __str__(self):
+        return f"Backup du {self.created_at.strftime('%d/%m/%Y %H:%M')}"
+

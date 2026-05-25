@@ -13,7 +13,9 @@
                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Reste</th>
                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">JC (Remise)</th>
-                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net Encaissé</th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Net Encaissé
+                </th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -68,14 +70,16 @@
                     -
                     {% endif %}
                 </td>
-                <td class="amount text-green" style="font-size: 10px; font-weight: 800; text-align: right;">
-                    {% if colis.paye_en_chine %}
-                        <span style="color: var(--amber-600); font-size: 8px; font-weight: 900;">PAYÉ CHINE</span>
-                    {% elif colis.paye_par_avance %}
-                        <span style="color: var(--blue); font-size: 8px;">AVANCE</span>
-                    {% else %}
-                        {{ colis.net_price|floatformat:0|intcomma }}
-                    {% endif %}
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                    <div class="text-sm font-black text-green-700">
+                        {% if colis.paye_en_chine %}
+                            <span class="text-[9px] text-amber-600 font-black uppercase">PAYÉ CHINE</span>
+                        {% elif colis.paye_par_avance %}
+                            <span class="text-[9px] text-blue-600 font-black uppercase">AVANCE</span>
+                        {% else %}
+                            {{ colis.net_price|floatformat:0|intcomma }}
+                        {% endif %}
+                    </div>
                 </td>
             </tr>
             {% empty %}
@@ -89,10 +93,10 @@
         {% if colis_list %}
         <tfoot class="bg-gray-50">
             <tr>
-                <td colspan="6" class="px-6 py-4 text-right text-sm font-bold text-gray-900 border-t border-gray-200 uppercase tracking-tighter">
+                <td colspan="7" class="px-6 py-4 text-right text-sm font-bold text-gray-900 border-t border-gray-200 uppercase tracking-tighter">
                     TOTAL NET {{ type|upper }} :
                 </td>
-                <td colspan="2" class="px-6 py-4 text-right text-base font-black text-green-700 border-t border-gray-200 whitespace-nowrap">
+                <td colspan="2" class="px-6 py-4 text-right text-lg font-black text-green-700 border-t border-gray-200 whitespace-nowrap">
                     {{ total_recette|default:0|fcfa }}
                 </td>
             </tr>

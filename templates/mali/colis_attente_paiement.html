@@ -96,6 +96,7 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Livraison</th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant Dû</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider font-bold bg-indigo-50">Autorisé par</th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -145,6 +146,9 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-red-600">
                             {{ colis.montant_du|fcfa }}
+                            {% if colis.montant_jc > 0 %}
+                                <div class="text-[10px] text-blue-600 font-medium">Dont JC : {{ colis.montant_jc|fcfa }}</div>
+                            {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap bg-indigo-50/30">
                             {% if colis.sortie_sous_garantie %}
@@ -160,10 +164,19 @@
                             </div>
                             {% endif %}
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <form action="{% url 'mali:colis_solder_jc' colis.pk %}" method="POST" class="inline" id="solder-jc-form-{{ colis.pk }}">
+                                {% csrf_token %}
+                                <button type="button" @click="confirmSolderJC('{{ colis.pk }}', '{{ colis.reference }}', '{{ colis.montant_du|fcfa }}')" 
+                                        class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Solder par JC
+                                </button>
+                            </form>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="px-6 py-10 text-center text-gray-500 italic">
+                        <td colspan="9" class="px-6 py-10 text-center text-gray-500 italic">
                             Aucun paiement en attente.
                         </td>
                     </tr>
@@ -370,6 +383,23 @@
         }).then((result) => {
             if (result.isConfirmed) {
                 document.getElementById('bulk-encaissement-form').submit();
+            }
+        })
+    }
+
+    function confirmSolderJC(pk, ref, montant) {
+        Swal.fire({
+            title: 'Solder par JC ?',
+            text: `Êtes-vous sûr de vouloir solder le reste à payer de ${montant} pour le colis ${ref} par un Jeton Cédé ? Cette action est irréversible.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3b82f6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Oui, solder par JC',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById(`solder-jc-form-${pk}`).submit();
             }
         })
     }

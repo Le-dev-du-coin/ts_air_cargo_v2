@@ -1890,6 +1890,33 @@ class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, V
         return redirect("mali:colis_attente_paiement")
 
 
+class ColisSolderJCView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+    """Solder manuellement un reste à payer par Jeton Cédé (JC)"""
+
+    def post(self, request, pk):
+        colis = get_object_or_404(Colis, pk=pk)
+        reste = colis.reste_a_payer or 0
+
+        if reste > 0:
+            # On bascule le reste à payer dans le Jeton Cédé
+            colis.montant_jc = (colis.montant_jc or 0) + reste
+            colis.reste_a_payer = 0
+            colis.est_paye = True
+            
+            # On fixe la date d'encaissement à aujourd'hui pour le rapport
+            colis.date_encaissement = timezone.now().date()
+            colis.save()
+
+            messages.success(
+                request, 
+                f"Le colis {colis.reference} a été totalement soldé par Jeton Cédé ({reste:,.0f} FCFA)."
+            )
+        else:
+            messages.warning(request, f"Le colis {colis.reference} n'a pas de reste à payer à solder.")
+
+        return redirect("mali:colis_attente_paiement")
+
+
 class ColisEncaissementBulkView(
     LoginRequiredMixin, DestinationAgentRequiredMixin, View
 ):

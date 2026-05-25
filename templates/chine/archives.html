@@ -57,7 +57,7 @@
     </div>
 
     <!-- Section Transferts -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <!-- Transferts Chine -->
         <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-sm border border-blue-100 overflow-hidden relative">
             <div class="absolute top-0 right-0 p-4 opacity-10">
@@ -107,6 +107,31 @@
                 </div>
             </div>
         </div>
+
+        <!-- Transferts Guissé -->
+        <div class="bg-gradient-to-br from-cyan-50 to-teal-50 rounded-2xl shadow-sm border border-cyan-100 overflow-hidden relative">
+            <div class="absolute top-0 right-0 p-4 opacity-10">
+                <svg class="w-24 h-24 text-cyan-800" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 3.8L18.4 19H5.6L12 5.8z"/></svg>
+            </div>
+            <div class="p-6 relative z-10">
+                <div class="flex items-center space-x-3 mb-4">
+                    <span class="p-2 bg-cyan-100 rounded-lg">
+                        <svg class="w-6 h-6 text-cyan-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </span>
+                    <h4 class="text-lg font-bold text-cyan-900">Transferts Guissé (Douane ML Express)</h4>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-cyan-600 mb-1">Total Reçu</p>
+                        <p class="text-2xl font-black text-gray-900">{{ transferts_guisse_recu|default:"0"|floatformat:0|intcomma }} <span class="text-sm font-normal text-gray-500">FCFA</span></p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-yellow-600 mb-1">En Attente</p>
+                        <p class="text-2xl font-black text-gray-900">{{ transferts_guisse_attente|default:"0"|floatformat:0|intcomma }} <span class="text-sm font-normal text-gray-500">FCFA</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Section Pays -->
@@ -137,9 +162,9 @@
                     <p class="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Total Dépenses</p>
                     <p class="text-xl font-black text-red-600">- {{ stats_ml.cout_transport|add:stats_ml.cout_douane|add:stats_ml.autres_depenses|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
                 </div>
-                <div class="p-4 bg-green-50 rounded-xl border border-green-200 shadow-sm">
-                    <p class="text-xs font-bold text-green-600 uppercase tracking-widest mb-1">Bénéfice Net</p>
-                    <p class="text-xl font-black text-green-700">{{ stats_ml.benefice|default:"0"|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
+                <div class="p-4 {% if stats_ml.benefice >= 0 %}bg-green-50 border-green-200{% else %}bg-red-50 border-red-200{% endif %} rounded-xl border shadow-sm">
+                    <p class="text-xs font-bold {% if stats_ml.benefice >= 0 %}text-green-600{% else %}text-red-600{% endif %} uppercase tracking-widest mb-1">Bénéfice Net</p>
+                    <p class="text-xl font-black {% if stats_ml.benefice >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ stats_ml.benefice|default:"0"|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
                 </div>
             </div>
         </div>
@@ -169,9 +194,9 @@
                     <p class="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Total Dépenses</p>
                     <p class="text-xl font-black text-red-600">- {{ stats_ci.cout_transport|add:stats_ci.cout_douane|add:stats_ci.autres_depenses|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
                 </div>
-                <div class="p-4 bg-green-50 rounded-xl border border-green-200 shadow-sm">
-                    <p class="text-xs font-bold text-green-600 uppercase tracking-widest mb-1">Bénéfice Net</p>
-                    <p class="text-xl font-black text-green-700">{{ stats_ci.benefice|default:"0"|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
+                <div class="p-4 {% if stats_ci.benefice >= 0 %}bg-green-50 border-green-200{% else %}bg-red-50 border-red-200{% endif %} rounded-xl border shadow-sm">
+                    <p class="text-xs font-bold {% if stats_ci.benefice >= 0 %}text-green-600{% else %}text-red-600{% endif %} uppercase tracking-widest mb-1">Bénéfice Net</p>
+                    <p class="text-xl font-black {% if stats_ci.benefice >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ stats_ci.benefice|default:"0"|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
                 </div>
             </div>
         </div>

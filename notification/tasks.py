@@ -320,7 +320,7 @@ def send_daily_report_mali(target_date_str=None):
         return "Rapport non envoyé : aucun numéro d'admin Mali configuré."
 
     try:
-        from django.db.models import Sum, F, Q, Value
+        from django.db.models import Sum, F, Q, Value, ExpressionWrapper, DecimalField
         from django.db.models.functions import Coalesce
         from core.models import User, Client, Lot, Colis, AvoirMouvement, Country
         from report.finance_engine import FinanceEngine
@@ -368,7 +368,10 @@ def send_daily_report_mali(target_date_str=None):
                 date_encaissement=today,
                 encaissements__isnull=True
             ).annotate(
-                val=F("prix_final") - Coalesce(F("montant_jc"), Value(0))
+                val=ExpressionWrapper(
+                    F("prix_final") - Coalesce(F("montant_jc"), Value(0)),
+                    output_field=DecimalField()
+                )
             ).aggregate(total=Sum("val"))["total"] or 0
 
             return nb, Decimal(ca_reels) + Decimal(ca_legacy)
@@ -418,8 +421,23 @@ def send_daily_report_mali(target_date_str=None):
         import time
 
         for phone in valid_phones:
+            # Tentative de récupération de l'utilisateur associé au numéro
+            admin_user = User.objects.filter(Q(phone=phone) | Q(client_profile__telephone=phone)).first()
+
             try:
                 logger.info(f"[RapportJour] Envoi en cours vers {phone}...")
+                
+                # Création de la notification pour archivage et suivi des erreurs
+                notification = Notification.objects.create(
+                    destinataire=admin_user,
+                    telephone_destinataire=phone,
+                    message=message,
+                    categorie="rapport_journalier",
+                    titre=f"Rapport Journalier {date_str}",
+                    region="mali",
+                    statut="en_attente"
+                )
+
                 success, error, message_id = wachap_service.send_message(
                     phone=phone,
                     message=message,
@@ -427,17 +445,21 @@ def send_daily_report_mali(target_date_str=None):
                 )
 
                 if success:
+                    notification.marquer_comme_envoye(message_id)
                     logger.info(
                         f"[RapportJour] Rapport envoyé à {phone} (ID: {message_id})"
                     )
                     results.append(f"Succès ({phone})")
                 else:
+                    notification.marquer_comme_echec(error)
                     logger.error(f"[RapportJour] Échec envoi à {phone}: {error}")
                     results.append(f"Échec ({phone}: {error})")
 
                 # Délai de sécurité pour éviter les blocages API
                 time.sleep(2)
             except Exception as e:
+                if 'notification' in locals():
+                    notification.marquer_comme_echec(str(e))
                 logger.error(f"[RapportJour] Erreur critique lors de l'envoi à {phone}: {e}")
                 results.append(f"Erreur critique ({phone}: {str(e)})")
 

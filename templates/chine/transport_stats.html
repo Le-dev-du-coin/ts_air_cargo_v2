@@ -74,8 +74,9 @@
                             <dd class="mt-1 text-sm font-black text-gray-800">{{ stats.ca_avion|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
                         </div>
                         <div class="bg-green-50 rounded-lg p-3 shadow-sm text-center border border-green-100">
-                            <dt class="text-[10px] font-semibold text-green-700 uppercase tracking-wider">Bénéfice Brut</dt>
-                            <dd class="mt-1 text-sm font-black text-green-800">{{ stats.benefice_brut_avion|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
+                            <dt class="text-[10px] font-bold {% if stats.benefice_brut_avion >= 0 %}text-green-600{% else %}text-red-600{% endif %} uppercase tracking-widest mb-1">Bénéfice Brut</dt>
+                            <dd class="mt-1 text-sm font-black {% if stats.benefice_brut_avion >= 0 %}text-green-800{% else %}text-red-800{% endif %}">{{ stats.benefice_brut_avion|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
+
                         </div>
                     </dl>
                 </div>
@@ -99,8 +100,9 @@
                             <dd class="mt-1 text-sm font-black text-gray-800">{{ stats.ca_bateau|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
                         </div>
                         <div class="bg-green-50 rounded-lg p-3 shadow-sm text-center border border-green-100">
-                            <dt class="text-[10px] font-semibold text-green-700 uppercase tracking-wider">Bénéfice Brut</dt>
-                            <dd class="mt-1 text-sm font-black text-green-800">{{ stats.benefice_brut_bateau|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
+                            <dt class="text-[10px] font-bold {% if stats.benefice_brut_avion >= 0 %}text-green-600{% else %}text-red-600{% endif %} uppercase tracking-widest mb-1">Bénéfice Brut</dt>
+                            <dd class="mt-1 text-sm font-black {% if stats.benefice_brut_avion >= 0 %}text-green-800{% else %}text-red-800{% endif %}">{{ stats.benefice_brut_avion|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
+
                         </div>
                     </dl>
                 </div>
