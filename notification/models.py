@@ -72,6 +72,23 @@ class ConfigurationNotification(models.Model):
         help_text="Variables disponibles : {client_nom}, {nombre_colis}, {jours}, {liste_ref}, {total_montant}, {numero_suivi}, {montant}",
     )
 
+    template_rappel_groupe = models.TextField(
+        "Message de rappel (Mode Groupé)",
+        default=(
+            "Bonjour *{client_nom}*,\n\n"
+            "⏰ *Rappel — Colis en attente de retrait*\n\n"
+            "Vos *{nombre_colis} colis* sont disponibles à l'agence "
+            "depuis plus de *{jours} jours* :\n"
+            "{liste_ref}\n\n"
+            "💰 *Montant total à régler : {total_montant}*\n\n"
+            "Merci de passer les récupérer dès que possible.\n\n"
+            "🌐 Suivez vos colis : https://ts-aircargo.com/login\n"
+            "——\n"
+            "*Équipe TS AIR CARGO* 🇨🇳 🇲🇱 🇨🇮"
+        ),
+        help_text="Template pour rappels groupés (plusieurs colis)",
+    )
+
     # Sécurité
     security_code = models.CharField(
         "Code de sécurité (PIN)",

@@ -85,7 +85,7 @@ def send_parcel_reminders_periodic():
             categorie="rappel_colis",
             date_creation__gte=recent_cutoff,
         )
-        .values_list("user_id", flat=True)
+        .values_list("destinataire_id", flat=True)
         .distinct()
     )
 
