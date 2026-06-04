@@ -170,17 +170,18 @@ class WaChapService:
                 f"{self.BASE_URL}/whatsapp/messages/send",
                 json=payload,
                 headers=headers,
-                timeout=20,
+                timeout=45,
             )
 
             logger.debug(
                 f"[WaChap V4] HTTP {response.status_code}: {response.text[:200]}"
             )
 
-            if response.status_code == 200:
+            if response.status_code in (200, 201, 202):
                 data = response.json()
-                if data.get("success"):
-                    message_id = data.get("messageId")
+                # On considère un succès si success=True OU si on a un messageId/uuid (succès implicite)
+                if data.get("success") or data.get("messageId") or data.get("uuid"):
+                    message_id = data.get("messageId") or data.get("uuid") or "success_no_id"
                     logger.info(f"[WaChap V4] ✓ Message envoyé. ID={message_id}")
                     return (
                         True,
@@ -188,6 +189,7 @@ class WaChapService:
                         message_id,
                     )
                 else:
+                    # Cas rare où le status est 200 mais l'API dit explicitement success=false
                     error = data.get("message", "Erreur applicative inconnue")
                     logger.error(f"[WaChap V4] ✗ Erreur API: {error}")
                     return False, error, None
@@ -198,7 +200,7 @@ class WaChapService:
 
         except requests.exceptions.Timeout:
             logger.error("[WaChap V4] Timeout")
-            return False, "Timeout WaChap API (> 20s)", None
+            return False, "Timeout WaChap API (> 45s)", None
         except requests.exceptions.RequestException as e:
             logger.error(f"[WaChap V4] Erreur réseau: {e}")
             return False, f"Erreur réseau: {e}", None
@@ -316,7 +318,7 @@ class WaChapService:
         }
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response = requests.post(url, json=payload, headers=headers, timeout=60)
             # Accepte 200 et potentiellement 201/202 selon l'API
             if response.status_code in (200, 201, 202):
                 data = response.json()

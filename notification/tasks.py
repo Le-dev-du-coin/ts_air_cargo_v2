@@ -2,6 +2,8 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 from django.conf import settings
+from django.core.cache import cache
+from django.db import transaction
 from .models import Notification, ConfigurationNotification
 from .services.notification_service import notification_service
 from .services.wachap_monitor import wachap_monitor
@@ -182,117 +184,144 @@ def send_parcel_reminders_periodic():
     return f"Rappels envoyés: {count_notifs} clients notifiés for {len(colis_to_remind)} colis."
 
 
-@shared_task
-def retry_failed_notifications_periodic(force_retry_all=False, region=None):
+@shared_task(bind=True)
+def retry_failed_notifications_periodic(self, force_retry_all=False, region=None):
     """
     File d'attente WhatsApp : retente l'envoi des notifications en échec.
-    - Récupère toutes les Notification avec statut='echec' et prochaine_tentative <= now()
-    - Tente de les renvoyer via wachap_service
-    - Met à jour le statut (envoye / echec avec backoff / echec_permanent si >= 5 tentatives)
-    Appelée toutes les 5 minutes par le beat schedule, et sur reconnexion d'une instance.
-    Si force_retry_all=True, reprend aussi les echec_permanent peu importe le nb de tentatives.
+    - Utilise un verrou (lock) de cache pour éviter les exécutions concurrentes de la même tâche.
+    - Utilise select_for_update(skip_locked=True) pour garantir qu'une notification n'est traitée
+      que par un seul worker à la fois.
+    - Augmentation de la sécurité anti-boucle.
     """
     from .services.wachap_service import wachap_service
 
-    if force_retry_all:
-        notifications_to_retry = Notification.objects.filter(
-            statut__in=["echec", "echec_permanent"]
-        )
-    else:
-        notifications_to_retry = Notification.objects.filter(
-            statut="echec",
-            prochaine_tentative__lte=timezone.now(),
-        ).exclude(nombre_tentatives__gte=5)
-        
-    if region:
-        notifications_to_retry = notifications_to_retry.filter(region=region)
+    lock_id = f"lock_retry_notifs_{region or 'all'}"
+    # On évite que la même tâche tourne en plusieurs exemplaires
+    if not cache.add(lock_id, self.request.id, 1800):  # 30 minutes max
+        logger.info(f"[Retry] Tâche déjà en cours pour la région {region or 'all'}. Skip.")
+        return "Already running"
 
-    count_success = 0
-    count_fail = 0
-
-    for notification in notifications_to_retry:
-        # --- MISE À JOUR DU NUMÉRO SI RÉPARÉ DANS LE PROFIL ---
-        if notification.destinataire:
-            user = notification.destinataire
-            # Priorité au profil client s'il existe
-            new_phone = ""
-            if hasattr(user, "client_profile") and user.client_profile:
-                new_phone = user.client_profile.telephone
-            elif user.phone:
-                new_phone = user.phone
-
-            if new_phone and new_phone != notification.telephone_destinataire:
-                logger.info(
-                    f"[Retry] Mise à jour du numéro pour Notification {notification.id}: "
-                    f"{notification.telephone_destinataire} -> {new_phone}"
-                )
-                notification.telephone_destinataire = new_phone
-                notification.save(update_fields=["telephone_destinataire"])
-
-        if not notification.telephone_destinataire:
-            notification.marquer_comme_echec(
-                "Pas de numéro de téléphone", erreur_type="permanent"
+    try:
+        if force_retry_all:
+            notifications_qs = Notification.objects.filter(
+                statut__in=["echec", "echec_permanent"]
             )
-            count_fail += 1
-            continue
-
-        # Déterminer le type de message
-        msg_type = "text"
-
-        # Remise à zéro puis incrément d'une relance forcée sur échec permanent
-        if force_retry_all and notification.statut == "echec_permanent":
-            notification.nombre_tentatives = 1
         else:
-            # Incrémenter le compteur avant l'envoi normal
-            notification.nombre_tentatives += 1
+            notifications_qs = Notification.objects.filter(
+                statut="echec",
+                prochaine_tentative__lte=timezone.now(),
+            ).exclude(nombre_tentatives__gte=5)
+            
+        if region:
+            notifications_qs = notifications_qs.filter(region=region)
 
-        notification.save(update_fields=["nombre_tentatives"])
+        # Récupérer les IDs pour itérer sans tenir un verrou sur tout le queryset
+        notification_ids = list(notifications_qs.values_list("id", flat=True))
 
-        try:
-            success, error_msg, message_id = wachap_service.send_message_with_type(
-                phone=notification.telephone_destinataire,
-                message=notification.message,
-                message_type=msg_type,
-                region=notification.region,
-            )
+        count_success = 0
+        count_fail = 0
 
-            if success:
-                notification.marquer_comme_envoye(message_id)
-                count_success += 1
-                logger.info(
-                    f"[Retry] Notification {notification.id} renvoyée avec succès à "
-                    f"{notification.telephone_destinataire}"
+        for notif_id in notification_ids:
+            # Traitement atomique par notification
+            with transaction.atomic():
+                # select_for_update(skip_locked=True) est crucial ici : 
+                # si un autre worker traite déjà cette notif, on passe à la suivante.
+                notification = (
+                    Notification.objects.select_for_update(skip_locked=True)
+                    .filter(pk=notif_id)
+                    .first()
                 )
-            else:
-                error_str = str(error_msg).lower()
-                if "invalide" in error_str or "n'existe pas" in error_str or "incorrect" in error_str:
-                    notification.marquer_comme_echec("Numéro incorrect ou invalide", erreur_type="permanent")
-                else:
-                    # Vérifier si le numéro est bien sur WhatsApp
-                    is_on_wa = wachap_service.check_number_registered(
-                        notification.telephone_destinataire,
-                        region=notification.region
+
+                if not notification:
+                    continue
+
+                # --- MISE À JOUR DU NUMÉRO SI RÉPARÉ DANS LE PROFIL ---
+                if notification.destinataire:
+                    user = notification.destinataire
+                    new_phone = ""
+                    if hasattr(user, "client_profile") and user.client_profile:
+                        new_phone = user.client_profile.telephone
+                    elif user.phone:
+                        new_phone = user.phone
+
+                    if new_phone and new_phone != notification.telephone_destinataire:
+                        logger.info(
+                            f"[Retry] Mise à jour du numéro pour Notification {notification.id}: "
+                            f"{notification.telephone_destinataire} -> {new_phone}"
+                        )
+                        notification.telephone_destinataire = new_phone
+                        notification.save(update_fields=["telephone_destinataire"])
+
+                if not notification.telephone_destinataire:
+                    notification.marquer_comme_echec(
+                        "Pas de numéro de téléphone", erreur_type="permanent"
                     )
-                    if not is_on_wa:
-                        error_msg = "Numéro non inscrit sur WA"
-                        notification.marquer_comme_echec(error_msg, erreur_type="permanent")
+                    count_fail += 1
+                    continue
+
+                # Remise à zéro puis incrément d'une relance forcée sur échec permanent
+                if force_retry_all and notification.statut == "echec_permanent":
+                    notification.nombre_tentatives = 1
+                else:
+                    # Incrémenter le compteur avant l'envoi
+                    notification.nombre_tentatives += 1
+
+                notification.save(update_fields=["nombre_tentatives"])
+
+                try:
+                    # Note : on utilise un timeout long (défini dans wachap_service)
+                    success, error_msg, message_id = wachap_service.send_message_with_type(
+                        phone=notification.telephone_destinataire,
+                        message=notification.message,
+                        message_type="text",
+                        region=notification.region,
+                    )
+
+                    if success:
+                        notification.marquer_comme_envoye(message_id)
+                        count_success += 1
+                        logger.info(
+                            f"[Retry] Notification {notification.id} renvoyée avec succès à "
+                            f"{notification.telephone_destinataire}"
+                        )
                     else:
-                        error_msg = f"{error_msg} (Inscrit sur WhatsApp)"
-                        notification.marquer_comme_echec(error_msg)
+                        error_str = str(error_msg).lower()
+                        if any(x in error_str for x in ["invalide", "n'existe pas", "incorrect"]):
+                            notification.marquer_comme_echec(
+                                "Numéro incorrect ou invalide", erreur_type="permanent"
+                            )
+                        else:
+                            # Vérifier si le numéro est bien sur WhatsApp
+                            is_on_wa = wachap_service.check_number_registered(
+                                notification.telephone_destinataire, region=notification.region
+                            )
+                            if not is_on_wa:
+                                error_msg = "Numéro non inscrit sur WA"
+                                notification.marquer_comme_echec(
+                                    error_msg, erreur_type="permanent"
+                                )
+                            else:
+                                error_msg = f"{error_msg} (Inscrit sur WhatsApp)"
+                                notification.marquer_comme_echec(error_msg)
 
-                count_fail += 1
-                logger.warning(
-                    f"[Retry] Notification {notification.id} - échec #{notification.nombre_tentatives}: {error_msg}"
-                )
+                        count_fail += 1
+                        logger.warning(
+                            f"[Retry] Notification {notification.id} - échec #{notification.nombre_tentatives}: {error_msg}"
+                        )
 
-        except Exception as e:
-            notification.marquer_comme_echec(str(e))
-            count_fail += 1
-            logger.error(f"[Retry] Exception sur notification {notification.id}: {e}")
+                except Exception as e:
+                    notification.marquer_comme_echec(str(e))
+                    count_fail += 1
+                    logger.error(f"[Retry] Exception sur notification {notification.id}: {e}")
 
-    total = count_success + count_fail
-    logger.info(f"[Retry] Terminé: {count_success}/{total} renvoyées avec succès.")
-    return f"Retry terminé: {count_success} succès, {count_fail} échecs sur {total} tentatives."
+        total = count_success + count_fail
+        logger.info(f"[Retry] Terminé: {count_success}/{total} renvoyées avec succès.")
+        return f"Retry terminé: {count_success} succès, {count_fail} échecs sur {total} tentatives."
+
+    finally:
+        # Libération du verrou global de la tâche
+        if cache.get(lock_id) == self.request.id:
+            cache.delete(lock_id)
 
 
 @shared_task
