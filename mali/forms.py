@@ -9,7 +9,8 @@ class ColisUpdateMaliForm(forms.ModelForm):
         widgets = {
             "type_colis": forms.Select(
                 attrs={
-                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800"
+                    "class": "mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-semibold text-gray-800",
+                    "x-model": "type_colis",
                 }
             ),
             "nombre_pieces": forms.NumberInput(

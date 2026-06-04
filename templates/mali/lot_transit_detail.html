@@ -248,7 +248,7 @@
                         </div>
                         <!-- Vignette image cliquable → modal détail -->
                         <div class="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner cursor-pointer"
-                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if lot.type_transport == "BATEAU" %}{{ colis.cbm|floatformat:3 }} m³{% elif colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
+                             @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% elif lot.type_transport == "BATEAU" %}{{ colis.cbm|floatformat:3 }} m³{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
                             {% if colis.photo %}
                             <img src="{{ colis.photo.url }}" alt="Colis" class="h-full w-full object-cover">
                             {% else %}

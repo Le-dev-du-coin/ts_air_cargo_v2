@@ -165,13 +165,35 @@
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                            <form action="{% url 'mali:colis_solder_jc' colis.pk %}" method="POST" class="inline" id="solder-jc-form-{{ colis.pk }}">
-                                {% csrf_token %}
-                                <button type="button" @click="confirmSolderJC('{{ colis.pk }}', '{{ colis.reference }}', '{{ colis.montant_du|fcfa }}')" 
-                                        class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    Solder par JC
-                                </button>
-                            </form>
+                            <div class="flex items-center justify-center space-x-2">
+                                <form action="{% url 'mali:colis_solder_jc' colis.pk %}" method="POST" class="inline" id="solder-jc-form-{{ colis.pk }}">
+                                    {% csrf_token %}
+                                    <button type="button" @click="confirmSolderJC('{{ colis.pk }}', '{{ colis.reference }}', '{{ colis.montant_du|fcfa }}')" 
+                                            class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Solder par JC
+                                    </button>
+                                </form>
+                                <form action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" class="inline" id="revert-form-{{ colis.pk }}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="revert_to_arrive">
+                                    <button type="button"
+                                            onclick="Swal.fire({
+                                                title: 'Annuler la livraison ?',
+                                                text: 'Le colis {{ colis.reference }} repassera en statut ARRIVÉ. Les données de livraison et de paiement seront effacées.',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonColor: '#EF4444',
+                                                confirmButtonText: 'Oui, annuler',
+                                                cancelButtonText: 'Non'
+                                            }).then((result) => { if (result.isConfirmed) { document.getElementById('revert-form-{{ colis.pk }}').submit(); } })"
+                                            class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none">
+                                        <svg class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                        </svg>
+                                        Annuler
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}

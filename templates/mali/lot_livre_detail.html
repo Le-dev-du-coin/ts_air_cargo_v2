@@ -118,7 +118,7 @@
                         <th class="px-4 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Photo</th>
                         <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Référence</th>
                         <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Client</th>
-                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Poids</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Qté / Poids</th>
                         <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Montant</th>
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Mode</th>
                         <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Reste</th>
@@ -126,6 +126,7 @@
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Statut</th>
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Livraison</th>
                         <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Encaissement</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 bg-white">
@@ -136,7 +137,7 @@
                             {% if colis.photo %}
                                  <img src="{{ colis.photo.url }}" alt="Colis"
                                      class="h-12 w-12 rounded-lg object-cover border border-gray-200 cursor-pointer shadow-sm"
-                                     @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if lot.type_transport == "BATEAU" %}{{ colis.cbm|floatformat:3 }} m³{% elif colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
+                                     @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% elif lot.type_transport == "BATEAU" %}{{ colis.cbm|floatformat:3 }} m³{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">
                             {% else %}
                                 <div class="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center border border-dashed border-gray-200">
                                     <svg class="h-5 w-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -147,7 +148,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="text-sm font-black text-gray-900 uppercase cursor-pointer hover:underline"
-                                  @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if lot.type_transport == "BATEAU" %}{{ colis.cbm|floatformat:3 }} m³{% elif colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">{{ colis.reference }}</span>
+                                  @click="openDetail('{{ colis.reference }}', '{{ colis.client.nom|escapejs }} {{ colis.client.prenom|escapejs }}', '{{ colis.client.telephone|escapejs }}', '{% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} unités{% elif lot.type_transport == "BATEAU" %}{{ colis.cbm|floatformat:3 }} m³{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}', '{{ colis.prix_final }}', '{{ colis.get_type_colis_display }}', '{{ colis.description|escapejs }}', {% if colis.paye_en_chine %}true{% else %}false{% endif %}, '{% if colis.photo %}{{ colis.photo.url }}{% endif %}')">{{ colis.reference }}</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-bold text-gray-900 uppercase">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
@@ -155,7 +156,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             <span class="text-xs font-bold text-gray-600">
-                                {% if lot.type_transport == "BATEAU" %}{{ colis.cbm|floatformat:3 }} m³{% elif colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} u{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}
+                                {% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} u{% elif lot.type_transport == "BATEAU" %}{{ colis.cbm|floatformat:3 }} m³{% else %}{{ colis.poids|floatformat:1 }} kg{% endif %}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
@@ -198,6 +199,32 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-xs text-gray-500">
                             {{ colis.date_encaissement|date:"d/m/Y"|default:"-" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if colis.status == 'LIVRE' %}
+                            <form action="{% url 'mali:admin_action_revert' colis.pk %}" method="POST" class="inline" id="revert-livre-{{ colis.pk }}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="revert_to_arrive">
+                                <button type="button"
+                                        onclick="Swal.fire({
+                                            title: 'Annuler la livraison ?',
+                                            text: 'Le colis {{ colis.reference }} repassera en statut ARRIVÉ. Les données de livraison et de paiement seront effacées.',
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonColor: '#EF4444',
+                                            confirmButtonText: 'Oui, annuler',
+                                            cancelButtonText: 'Non'
+                                        }).then((result) => { if (result.isConfirmed) { document.getElementById('revert-livre-{{ colis.pk }}').submit(); } })"
+                                        class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-bold rounded-md text-red-700 bg-red-100 hover:bg-red-200 transition-colors">
+                                    <svg class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                    </svg>
+                                    Annuler
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-gray-300 text-xs">—</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -327,4 +354,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}
