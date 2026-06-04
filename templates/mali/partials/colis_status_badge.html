@@ -37,7 +37,7 @@
         </div>
         
         <div class="flex space-x-1.5">
-            {% if user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' %}
+            {% if user.role == 'ADMIN_MALI' or user.role == 'AGENT_MALI' or user.role == 'GLOBAL_ADMIN' %}
             <a href="{% url 'mali:colis_update' colis.pk %}"
                class="inline-flex items-center px-2 py-1.5 border border-indigo-200 shadow-sm text-[10px] font-black rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors justify-center uppercase">
                 <svg class="h-3.5 w-3.5 sm:mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

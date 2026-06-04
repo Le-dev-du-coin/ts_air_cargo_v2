@@ -2227,9 +2227,10 @@ class ColisUpdateMaliView(LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView
         # Sauvegarde du formulaire (sans commit pour ajuster le type)
         colis = form.save(commit=False)
 
-        # Si un prix au kilo manuel est saisi, on force le type MANUEL
+        # Si un prix manuel est saisi, on adapte le type de colis si nécessaire
         if colis.prix_kilo_manuel:
-            colis.type_colis = "MANUEL"
+            if colis.type_colis not in ["TELEPHONE", "ELECTRONIQUE"] and colis.lot.type_transport != "BATEAU":
+                colis.type_colis = "MANUEL"
 
         # Recalculer les prix via la méthode centrale du modèle
         colis.recalculate_prices()
@@ -2749,7 +2750,7 @@ class MaliCorrectionLotDetailView(AdminMaliRequiredMixin, DetailView):
         return context
 
 
-class MaliActionRevertView(AdminMaliRequiredMixin, View):
+class MaliActionRevertView(DestinationAgentRequiredMixin, View):
     def post(self, request, pk):
         colis = get_object_or_404(Colis, pk=pk, lot__destination=request.user.country)
         action = request.POST.get("action")
@@ -2760,7 +2761,7 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
             colis.date_livraison = None
             colis.date_encaissement = None
             colis.est_paye = False
-            colis.reste_a_payer = 0
+            colis.reste_a_payer = colis.prix_final or 0
             colis.montant_jc = 0
             colis.sortie_sous_garantie = False
             colis.sortie_autorisee_par = ""
@@ -2796,7 +2797,7 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
             colis.date_livraison = None
             colis.date_encaissement = None
             colis.est_paye = False
-            colis.reste_a_payer = 0
+            colis.reste_a_payer = colis.prix_final or 0
             colis.montant_jc = 0
             colis.sortie_sous_garantie = False
             colis.sortie_autorisee_par = ""
@@ -2838,7 +2839,14 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
 
         # Revert encaissement partiel ou modification paiement tout en restant en attente etc n'est pas nécessaire si on reverse à Arrivé, ça annule tout.
 
-        return redirect("mali:admin_correction_lot_detail", pk=colis.lot.pk)
+        referer = request.META.get('HTTP_REFERER')
+        if referer:
+            return redirect(referer)
+
+        # Fallback
+        if request.user.role in ["GLOBAL_ADMIN", "ADMIN_MALI"]:
+            return redirect("mali:admin_correction_lot_detail", pk=colis.lot.pk)
+        return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
 
 
 class MaliColisAddToArrivalView(AdminMaliRequiredMixin, View):

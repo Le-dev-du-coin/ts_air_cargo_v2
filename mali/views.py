@@ -441,7 +441,28 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
         if not mali:
             return Lot.objects.none()
 
-        # Un lot apparaît en transit s'il a au moins un colis EXPEDIE
+        query = self.request.GET.get("q")
+        if query:
+            # RECHERCHE GLOBALE PAR COLIS (Demande utilisateur)
+            queryset = Colis.objects.filter(lot__destination=mali, status="EXPEDIE")
+            queryset = queryset.select_related("lot", "client", "client__user")
+            queryset = queryset.annotate(
+                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
+                prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
+            )
+            search_fields = [
+                "reference",
+                "lot__numero",
+                "client__nom",
+                "client__prenom",
+                "client__telephone",
+                "nom_complet",
+                "prenom_complet",
+            ]
+            queryset = apply_flexible_search(queryset, query, search_fields)
+            return queryset.order_by("-created_at")
+
+        # AFFICHAGE PAR LOT (Sans recherche)
         queryset = (
             Lot.objects.filter(destination=mali, colis__status="EXPEDIE")
             .select_related("destination")
@@ -478,27 +499,7 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
             .distinct()
         )
 
-        query = self.request.GET.get("q")
-        if query:
-            queryset = queryset.annotate(
-                nom_complet=Concat(
-                    "colis__client__nom", Value(" "), "colis__client__prenom"
-                ),
-                prenom_complet=Concat(
-                    "colis__client__prenom", Value(" "), "colis__client__nom"
-                ),
-            )
-            search_fields = [
-                "numero",
-                "colis__client__nom",
-                "colis__client__prenom",
-                "colis__client__telephone",
-                "nom_complet",
-                "prenom_complet",
-            ]
-            queryset = apply_flexible_search(queryset, query, search_fields)
-
-        # Filtrage par type de transport
+        # Filtrage par type de transport (concerne les lots)
         transport = self.request.GET.get("transport")
         if transport in ["CARGO", "EXPRESS", "BATEAU"]:
             queryset = queryset.filter(type_transport=transport)
@@ -525,6 +526,28 @@ class LotsArrivesView(LotsEnTransitView):
         if not mali:
             return Lot.objects.none()
 
+        query = self.request.GET.get("q")
+        if query:
+            # RECHERCHE GLOBALE PAR COLIS (Demande utilisateur)
+            queryset = Colis.objects.filter(lot__destination=mali, status="ARRIVE")
+            queryset = queryset.select_related("lot", "client", "client__user")
+            queryset = queryset.annotate(
+                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
+                prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
+            )
+            search_fields = [
+                "reference",
+                "lot__numero",
+                "client__nom",
+                "client__prenom",
+                "client__telephone",
+                "nom_complet",
+                "prenom_complet",
+            ]
+            queryset = apply_flexible_search(queryset, query, search_fields)
+            return queryset.order_by("-updated_at")
+
+        # AFFICHAGE PAR LOT (Sans recherche)
         # Un lot apparaît en arrivés dans deux cas :
         # 1. Il contient au moins un colis au statut ARRIVE (lots standards Chine→Mali)
         # 2. C'est un lot créé localement au Mali (ex: régularisation Bateau) avec statut ARRIVE
@@ -563,26 +586,6 @@ class LotsArrivesView(LotsEnTransitView):
             .distinct()
         )
 
-        query = self.request.GET.get("q")
-        if query:
-            queryset = queryset.annotate(
-                nom_complet=Concat(
-                    "colis__client__nom", Value(" "), "colis__client__prenom"
-                ),
-                prenom_complet=Concat(
-                    "colis__client__prenom", Value(" "), "colis__client__nom"
-                ),
-            )
-            search_fields = [
-                "numero",
-                "colis__client__nom",
-                "colis__client__prenom",
-                "colis__client__telephone",
-                "nom_complet",
-                "prenom_complet",
-            ]
-            queryset = apply_flexible_search(queryset, query, search_fields)
-
         # Filtrage par type de transport
         transport = self.request.GET.get("transport")
         if transport in ["CARGO", "EXPRESS", "BATEAU"]:
@@ -602,6 +605,30 @@ class LotsLivresView(LotsEnTransitView):
         if not mali:
             return Lot.objects.none()
 
+        query = self.request.GET.get("q")
+        if query:
+            # RECHERCHE GLOBALE PAR COLIS (Demande utilisateur)
+            queryset = Colis.objects.filter(
+                lot__destination=mali, status__in=["LIVRE", "PERDU"]
+            )
+            queryset = queryset.select_related("lot", "client", "client__user")
+            queryset = queryset.annotate(
+                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
+                prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
+            )
+            search_fields = [
+                "reference",
+                "lot__numero",
+                "client__nom",
+                "client__prenom",
+                "client__telephone",
+                "nom_complet",
+                "prenom_complet",
+            ]
+            queryset = apply_flexible_search(queryset, query, search_fields)
+            return queryset.order_by("-updated_at")
+
+        # AFFICHAGE PAR LOT (Sans recherche)
         # Un lot apparaît en livrés s'il a au moins un colis LIVRE ou PERDU
         queryset = (
             Lot.objects.filter(destination=mali, colis__status__in=["LIVRE", "PERDU"])
@@ -659,21 +686,6 @@ class LotsLivresView(LotsEnTransitView):
             )
         elif year:
             queryset = queryset.filter(colis__date_livraison__year=year)
-
-        query = self.request.GET.get("q")
-        if query:
-            queryset = queryset.annotate(
-                nom_complet=Concat(
-                    "colis__client__nom", Value(" "), "colis__client__prenom"
-                ),
-            )
-            search_fields = [
-                "numero",
-                "colis__client__nom",
-                "colis__client__telephone",
-                "nom_complet",
-            ]
-            queryset = apply_flexible_search(queryset, query, search_fields)
 
         return queryset.order_by("-updated_at")
 
@@ -2332,8 +2344,8 @@ from django.views.generic import UpdateView
 from .forms import ColisUpdateMaliForm
 
 
-class ColisUpdateMaliView(LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView):
-    """Permet à l'administrateur Mali de corriger le poids, le CBM ou le prix d'un colis."""
+class ColisUpdateMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, UpdateView):
+    """Permet aux agents Mali de corriger le poids, le CBM ou le prix d'un colis."""
 
     model = Colis
     form_class = ColisUpdateMaliForm
@@ -2369,25 +2381,39 @@ class ColisUpdateMaliView(LoginRequiredMixin, AdminMaliRequiredMixin, UpdateView
     def form_valid(self, form):
         # On sauvegarde les anciennes valeurs pour recalculer le reste à payer si besoin
         old_colis = self.get_object()
-        deja_paye = old_colis.prix_final - old_colis.reste_a_payer
+        
+        # On récupère le prix_final actuel de la BDD avant sauvegarde
+        old_prix_final = old_colis.prix_final or 0
+        old_reste = old_colis.reste_a_payer or 0
+        
+        # Ce qui a déjà été payé par le client sur ce colis
+        deja_paye = old_prix_final - old_reste
 
         # Sauvegarde du formulaire (sans commit pour ajuster le type)
         colis = form.save(commit=False)
 
-        # Si un prix au kilo manuel est saisi, on force le type MANUEL
+        # Si un prix manuel est saisi, on adapte le type de colis si nécessaire
         if colis.prix_kilo_manuel:
-            colis.type_colis = "MANUEL"
+            if colis.type_colis not in ["TELEPHONE", "ELECTRONIQUE"] and colis.lot.type_transport != "BATEAU":
+                colis.type_colis = "MANUEL"
 
         # Recalculer les prix via la méthode centrale du modèle
         colis.recalculate_prices()
 
         # Ajuster le reste à payer en fonction du nouveau prix
-        # On repart du prix final et on enlève ce qui a déjà été payé
+        # On repart du nouveau prix final et on enlève ce qui a déjà été payé
         colis.reste_a_payer = colis.prix_final - deja_paye
 
-        # Si le reste à payer devient négatif (baisse de prix), on le remet à 0
+        # Si le reste à payer devient négatif (baisse de prix importante), on le remet à 0
+        # Cela signifie que le client a un trop-perçu sur ce colis (géré manuellement ou via avoir plus tard)
         if colis.reste_a_payer < 0:
             colis.reste_a_payer = 0
+
+        # Mise à jour de est_paye si le nouveau reste est 0
+        if colis.reste_a_payer == 0 and colis.prix_final > 0:
+            colis.est_paye = True
+        elif colis.reste_a_payer > 0:
+            colis.est_paye = False
 
         colis.save()
         return super().form_valid(form)
@@ -2917,7 +2943,7 @@ class MaliCorrectionLotDetailView(AdminMaliRequiredMixin, DetailView):
         return context
 
 
-class MaliActionRevertView(AdminMaliRequiredMixin, View):
+class MaliActionRevertView(DestinationAgentRequiredMixin, View):
     def post(self, request, pk):
         colis = get_object_or_404(Colis, pk=pk, lot__destination=request.user.country)
         action = request.POST.get("action")
@@ -2928,7 +2954,7 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
             colis.date_livraison = None
             colis.date_encaissement = None
             colis.est_paye = False
-            colis.reste_a_payer = 0
+            colis.reste_a_payer = colis.prix_final or 0
             colis.montant_jc = 0
             colis.sortie_sous_garantie = False
             colis.sortie_autorisee_par = ""
@@ -2964,7 +2990,8 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
             colis.date_livraison = None
             colis.date_encaissement = None
             colis.est_paye = False
-            colis.reste_a_payer = 0
+            # On remet le reste à payer à la valeur du prix final calculé
+            colis.reste_a_payer = colis.prix_final or 0
             colis.montant_jc = 0
             colis.sortie_sous_garantie = False
             colis.sortie_autorisee_par = ""
@@ -3006,7 +3033,14 @@ class MaliActionRevertView(AdminMaliRequiredMixin, View):
 
         # Revert encaissement partiel ou modification paiement tout en restant en attente etc n'est pas nécessaire si on reverse à Arrivé, ça annule tout.
 
-        return redirect("mali:admin_correction_lot_detail", pk=colis.lot.pk)
+        referer = request.META.get('HTTP_REFERER')
+        if referer:
+            return redirect(referer)
+
+        # Fallback
+        if request.user.role in ["GLOBAL_ADMIN", "ADMIN_MALI"]:
+            return redirect("mali:admin_correction_lot_detail", pk=colis.lot.pk)
+        return redirect("mali:lot_arrived_detail", pk=colis.lot.pk)
 
 
 class MaliColisAddToArrivalView(DestinationAgentRequiredMixin, View):

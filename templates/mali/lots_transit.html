@@ -54,16 +54,115 @@
 
     <div class="flex items-center justify-between">
         <p class="text-sm font-medium text-gray-500 italic">
-            {% if total_lots %}
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 mr-2">{{ total_lots }} LOT{{ total_lots|pluralize:"S" }}</span>
-                {% if active_transport == 'CARGO' %}Cargo{% elif active_transport == 'EXPRESS' %}Express{% elif active_transport == 'BATEAU' %}Bateau{% endif %}
-                en route vers le Mali
-            {% else %}Aucun lot {% if active_transport == 'CARGO' %}Cargo{% elif active_transport == 'EXPRESS' %}Express{% elif active_transport == 'BATEAU' %}Bateau{% endif %} en transit pour le moment{% endif %}
+            {% if paginator.count %}
+                {% if q %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 mr-2">{{ paginator.count }} COLIS TROUVÉ{{ paginator.count|pluralize }}</span>
+                    correspondant à votre recherche
+                {% else %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 mr-2">{{ paginator.count }} LOT{{ paginator.count|pluralize:"S" }}</span>
+                    {% if active_transport == 'CARGO' %}Cargo{% elif active_transport == 'EXPRESS' %}Express{% elif active_transport == 'BATEAU' %}Bateau{% endif %}
+                    en route vers le Mali
+                {% endif %}
+            {% else %}
+                {% if q %}
+                    Aucun colis trouvé pour "{{ q }}"
+                {% else %}
+                    Aucun lot {% if active_transport == 'CARGO' %}Cargo{% elif active_transport == 'EXPRESS' %}Express{% elif active_transport == 'BATEAU' %}Bateau{% endif %} en transit pour le moment
+                {% endif %}
+            {% endif %}
         </p>
     </div>
 
+    {% if q %}
+    <!-- RÉSULTATS DE RECHERCHE (LISTE DE COLIS AÉRÉE) -->
+    <div class="space-y-3">
+        {% for colis in object_list %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <!-- Section Gauche : Identification -->
+            <div class="flex items-start space-x-4 flex-1">
+                <div class="hidden sm:flex flex-shrink-0">
+                    {% if colis.photo %}
+                        <img src="{{ colis.photo.url }}" alt="Photo Colis" class="w-14 h-14 rounded-2xl object-cover border border-gray-100 shadow-sm">
+                    {% else %}
+                        <div class="p-3.5 rounded-2xl {% if colis.lot.type_transport == 'BATEAU' %}bg-teal-50 text-teal-600{% else %}bg-indigo-50 text-indigo-600{% endif %}">
+                            {% if colis.lot.type_transport == 'BATEAU' %}
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-7h.01M9 21h.01M7 21h.01m4 0h.01m4 0h.01m4 0h.01"/></svg>
+                            {% else %}
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center space-x-2 mb-1">
+                        <span class="text-base font-black text-indigo-700 tracking-tight">{{ colis.reference }}</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase">
+                            Lot: {{ colis.lot.numero }}
+                        </span>
+                        {% if colis.type_colis != 'STANDARD' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black {% if colis.type_colis == 'TELEPHONE' %}bg-blue-100 text-blue-700{% else %}bg-amber-100 text-amber-700{% endif %} border border-current uppercase">
+                            {{ colis.get_type_colis_display }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <h4 class="text-sm font-extrabold text-gray-900 truncate uppercase">{{ colis.client.nom }} {{ colis.client.prenom }}</h4>
+                    <div class="flex items-center text-xs text-gray-500 mt-0.5">
+                        <svg class="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 011.94.43L9.25 10.5a1 1 0 01-1.51 1l-1.46-1.41a3.03 3.03 0 00-2.31-1.01H3v-2.22z"/></svg>
+                        {{ colis.client.telephone }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Centrale : Info Techniques -->
+            <div class="flex items-center space-x-8 px-4 md:px-0 border-l border-gray-50 md:border-l-0">
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+                        {% if colis.type_colis == 'TELEPHONE' %}Quantité{% elif colis.lot.type_transport == 'BATEAU' %}Volume{% else %}Poids{% endif %}
+                    </span>
+                    <span class="text-sm font-bold text-gray-700 flex items-center">
+                        {% if colis.type_colis == 'TELEPHONE' %}
+                            <svg class="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            {{ colis.nombre_pieces }} pcs
+                        {% elif colis.lot.type_transport == 'BATEAU' %}
+                            <svg class="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                            {{ colis.cbm|floatformat:3 }} m³
+                        {% else %}
+                            <svg class="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                            {{ colis.poids|floatformat:1 }} kg
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Valeur</span>
+                    <span class="text-base font-black text-green-700 tracking-tight">
+                        {{ colis.prix_final|fcfa }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Section Droite : Action -->
+            <div class="md:pl-4">
+                <a href="{% url 'mali:lot_transit_detail' colis.lot.pk %}?qc={{ colis.reference }}" 
+                   class="group w-full md:w-auto inline-flex items-center justify-center px-5 py-3 border border-transparent text-sm font-black rounded-2xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all">
+                    <span>Voir dans le lot</span>
+                    <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="py-16 text-center text-gray-400 bg-white rounded-3xl border-2 border-dashed border-gray-100">
+            <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+            <p class="font-bold text-gray-500 uppercase tracking-wide">Aucun colis ne correspond</p>
+            <p class="text-sm">Vérifiez l'orthographe ou le numéro saisi.</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- AFFICHAGE NORMAL (GRILLE DE LOTS) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {% for lot in lots %}
+        {% for lot in object_list %}
         {% with recettes=lot.total_recettes_transit|default:0 transport=lot.frais_transport|default:0 douane=lot.frais_douane|default:0 %}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-green-200 hover:shadow-md transition-all overflow-hidden flex flex-col">
             <!-- Header -->
@@ -125,10 +224,10 @@
         <div class="col-span-3 py-16 text-center text-gray-400">
             <svg class="h-14 w-14 mx-auto text-gray-200 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>
             <p class="font-medium">Aucun lot en transit actuellement.</p>
-            {% if q %}<a href="{% url 'mali:lots_transit' %}" class="mt-3 inline-block text-green-600 text-sm font-bold">Effacer la recherche</a>{% endif %}
         </div>
         {% endfor %}
     </div>
+    {% endif %}
 
     {% if is_paginated %}
     <div class="flex items-center justify-between bg-white px-5 py-4 rounded-xl shadow-sm border border-gray-100">
