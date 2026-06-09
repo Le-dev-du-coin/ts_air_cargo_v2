@@ -1,4 +1,5 @@
 {% extends "chine/base.html" %}
+{% load humanize %}
 
 {% block header %}Gestion des Lots{% endblock %}
 
@@ -7,12 +8,12 @@
     <!-- Country Tabs -->
     <div class="border-b border-gray-200">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <a href="?{% if search_query %}search={{ search_query }}&{% endif %}"
+            <a href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_status %}status={{ selected_status }}&{% endif %}"
                class="{% if not selected_country %}border-indigo-500 text-indigo-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                 Tous
             </a>
             {% for country in countries %}
-            <a href="?country={{ country.code }}{% if search_query %}&search={{ search_query }}{% endif %}"
+            <a href="?country={{ country.code }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}"
                class="{% if selected_country == country.code %}border-indigo-500 text-indigo-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                 {{ country.name }}
             </a>
@@ -20,10 +21,37 @@
         </nav>
     </div>
 
+    <!-- Status Filter Tabs -->
+    <div class="flex flex-wrap gap-2">
+        <a href="?{% if selected_country %}country={{ selected_country }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}"
+           class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {% if not selected_status %}bg-indigo-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+            Tous
+        </a>
+        <a href="?status=ouverts{% if selected_country %}&country={{ selected_country }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+           class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {% if selected_status == 'ouverts' %}bg-green-600 text-white{% else %}bg-green-50 text-green-700 hover:bg-green-100{% endif %} transition-colors">
+            Ouverts
+        </a>
+        <a href="?status=fermes{% if selected_country %}&country={{ selected_country }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+           class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {% if selected_status == 'fermes' %}bg-yellow-600 text-white{% else %}bg-yellow-50 text-yellow-700 hover:bg-yellow-100{% endif %} transition-colors">
+            Fermés
+        </a>
+        <a href="?status=transit{% if selected_country %}&country={{ selected_country }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+           class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {% if selected_status == 'transit' %}bg-blue-600 text-white{% else %}bg-blue-50 text-blue-700 hover:bg-blue-100{% endif %} transition-colors">
+            En Transit
+        </a>
+        <a href="?status=arrives{% if selected_country %}&country={{ selected_country }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+           class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {% if selected_status == 'arrives' %}bg-purple-600 text-white{% else %}bg-purple-50 text-purple-700 hover:bg-purple-100{% endif %} transition-colors">
+            Arrivés
+        </a>
+    </div>
+
     <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
         <form method="GET" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full items-center">
             {% if selected_country %}
             <input type="hidden" name="country" value="{{ selected_country }}">
+            {% endif %}
+            {% if selected_status %}
+            <input type="hidden" name="status" value="{{ selected_status }}">
             {% endif %}
             
             <!-- Recherche Numéro -->
@@ -107,18 +135,22 @@
                     </div>
                 </div>
 
-                <div class="mt-4 flex justify-between items-center text-sm text-gray-500">
-                    <span class="flex items-center">
-                        <svg class="mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                        {{ lot.colis.count }} Cartons
-                    </span>
-                    <span>
-                        {{ lot.created_at|date:"d M Y" }}
-                    </span>
+                <div class="mt-4 grid grid-cols-3 gap-2 text-xs text-gray-500">
+                    <div class="flex flex-col items-center bg-gray-50 rounded p-1.5">
+                        <span class="font-bold text-sm text-gray-900">{{ lot.ann_nb_colis|default:0 }}</span>
+                        <span>Cartons</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-gray-50 rounded p-1.5">
+                        <span class="font-bold text-sm text-gray-900">{{ lot.ann_poids_total|floatformat:1|default:"0" }}</span>
+                        <span>kg</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-gray-50 rounded p-1.5">
+                        <span class="font-bold text-sm text-gray-900">{{ lot.ann_valeur_colis|default:0|intcomma }}</span>
+                        <span>FCFA</span>
+                    </div>
+                </div>
+                <div class="mt-2 text-xs text-gray-400 text-right">
+                    {{ lot.created_at|date:"d M Y" }}
                 </div>
             </div>
             <div class="bg-gray-50 px-4 py-4 sm:px-6">

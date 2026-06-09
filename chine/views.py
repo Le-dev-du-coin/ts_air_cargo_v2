@@ -920,6 +920,17 @@ class LotListView(LoginRequiredMixin, ListView):
         if country_code:
             queryset = queryset.filter(destination__code=country_code)
 
+        # Filter by Status
+        status_filter = self.request.GET.get("status")
+        status_map = {
+            "ouverts": ["OUVERT"],
+            "fermes": ["FERME"],
+            "transit": ["EN_TRANSIT", "EXPEDIE"],
+            "arrives": ["ARRIVE", "DOUANE", "DISPONIBLE"],
+        }
+        if status_filter and status_filter in status_map:
+            queryset = queryset.filter(status__in=status_map[status_filter])
+
         # Search
         search_query = self.request.GET.get("search")
         if search_query:
@@ -931,8 +942,6 @@ class LotListView(LoginRequiredMixin, ListView):
 
         if selected_year and selected_month:
             try:
-                # On filtre sur created_at qui englobe toute la vie du lot, ou date_expedition si on veut être strict sur la norme.
-                # Le client a dit "filtre par mois", de base created_at est plus rassurant pour retrouver ses lots créés en cours.
                 queryset = queryset.filter(
                     created_at__year=int(selected_year),
                     created_at__month=int(selected_month),
@@ -940,14 +949,17 @@ class LotListView(LoginRequiredMixin, ListView):
             except ValueError:
                 pass
 
-        # Tri personnalisé : Toujours les OUVERT (0) en premier, puis FERME (1), puis le reste (2) trié par date décroissante
+        # Enrichir les annotations
         queryset = queryset.annotate(
+            ann_nb_colis=Count("colis"),
+            ann_poids_total=Sum("colis__poids"),
+            ann_valeur_colis=Sum("colis__prix_final"),
             status_order=Case(
                 When(status="OUVERT", then=Value(0)),
                 When(status="FERME", then=Value(1)),
                 default=Value(2),
                 output_field=IntegerField(),
-            )
+            ),
         ).order_by("status_order", "-created_at")
 
         return queryset
@@ -959,6 +971,7 @@ class LotListView(LoginRequiredMixin, ListView):
         context["countries"] = Country.objects.exclude(code="CN")
         context["selected_country"] = self.request.GET.get("country", "")
         context["search_query"] = self.request.GET.get("search", "")
+        context["selected_status"] = self.request.GET.get("status", "")
 
         # Contexte pour le filtre de dates
         context["selected_year"] = (
