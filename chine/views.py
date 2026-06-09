@@ -139,14 +139,9 @@ def get_country_stats(country_code, year=None, month=None):
         transferts = transferts.filter(date__year=year, date__month=month)
     stats["total_transferts"] = transferts.aggregate(total=Sum("montant"))["total"] or 0
 
-    if country_code != "CN":
-        stats["cout_transport"] = 0
-        stats["cout_douane"] = 0
-        stats["autres_depenses"] = perf["total_depenses"]
-    else:
-        stats["cout_transport"] = perf["cout_fret"]
-        stats["cout_douane"] = perf["cout_douane"]
-        stats["autres_depenses"] = perf["total_depenses"]
+    stats["cout_transport"] = perf["cout_fret"]
+    stats["cout_douane"] = perf["cout_douane"]
+    stats["autres_depenses"] = perf["total_depenses"]
 
     stats["total_rh"] = perf["total_rh"]
     stats["total_depenses_global"] = stats["autres_depenses"] + stats["total_rh"] # Note: On n'inclut plus les transferts ici
@@ -167,6 +162,11 @@ def get_country_stats(country_code, year=None, month=None):
     
     stats["nb_lots"] = perf["nb_lots"]
     stats["nb_colis"] = perf["nb_colis"]
+
+    # Indicateurs d'encaissement
+    stats["total_reste_a_payer"] = perf["total_reste_a_payer"]
+    stats["total_encaisse"] = perf["total_encaisse"]
+    stats["taux_encaissement"] = perf["taux_encaissement"]
 
     # Filtrage des agents par rôle spécifique au pays
     # On inclut ADMIN_CHINE dans tous les pays car ils peuvent avoir une commission sur tous les bénéfices

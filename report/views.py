@@ -412,7 +412,7 @@ class RapportExportView(LoginRequiredMixin, View):
             total_net=Sum(
                 Case(
                     When(paye_en_chine=True, then=Value(0)),
-                    default=F("prix_final") - F("montant_jc") - F("reste_a_payer"),
+                    default=F("prix_final") - F("montant_jc"),
                     output_field=DecimalField()
                 )
             )
@@ -520,3 +520,63 @@ class RapportExportView(LoginRequiredMixin, View):
             return render_to_pdf_playwright(
                 "mali/pdf/rapport_financier.html", context, request, filename=filename
             )
+
+
+class QuarterlyReportView(LoginRequiredMixin, TemplateView):
+    """Rapport trimestriel consolidé."""
+    template_name = "report/quarterly_report.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from report.finance_engine import FinanceEngine
+        from core.models import Country
+        import calendar
+
+        today = timezone.now()
+        try:
+            year = int(self.request.GET.get("year", today.year))
+            quarter = int(self.request.GET.get("quarter", (today.month - 1) // 3 + 1))
+        except ValueError:
+            year = today.year
+            quarter = (today.month - 1) // 3 + 1
+
+        quarter = max(1, min(4, quarter))
+        months = list(range((quarter - 1) * 3 + 1, quarter * 3 + 1))
+
+        countries = Country.objects.all()
+        quarterly_data = []
+
+        for country in countries:
+            monthly_perfs = []
+            for m in months:
+                perf = FinanceEngine.get_monthly_performance(year, m, country.code)
+                perf["month"] = m
+                perf["month_name"] = calendar.month_name[m]
+                monthly_perfs.append(perf)
+
+            totals = {
+                "chiffre_affaires": sum(p["chiffre_affaires"] for p in monthly_perfs),
+                "cout_fret": sum(p["cout_fret"] for p in monthly_perfs),
+                "cout_douane": sum(p["cout_douane"] for p in monthly_perfs),
+                "benefice_brut": sum(p["benefice_brut"] for p in monthly_perfs),
+                "total_depenses": sum(p["total_depenses"] for p in monthly_perfs),
+                "total_rh": sum(p["total_rh"] for p in monthly_perfs),
+                "benefice_net": sum(p["benefice_net"] for p in monthly_perfs),
+                "nb_colis": sum(p["nb_colis"] for p in monthly_perfs),
+                "nb_lots": sum(p["nb_lots"] for p in monthly_perfs),
+            }
+
+            quarterly_data.append({
+                "country": country,
+                "months": monthly_perfs,
+                "totals": totals,
+            })
+
+        context["year"] = year
+        context["quarter"] = quarter
+        context["quarter_label"] = f"T{quarter} {year}"
+        context["months"] = months
+        context["quarterly_data"] = quarterly_data
+        context["years"] = list(range(2024, today.year + 1))
+        context["quarters"] = [1, 2, 3, 4]
+        return context

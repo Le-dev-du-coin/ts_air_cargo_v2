@@ -43,9 +43,6 @@ from .views import (
     MaliAgentAvanceDeleteView,
     MaliColisAddToArrivalView,
     MaliDouaneGestionView,
-    MaliClientLotTarifCreateView,
-    MaliClientLotTarifDeleteView,
-    MaliClientLotTarifDeleteView,
     MaliCalculatePriceView,
     MaliCalculatePriceView,
     MaliClientAvoirView,
@@ -227,6 +224,4 @@ urlpatterns = [
     path("admin/douane/", MaliDouaneGestionView.as_view(), name="admin_douane_gestion"),
     path("admin/correction/<int:lot_pk>/add-colis/", MaliColisAddToArrivalView.as_view(), name="admin_lot_add_colis"),
     path("admin/calculate-price/", MaliCalculatePriceView.as_view(), name="admin_calculate_price"),
-    path("admin/client-lot-tarif/<int:lot_pk>/", MaliClientLotTarifCreateView.as_view(), name="admin_client_lot_tarif"),
-    path("admin/client-lot-tarif/<int:lot_pk>/<int:pk>/delete/", MaliClientLotTarifDeleteView.as_view(), name="admin_client_lot_tarif_delete"),
 ]

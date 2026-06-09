@@ -80,6 +80,7 @@
                         <div class="px-4 py-5 {% if stats_ml.benefice >= 0 %}bg-green-50{% else %}bg-red-50{% endif %} shadow rounded-lg overflow-hidden sm:p-6">
                             <dt class="text-sm font-medium {% if stats_ml.benefice >= 0 %}text-green-800{% else %}text-red-800{% endif %} truncate">Bénéfice Net</dt>
                             <dd class="mt-1 text-xl font-bold {% if stats_ml.benefice >= 0 %}text-green-900{% else %}text-red-900{% endif %}">{{ stats_ml.benefice|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                            <dd class="mt-1 text-xs text-gray-500">Encaissé : {{ stats_ml.taux_encaissement|default:"0" }}%</dd>
                         </div>
                     </dl>
 
@@ -210,6 +211,7 @@
                         <div class="px-4 py-5 {% if stats_ci.benefice >= 0 %}bg-green-50{% else %}bg-red-50{% endif %} shadow rounded-lg overflow-hidden sm:p-6">
                             <dt class="text-sm font-medium {% if stats_ci.benefice >= 0 %}text-green-800{% else %}text-red-800{% endif %} truncate">Bénéfice Net</dt>
                             <dd class="mt-1 text-xl font-bold {% if stats_ci.benefice >= 0 %}text-green-900{% else %}text-red-900{% endif %}">{{ stats_ci.benefice|default:"0"|floatformat:0|intcomma }} FCFA</dd>
+                            <dd class="mt-1 text-xs text-gray-500">Encaissé : {{ stats_ci.taux_encaissement|default:"0" }}%</dd>
                         </div>
                     </dl>
 

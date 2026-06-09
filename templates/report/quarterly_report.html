@@ -1,0 +1,124 @@
+{% extends "chine/base.html" %}
+{% load humanize %}
+
+{% block header %}Rapport Trimestriel — {{ quarter_label }}{% endblock %}
+
+{% block chine_content %}
+<div class="space-y-6">
+
+    <!-- Filtre Trimestre / Année -->
+    <div class="bg-white shadow rounded-xl p-5 flex flex-wrap items-end gap-4">
+        <form method="GET" class="flex flex-wrap items-end gap-4 w-full">
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Année</label>
+                <select name="year" class="block border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold">
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Trimestre</label>
+                <select name="quarter" class="block border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold">
+                    {% for q in quarters %}
+                    <option value="{{ q }}" {% if q == quarter %}selected{% endif %}>T{{ q }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all">
+                Filtrer
+            </button>
+            <a href="{% url 'chine:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all">
+                ← Dashboard
+            </a>
+        </form>
+    </div>
+
+    <!-- Données par pays -->
+    {% for entry in quarterly_data %}
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden border-t-4 border-indigo-500">
+        <div class="px-6 py-4 bg-indigo-50/40 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                <span class="text-2xl mr-2">{{ entry.country.name }}</span>
+            </h2>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+                {{ entry.totals.nb_lots }} lots — {{ entry.totals.nb_colis }} colis
+            </span>
+        </div>
+
+        <div class="px-6 py-4">
+            <!-- Tableau mensuel -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="text-left py-2 px-3 text-xs font-bold text-gray-500 uppercase">Indicateur</th>
+                            {% for perf in entry.months %}
+                            <th class="text-right py-2 px-3 text-xs font-bold text-gray-500 uppercase">{{ perf.month_name }}</th>
+                            {% endfor %}
+                            <th class="text-right py-2 px-3 text-xs font-bold text-indigo-700 uppercase bg-indigo-50">Total T{{ quarter }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-700">Chiffre d'Affaires</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right font-semibold text-gray-900">{{ perf.chiffre_affaires|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-black text-indigo-800 bg-indigo-50">{{ entry.totals.chiffre_affaires|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-700">Coût Fret</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right text-red-600">- {{ perf.cout_fret|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-bold text-red-700 bg-indigo-50">- {{ entry.totals.cout_fret|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-700">Coût Douane</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right text-red-600">- {{ perf.cout_douane|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-bold text-red-700 bg-indigo-50">- {{ entry.totals.cout_douane|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="py-2 px-3 font-bold text-gray-800">Bénéfice Brut</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right font-bold {% if perf.benefice_brut >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ perf.benefice_brut|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-black {% if entry.totals.benefice_brut >= 0 %}text-green-800{% else %}text-red-800{% endif %} bg-indigo-50">{{ entry.totals.benefice_brut|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-700">Dépenses</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right text-red-600">- {{ perf.total_depenses|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-bold text-red-700 bg-indigo-50">- {{ entry.totals.total_depenses|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-700">RH (Salaires + Avances)</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right text-red-600">- {{ perf.total_rh|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-bold text-red-700 bg-indigo-50">- {{ entry.totals.total_rh|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr class="bg-gray-100 border-t-2 border-gray-300">
+                            <td class="py-3 px-3 font-black text-gray-900 text-base">Bénéfice Net</td>
+                            {% for perf in entry.months %}
+                            <td class="py-3 px-3 text-right font-black text-base {% if perf.benefice_net >= 0 %}text-green-800{% else %}text-red-800{% endif %}">{{ perf.benefice_net|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-3 px-3 text-right font-black text-base {% if entry.totals.benefice_net >= 0 %}text-green-900{% else %}text-red-900{% endif %} bg-indigo-100">{{ entry.totals.benefice_net|floatformat:0|intcomma }} FCFA</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="bg-white shadow rounded-xl p-8 text-center text-gray-500">
+        Aucune donnée disponible pour ce trimestre.
+    </div>
+    {% endfor %}
+
+</div>
+{% endblock %}

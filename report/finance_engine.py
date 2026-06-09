@@ -170,9 +170,9 @@ class FinanceEngine:
         total_jc = colis_periode.aggregate(total=Sum("montant_jc"))["total"] or 0
         total_reste = colis_periode.aggregate(total=Sum("reste_a_payer"))["total"] or 0
         
-        # CA Net = (Total théorique - Jetons de présence) - Reste à payer
-        # Ainsi, on ne compte QUE l'argent réel encaissé (soit en Chine, soit au Mali).
-        ca_net = Decimal(ca_brut) - Decimal(total_jc) - Decimal(total_reste)
+        # CA Net = Total théorique - Jetons de présence (base engagement)
+        # Le reste à payer est suivi séparément comme indicateur d'encaissement.
+        ca_net = Decimal(ca_brut) - Decimal(total_jc)
 
         # 2. COÛTS DIRECTS (Fret + Douane)
         total_fret = lots_periode.aggregate(total=Sum("frais_transport"))["total"] or 0
@@ -204,19 +204,17 @@ class FinanceEngine:
         colis_avion = colis_periode.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
         colis_bateau = colis_periode.filter(lot__type_transport="BATEAU")
         
-        # Pour le détail Avion/Bateau, on applique la même logique (tous les colis, et on déduit le reste à payer)
+        # Pour le détail Avion/Bateau, on applique la même logique en base engagement
         lots_avion = lots_periode.filter(type_transport__in=["CARGO", "EXPRESS"])
         lots_bateau = lots_periode.filter(type_transport="BATEAU")
         
         ca_avion = (
             (colis_avion.aggregate(total=Sum("prix_final"))["total"] or 0) - 
-            (colis_avion.aggregate(total=Sum("montant_jc"))["total"] or 0) -
-            (colis_avion.aggregate(total=Sum("reste_a_payer"))["total"] or 0)
+            (colis_avion.aggregate(total=Sum("montant_jc"))["total"] or 0)
         )
         ca_bateau = (
             (colis_bateau.aggregate(total=Sum("prix_final"))["total"] or 0) - 
-            (colis_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0) -
-            (colis_bateau.aggregate(total=Sum("reste_a_payer"))["total"] or 0)
+            (colis_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0)
         )
         
         brut_avion = Decimal(ca_avion) - (lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_avion.aggregate(total=Sum("frais_douane"))["total"] or 0)
@@ -241,4 +239,7 @@ class FinanceEngine:
             "nb_colis_livres_avion": colis_avion.filter(status="LIVRE").count(),
             "nb_colis_livres_bateau": colis_bateau.filter(status="LIVRE").count(),
             "poids_total": colis_periode.aggregate(total=Sum("poids"))["total"] or 0,
+            "total_reste_a_payer": total_reste,
+            "total_encaisse": ca_net - Decimal(total_reste),
+            "taux_encaissement": round((float(ca_net - Decimal(total_reste)) / float(ca_net)) * 100, 1) if ca_net else 0,
         }
