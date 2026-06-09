@@ -1839,9 +1839,22 @@ class ColisAttentePaiementView(
             .order_by("-sort_date", "-updated_at")
         )
 
+        # Filtre par mois/année
+        year = self.request.GET.get("year")
+        month = self.request.GET.get("month")
+        if year:
+            try:
+                queryset = queryset.filter(date_livraison__year=int(year))
+            except (ValueError, TypeError):
+                pass
+        if month:
+            try:
+                queryset = queryset.filter(date_livraison__month=int(month))
+            except (ValueError, TypeError):
+                pass
+
         query = self.request.GET.get("q")
         if query:
-            # (Recherche multi-mots gérée par le reste du code)
             queryset = apply_flexible_search(
                 queryset, query, ["client__nom", "client__prenom", "reference"]
             )
@@ -1850,12 +1863,22 @@ class ColisAttentePaiementView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
         # Calcul du total des impayés basé sur l'annotation
         total_impaye = (
             self.get_queryset().aggregate(total=Sum("montant_du"))["total"] or 0
         )
         context["total_impaye"] = total_impaye
         context["q"] = self.request.GET.get("q", "")
+        context["selected_year"] = self.request.GET.get("year", "")
+        context["selected_month"] = self.request.GET.get("month", "")
+        context["years"] = list(range(now.year, now.year - 5, -1))
+        context["months"] = [
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
+        ]
         return context
 
 
