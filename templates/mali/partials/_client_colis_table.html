@@ -1,0 +1,48 @@
+{% load humanize %}
+<div class="overflow-x-auto">
+    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <span class="text-sm text-gray-600">{{ data.count }} colis — {{ data.poids|floatformat:1 }} kg — {{ data.valeur|intcomma }} FCFA</span>
+    </div>
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Référence</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lot</th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Poids</th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Prix</th>
+                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Paiement</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for colis in data.qs %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 whitespace-nowrap">
+                    <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded uppercase">{{ colis.reference }}</span>
+                </td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">{{ colis.lot.numero }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold">
+                    {% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} pcs{% else %}{{ colis.poids|floatformat:1|default:"0" }} kg{% endif %}
+                </td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-bold text-gray-900">{{ colis.prix_final|intcomma }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-500 text-center">{{ colis.created_at|date:"d/m/Y" }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-center">
+                    {% if colis.est_paye %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800">Payé</span>
+                    {% elif colis.paye_en_chine %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">Payé Chine</span>
+                    {% elif colis.reste_a_payer > 0 %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-800">{{ colis.reste_a_payer|intcomma }} dû</span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">En attente</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="px-4 py-6 text-center text-sm text-gray-400">Aucun colis.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

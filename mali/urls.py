@@ -54,6 +54,7 @@ from .views import (
     PaiementsHistoriqueView,
     LotBateauMaliCreateView,
     StockMaliView,
+    ClientDetailMaliView,
 )
 from report.views import (
     DepenseListView,
@@ -108,6 +109,7 @@ urlpatterns = [
     path("lots/<int:pk>/reset-douane/", LotResetDouaneView.as_view(), name="lot_reset_douane"),
     path("lots/creer-bateau/", LotBateauMaliCreateView.as_view(), name="lot_bateau_create"),
     path("stock/", StockMaliView.as_view(), name="stock"),
+    path("clients/<int:pk>/", ClientDetailMaliView.as_view(), name="client_detail"),
     path(
         "lots/<int:pk>/notify-arrivals/",
         NotifyArrivalsView.as_view(),

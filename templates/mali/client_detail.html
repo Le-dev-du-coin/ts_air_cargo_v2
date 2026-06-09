@@ -1,0 +1,100 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block title %}{{ client.nom }} {{ client.prenom }} - Fiche Client - TS Air Cargo{% endblock %}
+{% block header %}👤 {{ client.nom }} {{ client.prenom }}{% endblock %}
+
+{% block actions %}
+<div class="flex items-center gap-3 text-sm">
+    <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-md font-medium">📱 {{ client.telephone }}</span>
+    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-md font-bold">Avoir : {{ client.solde_avoir|intcomma }} FCFA</span>
+    {% if total_creances > 0 %}
+    <span class="bg-red-100 text-red-800 px-3 py-1 rounded-md font-bold">Créances : {{ total_creances|intcomma }} FCFA</span>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-6" x-data="{ activeTab: 'au_mali' }">
+
+    <!-- Onglets Alpine.js -->
+    <div class="bg-white shadow rounded-lg border border-gray-200 overflow-hidden">
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex" aria-label="Tabs">
+                <button @click="activeTab = 'en_chine'" :class="activeTab === 'en_chine' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                    🇨🇳 En Chine <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100">{{ en_chine.count }}</span>
+                </button>
+                <button @click="activeTab = 'en_expedition'" :class="activeTab === 'en_expedition' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                    ✈️ En Transit <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">{{ en_expedition.count }}</span>
+                </button>
+                <button @click="activeTab = 'au_mali'" :class="activeTab === 'au_mali' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                    📍 Au Mali <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">{{ au_mali.count }}</span>
+                </button>
+                <button @click="activeTab = 'livres'" :class="activeTab === 'livres' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                    ✅ Livrés <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800">{{ livres.count }}</span>
+                </button>
+            </nav>
+        </div>
+
+        {% for tab_name, tab_data in "en_chine,en_expedition,au_mali,livres" %}
+        {% endfor %}
+
+        <!-- En Chine -->
+        <div x-show="activeTab === 'en_chine'" x-cloak>
+            {% with data=en_chine %}
+            {% include "mali/partials/_client_colis_table.html" %}
+            {% endwith %}
+        </div>
+
+        <!-- En Expédition -->
+        <div x-show="activeTab === 'en_expedition'" x-cloak>
+            {% with data=en_expedition %}
+            {% include "mali/partials/_client_colis_table.html" %}
+            {% endwith %}
+        </div>
+
+        <!-- Au Mali -->
+        <div x-show="activeTab === 'au_mali'" x-cloak>
+            {% with data=au_mali %}
+            {% include "mali/partials/_client_colis_table.html" %}
+            {% endwith %}
+        </div>
+
+        <!-- Livrés -->
+        <div x-show="activeTab === 'livres'" x-cloak>
+            {% with data=livres %}
+            {% include "mali/partials/_client_colis_table.html" %}
+            {% endwith %}
+        </div>
+    </div>
+
+    <!-- Historique paiements récents -->
+    {% if paiements_recents %}
+    <div class="bg-white shadow rounded-lg p-6 border border-gray-200">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">💰 Derniers Paiements</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Colis</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Méthode</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for p in paiements_recents %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-sm text-gray-600">{{ p.date|date:"d/m/Y" }}</td>
+                        <td class="px-4 py-2 text-sm font-medium text-indigo-600">{{ p.colis.reference }}</td>
+                        <td class="px-4 py-2 text-sm text-right font-bold text-green-600">{{ p.montant|intcomma }} FCFA</td>
+                        <td class="px-4 py-2 text-sm text-gray-600">{{ p.get_methode_display }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

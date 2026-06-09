@@ -3508,6 +3508,59 @@ class PaiementsHistoriqueView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         return context
 
 
+class ClientDetailMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailView):
+    """Fiche client enrichie pour l'agent Mali avec 4 onglets par statut."""
+
+    model = Client
+    template_name = "mali/client_detail.html"
+    context_object_name = "client"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.get_current_country()
+        client = self.object
+
+        # 4 querysets de colis filtrés par client et destination
+        base_qs = Colis.objects.filter(client=client, lot__destination=mali).select_related("lot")
+
+        en_chine = base_qs.filter(status="RECU")
+        en_expedition = base_qs.filter(status="EXPEDIE")
+        au_mali = base_qs.filter(status="ARRIVE")
+        livres = base_qs.filter(status="LIVRE")
+
+        def stats_for(qs):
+            agg = qs.aggregate(
+                count=Count("id"),
+                poids=Sum("poids"),
+                valeur=Sum("prix_final"),
+            )
+            return {
+                "qs": qs.order_by("-created_at"),
+                "count": agg["count"] or 0,
+                "poids": agg["poids"] or 0,
+                "valeur": agg["valeur"] or 0,
+            }
+
+        context["en_chine"] = stats_for(en_chine)
+        context["en_expedition"] = stats_for(en_expedition)
+        context["au_mali"] = stats_for(au_mali)
+        context["livres"] = stats_for(livres)
+
+        # Créances totales (reste_a_payer)
+        context["total_creances"] = (
+            base_qs.filter(est_paye=False).aggregate(total=Sum("reste_a_payer"))["total"] or 0
+        )
+
+        # Historique paiements récents
+        context["paiements_recents"] = (
+            EncaissementColis.objects.filter(colis__client=client, colis__lot__destination=mali)
+            .select_related("colis")
+            .order_by("-date", "-created_at")[:10]
+        )
+
+        return context
+
+
 class StockMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
     """Vue du stock de colis arrivés au Mali, groupés par lot."""
 
