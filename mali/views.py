@@ -3508,6 +3508,73 @@ class PaiementsHistoriqueView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         return context
 
 
+class JetonsCedesListView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """Traçabilité des Jetons Cédés (JC) — colis avec remises."""
+
+    template_name = "mali/jetons_cedes.html"
+    context_object_name = "colis_list"
+    paginate_by = 30
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        if not mali:
+            return Colis.objects.none()
+
+        queryset = (
+            Colis.objects.filter(lot__destination=mali, montant_jc__gt=0)
+            .select_related("client", "lot")
+            .order_by("-date_livraison", "-updated_at")
+        )
+
+        # Filtres mois/année
+        year = self.request.GET.get("year")
+        month = self.request.GET.get("month")
+        if year:
+            try:
+                queryset = queryset.filter(date_encaissement__year=int(year))
+            except (ValueError, TypeError):
+                pass
+        if month:
+            try:
+                queryset = queryset.filter(date_encaissement__month=int(month))
+            except (ValueError, TypeError):
+                pass
+
+        # Recherche client
+        q = self.request.GET.get("q")
+        if q:
+            queryset = apply_flexible_search(
+                queryset, q,
+                ["client__nom", "client__prenom", "client__telephone", "reference"]
+            )
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
+        # Totaux de la période filtrée
+        full_qs = self.get_queryset()
+        agg = full_qs.aggregate(
+            nb_colis_jc=Count("id"),
+            total_jc=Sum("montant_jc"),
+        )
+        context["nb_colis_jc"] = agg["nb_colis_jc"] or 0
+        context["total_jc"] = agg["total_jc"] or 0
+
+        context["selected_year"] = self.request.GET.get("year", "")
+        context["selected_month"] = self.request.GET.get("month", "")
+        context["q"] = self.request.GET.get("q", "")
+        context["years"] = list(range(now.year, now.year - 5, -1))
+        context["months"] = [
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
+        ]
+        return context
+
+
 class ClientDetailMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailView):
     """Fiche client enrichie pour l'agent Mali avec 4 onglets par statut."""
 
