@@ -3508,6 +3508,78 @@ class PaiementsHistoriqueView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         return context
 
 
+class StockMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """Vue du stock de colis arrivés au Mali, groupés par lot."""
+
+    template_name = "mali/stock.html"
+    context_object_name = "colis_list"
+    paginate_by = 30
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        if not mali:
+            return Colis.objects.none()
+
+        from django.db.models.functions import Now, Coalesce as CoalesceFunc
+        from datetime import date
+
+        queryset = (
+            Colis.objects.filter(lot__destination=mali, status="ARRIVE")
+            .select_related("client", "lot")
+        )
+
+        # Filtre par type de transport
+        transport = self.request.GET.get("transport")
+        if transport in ("CARGO", "EXPRESS", "BATEAU"):
+            queryset = queryset.filter(lot__type_transport=transport)
+
+        # Recherche
+        q = self.request.GET.get("q")
+        if q:
+            queryset = apply_flexible_search(
+                queryset, q,
+                ["client__nom", "client__prenom", "client__telephone", "reference", "lot__numero"]
+            )
+
+        return queryset.order_by("lot__date_arrivee", "-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.get_current_country()
+
+        # Stats globales sur le stock
+        stock_qs = Colis.objects.filter(lot__destination=mali, status="ARRIVE")
+        from django.db.models import Avg
+        from datetime import date
+
+        agg = stock_qs.aggregate(
+            nb_colis=Count("id"),
+            poids_total=Sum("poids"),
+            valeur_totale=Sum("prix_final"),
+        )
+        context["nb_colis_stock"] = agg["nb_colis"] or 0
+        context["poids_total_stock"] = agg["poids_total"] or 0
+        context["valeur_totale_stock"] = agg["valeur_totale"] or 0
+
+        # Ancienneté moyenne (jours depuis date_arrivee du lot)
+        today = date.today()
+        lots_arrives = Lot.objects.filter(
+            destination=mali, colis__status="ARRIVE", date_arrivee__isnull=False
+        ).distinct()
+        if lots_arrives.exists():
+            total_days = sum(
+                (today - lot.date_arrivee.date()).days
+                for lot in lots_arrives if lot.date_arrivee
+            )
+            context["anciennete_moyenne"] = round(total_days / lots_arrives.count(), 1)
+        else:
+            context["anciennete_moyenne"] = 0
+
+        context["active_transport"] = self.request.GET.get("transport", "")
+        context["q"] = self.request.GET.get("q", "")
+        return context
+
+
 class LotBateauMaliCreateView(LoginRequiredMixin, DestinationAgentRequiredMixin, CreateView):
     """Permet à l'agent Mali de créer un lot bateau pour régulariser des anciens envois"""
     model = Lot

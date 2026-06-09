@@ -1,0 +1,153 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block title %}Stock Mali - TS Air Cargo{% endblock %}
+{% block header %}📦 Stock Colis — Entrepôt Mali{% endblock %}
+
+{% block mali_content %}
+<div class="space-y-6" x-data="{}">
+
+    <!-- Cards résumé -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow p-4 border-t-4 border-green-500">
+            <p class="text-xs text-gray-500 uppercase font-semibold">Colis en stock</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ nb_colis_stock }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-t-4 border-blue-500">
+            <p class="text-xs text-gray-500 uppercase font-semibold">Poids total</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ poids_total_stock|floatformat:1 }} <span class="text-sm font-normal">kg</span></p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-t-4 border-indigo-500">
+            <p class="text-xs text-gray-500 uppercase font-semibold">Valeur totale</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ valeur_totale_stock|intcomma }} <span class="text-sm font-normal">FCFA</span></p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-t-4 border-yellow-500">
+            <p class="text-xs text-gray-500 uppercase font-semibold">Ancienneté moy.</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ anciennete_moyenne }} <span class="text-sm font-normal">jours</span></p>
+        </div>
+    </div>
+
+    <!-- Onglets type transport -->
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <a href="?{% if q %}q={{ q }}&{% endif %}"
+               class="{% if not active_transport %}border-green-500 text-green-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Tous
+            </a>
+            <a href="?transport=CARGO{% if q %}&q={{ q }}{% endif %}"
+               class="{% if active_transport == 'CARGO' %}border-green-500 text-green-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                ✈️ Cargo
+            </a>
+            <a href="?transport=EXPRESS{% if q %}&q={{ q }}{% endif %}"
+               class="{% if active_transport == 'EXPRESS' %}border-green-500 text-green-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                🚀 Express
+            </a>
+            <a href="?transport=BATEAU{% if q %}&q={{ q }}{% endif %}"
+               class="{% if active_transport == 'BATEAU' %}border-green-500 text-green-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                🚢 Bateau
+            </a>
+        </nav>
+    </div>
+
+    <!-- Recherche -->
+    <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+        <form method="GET" class="flex gap-4">
+            {% if active_transport %}<input type="hidden" name="transport" value="{{ active_transport }}">{% endif %}
+            <div class="flex-1">
+                <input type="text" name="q" value="{{ q }}"
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                       placeholder="Rechercher par référence, client, lot...">
+            </div>
+            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                Filtrer
+            </button>
+            {% if q %}
+            <a href="{% url 'mali:stock' %}{% if active_transport %}?transport={{ active_transport }}{% endif %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                Réinitialiser
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Tableau stock -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Référence</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Poids</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CBM</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Prix Final</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Arrivée</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Jours Stock</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% load tz %}
+                    {% now "Y-m-d" as today_str %}
+                    {% for colis in colis_list %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded uppercase">{{ colis.reference }}</span>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
+                            <div class="text-xs text-gray-500">{{ colis.client.telephone }}</div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{{ colis.lot.numero }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {% if colis.lot.type_transport == 'CARGO' %}bg-blue-100 text-blue-800{% elif colis.lot.type_transport == 'EXPRESS' %}bg-purple-100 text-purple-800{% else %}bg-cyan-100 text-cyan-800{% endif %}">
+                                {{ colis.lot.get_type_transport_display }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold">{{ colis.poids|floatformat:1|default:"0" }} kg</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right">{{ colis.cbm|floatformat:2|default:"0" }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-gray-900">{{ colis.prix_final|intcomma }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 text-center">{{ colis.lot.date_arrivee|date:"d/m/Y"|default:"-" }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                            {% if colis.lot.date_arrivee %}
+                            {% widthratio colis.lot.date_arrivee|timesince_days 1 1 as days_raw %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold {% if colis.lot.date_arrivee|timesince > '30' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                {{ colis.lot.date_arrivee|timesince }}
+                            </span>
+                            {% else %}
+                            <span class="text-xs text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-400">Aucun colis en stock.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow">
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <p class="text-sm text-gray-700">
+                Affichage de <span class="font-medium">{{ page_obj.start_index }}</span> à <span class="font-medium">{{ page_obj.end_index }}</span> sur <span class="font-medium">{{ page_obj.paginator.count }}</span>
+            </p>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if active_transport %}&transport={{ active_transport }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Précédent</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if active_transport %}&transport={{ active_transport }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Suivant</a>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
