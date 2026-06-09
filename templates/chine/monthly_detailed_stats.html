@@ -72,8 +72,6 @@
     <div class="bg-white shadow rounded-lg border border-gray-200 overflow-hidden">
         <div class="border-b border-gray-200">
             <nav class="-mb-px flex" aria-label="Tabs">
-                {% for tab_key, tab_label in "global:Global,cargo:Cargo,express:Express,bateau:Bateau"|make_list %}
-                {% endfor %}
                 <button @click="activeTab = 'global'" :class="activeTab === 'global' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
                     🌍 Global ({{ global.totals.nb_lots }})
                 </button>
@@ -88,9 +86,6 @@
                 </button>
             </nav>
         </div>
-
-        {% with datasets="global,cargo,express,bateau" %}
-        {% for ds_name in datasets|make_list %}{% endfor %}
 
         <!-- Global Tab -->
         <div x-show="activeTab === 'global'" x-cloak>
@@ -119,7 +114,6 @@
             {% include "chine/partials/_monthly_lot_table.html" %}
             {% endwith %}
         </div>
-        {% endwith %}
     </div>
 
     <!-- Charges d'exploitation -->

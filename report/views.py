@@ -549,6 +549,15 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
 
         # Exclure la Chine — elle n'a pas de calculs propres
         countries = Country.objects.exclude(code="CN")
+
+        # Filtre par pays selon le rôle
+        user = self.request.user
+        if hasattr(user, "role"):
+            if user.role in ("ADMIN_MALI", "AGENT_MALI"):
+                countries = countries.filter(code="ML")
+            elif user.role == "AGENT_RCI":
+                countries = countries.filter(code="CI")
+
         quarterly_data = []
 
         for country in countries:

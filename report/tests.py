@@ -18,6 +18,15 @@ class FinanceEngineTests(TestCase):
         # Important: Le profil client est créé via le modèle Client qui pointe vers User
         self.client = Client.objects.create(user=self.agent_user, country=self.mali)
         
+        # Setup Tarif (requis pour que Colis.save() ne mette pas le prix à 0)
+        from core.models import Tarif
+        Tarif.objects.create(
+            country=self.mali,
+            destination=self.mali,
+            type_transport="CARGO",
+            prix_kilo=1000
+        )
+        
         # Date fixe: 15 Mai 2026
         self.test_date = timezone.make_aware(datetime(2026, 5, 15))
         
