@@ -1,8 +1,9 @@
-{% extends "chine/base.html" %}
+{% extends base_template %}
 {% load humanize %}
 
 {% block header %}Rapport Trimestriel — {{ quarter_label }}{% endblock %}
 
+{% block mali_content %}
 {% block chine_content %}
 <div class="space-y-6">
 
@@ -28,18 +29,23 @@
             <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all">
                 Filtrer
             </button>
-            <a href="{% url 'chine:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all">
+            <a href="?year={{ year }}&quarter={{ quarter }}&format=pdf" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md text-white bg-red-600 hover:bg-red-700 shadow-sm transition-all">
+                <svg class="-ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Exporter PDF
+            </a>
+            <a href="{{ dashboard_url }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all">
                 ← Dashboard
             </a>
         </form>
     </div>
 
-    <!-- Données par pays -->
+    <!-- Données par pays (hors Chine) -->
     {% for entry in quarterly_data %}
     <div class="bg-white shadow-lg rounded-xl overflow-hidden border-t-4 border-indigo-500">
         <div class="px-6 py-4 bg-indigo-50/40 border-b border-gray-100 flex items-center justify-between">
             <h2 class="text-lg font-bold text-gray-800 flex items-center">
-                <span class="text-2xl mr-2">{{ entry.country.name }}</span>
+                {% if entry.country.code == "ML" %}🇲🇱{% elif entry.country.code == "CI" %}🇨🇮{% endif %}
+                <span class="ml-2">{{ entry.country.name }}</span>
             </h2>
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
                 {{ entry.totals.nb_lots }} lots — {{ entry.totals.nb_colis }} colis
@@ -47,11 +53,15 @@
         </div>
 
         <div class="px-6 py-4">
-            <!-- Tableau mensuel -->
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+                <table class="min-w-full text-sm table-fixed">
+                    <colgroup>
+                        <col class="w-56">
+                        {% for perf in entry.months %}<col>{% endfor %}
+                        <col>
+                    </colgroup>
                     <thead>
-                        <tr class="border-b border-gray-200">
+                        <tr class="border-b-2 border-gray-200">
                             <th class="text-left py-2 px-3 text-xs font-bold text-gray-500 uppercase">Indicateur</th>
                             {% for perf in entry.months %}
                             <th class="text-right py-2 px-3 text-xs font-bold text-gray-500 uppercase">{{ perf.month_name }}</th>
@@ -60,6 +70,10 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
+                        <!-- SECTION PERFORMANCE -->
+                        <tr class="bg-indigo-50/30">
+                            <td colspan="{{ entry.months|length|add:2 }}" class="py-1.5 px-3 text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Performance (Base Engagement)</td>
+                        </tr>
                         <tr>
                             <td class="py-2 px-3 font-medium text-gray-700">Chiffre d'Affaires</td>
                             {% for perf in entry.months %}
@@ -109,6 +123,60 @@
                             {% endfor %}
                             <td class="py-3 px-3 text-right font-black text-base {% if entry.totals.benefice_net >= 0 %}text-green-900{% else %}text-red-900{% endif %} bg-indigo-100">{{ entry.totals.benefice_net|floatformat:0|intcomma }} FCFA</td>
                         </tr>
+
+                        <!-- SECTION TRANSFERTS -->
+                        <tr class="bg-blue-50/30">
+                            <td colspan="{{ entry.months|length|add:2 }}" class="py-1.5 px-3 text-[10px] font-bold text-blue-600 uppercase tracking-widest border-t-2 border-blue-200">Transferts & Suivi Chine</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-700">Transferts → Chine</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right font-semibold text-blue-700">{{ perf.transferts_chine|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-bold text-blue-800 bg-indigo-50">{{ entry.totals.transferts_chine|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-700">Coût Fret (Transport)</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right text-red-600">- {{ perf.cout_fret|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-bold text-red-700 bg-indigo-50">- {{ entry.totals.cout_fret|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr class="bg-blue-50/50">
+                            <td class="py-2 px-3 font-bold text-gray-800">Surplus Chine (Transferts - Fret)</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right font-bold {% if perf.surplus_chine >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ perf.surplus_chine|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-black {% if entry.totals.surplus_chine >= 0 %}text-green-800{% else %}text-red-800{% endif %} bg-indigo-50">{{ entry.totals.surplus_chine|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-500 italic">Dépenses Chine (indicatif)</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right text-gray-500 italic">{{ perf.depenses_chine|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-medium text-gray-500 italic bg-indigo-50">{{ entry.totals.depenses_chine|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-700">Transferts → Gaoussou (Douane)</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right text-purple-700">{{ perf.transferts_gaoussou|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-bold text-purple-800 bg-indigo-50">{{ entry.totals.transferts_gaoussou|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-medium text-gray-700">Transferts → Guissé (Douane Express)</td>
+                            {% for perf in entry.months %}
+                            <td class="py-2 px-3 text-right text-cyan-700">{{ perf.transferts_guisse|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-bold text-cyan-800 bg-indigo-50">{{ entry.totals.transferts_guisse|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr class="bg-gray-100 border-t-2 border-gray-300">
+                            <td class="py-3 px-3 font-black text-gray-900">Total Transferts</td>
+                            {% for perf in entry.months %}
+                            <td class="py-3 px-3 text-right font-black text-gray-800">{{ perf.total_transferts|floatformat:0|intcomma }}</td>
+                            {% endfor %}
+                            <td class="py-3 px-3 text-right font-black text-gray-900 bg-indigo-100">{{ entry.totals.total_transferts|floatformat:0|intcomma }} FCFA</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -121,4 +189,5 @@
     {% endfor %}
 
 </div>
-{% endblock %}
+{% endblock chine_content %}
+{% endblock mali_content %}

@@ -281,10 +281,41 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         # Stats avancées pour l'Admin Chine
         if self.request.user.role == "ADMIN_CHINE":
 
-            # Récupération des stats séparées (MOIS EN COURS)
             now = timezone.now()
-            context["stats_ml"] = get_country_stats("ML", now.year, now.month)
-            context["stats_ci"] = get_country_stats("CI", now.year, now.month)
+
+            # Onglet période : mois (défaut), trimestre, global
+            period = self.request.GET.get("period", "month")
+            context["active_period"] = period
+
+            if period == "quarter":
+                current_quarter = (now.month - 1) // 3 + 1
+                quarter_start_month = (current_quarter - 1) * 3 + 1
+                from decimal import Decimal
+                stats_ml_months = [get_country_stats("ML", now.year, m) for m in range(quarter_start_month, quarter_start_month + 3)]
+                stats_ci_months = [get_country_stats("CI", now.year, m) for m in range(quarter_start_month, quarter_start_month + 3)]
+
+                def merge_stats(stats_list):
+                    merged = {}
+                    for key in stats_list[0]:
+                        if key == "agents_remuneration":
+                            merged[key] = stats_list[-1][key]
+                        elif isinstance(stats_list[0][key], (int, float, Decimal)):
+                            merged[key] = sum(s[key] for s in stats_list)
+                        else:
+                            merged[key] = stats_list[-1][key]
+                    return merged
+
+                context["stats_ml"] = merge_stats(stats_ml_months)
+                context["stats_ci"] = merge_stats(stats_ci_months)
+                context["period_label"] = f"T{current_quarter} {now.year}"
+            elif period == "global":
+                context["stats_ml"] = get_country_stats("ML")
+                context["stats_ci"] = get_country_stats("CI")
+                context["period_label"] = "Tous les temps"
+            else:
+                context["stats_ml"] = get_country_stats("ML", now.year, now.month)
+                context["stats_ci"] = get_country_stats("CI", now.year, now.month)
+                context["period_label"] = "Mois en cours"
 
             # Récupération des stats GLOBALES (ALL TIME) pour les totaux
             stats_ml_global = get_country_stats("ML")

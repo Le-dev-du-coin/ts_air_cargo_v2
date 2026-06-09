@@ -523,13 +523,16 @@ class RapportExportView(LoginRequiredMixin, View):
 
 
 class QuarterlyReportView(LoginRequiredMixin, TemplateView):
-    """Rapport trimestriel consolidé."""
+    """Rapport trimestriel consolidé — pays destination uniquement (hors Chine)."""
     template_name = "report/quarterly_report.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         from report.finance_engine import FinanceEngine
+        from report.models import TransfertArgent, Depense
         from core.models import Country
+        from django.db.models import Sum
+        from decimal import Decimal
         import calendar
 
         today = timezone.now()
@@ -543,7 +546,8 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
         quarter = max(1, min(4, quarter))
         months = list(range((quarter - 1) * 3 + 1, quarter * 3 + 1))
 
-        countries = Country.objects.all()
+        # Exclure la Chine — elle n'a pas de calculs propres
+        countries = Country.objects.exclude(code="CN")
         quarterly_data = []
 
         for country in countries:
@@ -552,6 +556,20 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
                 perf = FinanceEngine.get_monthly_performance(year, m, country.code)
                 perf["month"] = m
                 perf["month_name"] = calendar.month_name[m]
+
+                # Transferts du mois depuis ce pays
+                transfers_month = TransfertArgent.objects.filter(
+                    pays_expediteur__code=country.code, date__year=year, date__month=m
+                )
+                perf["transferts_chine"] = transfers_month.filter(destinataire="CHINE").aggregate(t=Sum("montant"))["t"] or 0
+                perf["transferts_gaoussou"] = transfers_month.filter(destinataire="GAOUSSOU").aggregate(t=Sum("montant"))["t"] or 0
+                perf["transferts_guisse"] = transfers_month.filter(destinataire="GUISSE").aggregate(t=Sum("montant"))["t"] or 0
+                perf["total_transferts"] = Decimal(str(perf["transferts_chine"])) + Decimal(str(perf["transferts_gaoussou"])) + Decimal(str(perf["transferts_guisse"]))
+                perf["surplus_chine"] = Decimal(str(perf["transferts_chine"])) - Decimal(str(perf["cout_fret"]))
+                perf["depenses_chine"] = Depense.objects.filter(
+                    is_china_indicative=True, date__year=year, date__month=m
+                ).aggregate(t=Sum("montant"))["t"] or 0
+
                 monthly_perfs.append(perf)
 
             totals = {
@@ -564,6 +582,12 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
                 "benefice_net": sum(p["benefice_net"] for p in monthly_perfs),
                 "nb_colis": sum(p["nb_colis"] for p in monthly_perfs),
                 "nb_lots": sum(p["nb_lots"] for p in monthly_perfs),
+                "transferts_chine": sum(Decimal(str(p["transferts_chine"])) for p in monthly_perfs),
+                "transferts_gaoussou": sum(Decimal(str(p["transferts_gaoussou"])) for p in monthly_perfs),
+                "transferts_guisse": sum(Decimal(str(p["transferts_guisse"])) for p in monthly_perfs),
+                "total_transferts": sum(p["total_transferts"] for p in monthly_perfs),
+                "surplus_chine": sum(p["surplus_chine"] for p in monthly_perfs),
+                "depenses_chine": sum(Decimal(str(p["depenses_chine"])) for p in monthly_perfs),
             }
 
             quarterly_data.append({
@@ -579,4 +603,25 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
         context["quarterly_data"] = quarterly_data
         context["years"] = list(range(2024, today.year + 1))
         context["quarters"] = [1, 2, 3, 4]
+
+        # Adapter le layout selon le rôle
+        user = self.request.user
+        if hasattr(user, 'role') and user.role in ('ADMIN_MALI', 'AGENT_MALI'):
+            context["base_template"] = "mali/base.html"
+            context["dashboard_url"] = "/mali/dashboard/"
+        else:
+            context["base_template"] = "chine/base.html"
+            context["dashboard_url"] = "/chine/dashboard/"
+
         return context
+
+    def get(self, request, *args, **kwargs):
+        if request.GET.get("format") == "pdf":
+            from core.utils_pdf import render_to_pdf_playwright
+            context = self.get_context_data()
+            filename = f"rapport_trimestriel_T{context['quarter']}_{context['year']}.pdf"
+            return render_to_pdf_playwright(
+                "report/pdf/quarterly_report_pdf.html", context, request,
+                filename=filename, landscape=True
+            )
+        return super().get(request, *args, **kwargs)

@@ -36,6 +36,21 @@
         </a>
     </div>
 
+    <!-- Onglets Période (Admin Chine) -->
+    {% if user.role == 'ADMIN_CHINE' %}
+    <div class="bg-white shadow rounded-xl p-1 flex space-x-1">
+        <a href="?period=month" class="flex-1 text-center px-4 py-2.5 text-sm font-bold rounded-lg transition-all {% if active_period == 'month' or not active_period %}bg-indigo-600 text-white shadow-lg{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+            Mois en cours
+        </a>
+        <a href="?period=quarter" class="flex-1 text-center px-4 py-2.5 text-sm font-bold rounded-lg transition-all {% if active_period == 'quarter' %}bg-indigo-600 text-white shadow-lg{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+            Trimestre en cours
+        </a>
+        <a href="?period=global" class="flex-1 text-center px-4 py-2.5 text-sm font-bold rounded-lg transition-all {% if active_period == 'global' %}bg-indigo-600 text-white shadow-lg{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+            Global
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {% if user.role == 'ADMIN_CHINE' %}
@@ -51,7 +66,7 @@
                                 <span class="text-2xl mr-2">🇲🇱</span> Mali
                             </h3>
                             <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                Mois en cours
+                                {{ period_label|default:"Mois en cours" }}
                             </span>
                         </div>
                         <div class="flex space-x-2">
@@ -182,7 +197,7 @@
                                 <span class="text-2xl mr-2">🇨🇮</span> Côte d'Ivoire
                             </h3>
                             <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                Mois en cours
+                                {{ period_label|default:"Mois en cours" }}
                             </span>
                         </div>
                         <div class="flex space-x-2">

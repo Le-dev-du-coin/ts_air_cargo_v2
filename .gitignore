@@ -47,3 +47,8 @@ setup_ubuntu.sh
 _agent/
 _agents/
 .gemini/
+
+# BMAD
+_bmad/
+_bmad-output/
+.agents/

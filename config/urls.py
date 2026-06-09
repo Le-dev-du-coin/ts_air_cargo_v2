@@ -13,6 +13,7 @@ urlpatterns = [
     path("ivoire/", include("ivoire.urls")),
     path("clients/", include("customers.urls")),
     path("admin-app/", include("admin_app.urls", namespace="admin_app")),
+    path("report/", include("report.urls")),
     path("", IndexView.as_view(), name="index"),
 ]
 
