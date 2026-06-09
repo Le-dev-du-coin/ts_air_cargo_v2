@@ -528,6 +528,7 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
         from report.finance_engine import FinanceEngine
         from report.models import TransfertArgent, Depense
         from core.models import Country
@@ -625,3 +626,4 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
                 filename=filename, landscape=True
             )
         return super().get(request, *args, **kwargs)
+

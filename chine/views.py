@@ -951,6 +951,17 @@ class LotListView(LoginRequiredMixin, ListView):
         if country_code:
             queryset = queryset.filter(destination__code=country_code)
 
+        # Filter by Status
+        status_filter = self.request.GET.get("status")
+        status_map = {
+            "ouverts": ["OUVERT"],
+            "fermes": ["FERME"],
+            "transit": ["EN_TRANSIT", "EXPEDIE"],
+            "arrives": ["ARRIVE", "DOUANE", "DISPONIBLE"],
+        }
+        if status_filter and status_filter in status_map:
+            queryset = queryset.filter(status__in=status_map[status_filter])
+
         # Search
         search_query = self.request.GET.get("search")
         if search_query:
@@ -962,8 +973,6 @@ class LotListView(LoginRequiredMixin, ListView):
 
         if selected_year and selected_month:
             try:
-                # On filtre sur created_at qui englobe toute la vie du lot, ou date_expedition si on veut être strict sur la norme.
-                # Le client a dit "filtre par mois", de base created_at est plus rassurant pour retrouver ses lots créés en cours.
                 queryset = queryset.filter(
                     created_at__year=int(selected_year),
                     created_at__month=int(selected_month),
@@ -971,14 +980,17 @@ class LotListView(LoginRequiredMixin, ListView):
             except ValueError:
                 pass
 
-        # Tri personnalisé : Toujours les OUVERT (0) en premier, puis FERME (1), puis le reste (2) trié par date décroissante
+        # Enrichir les annotations
         queryset = queryset.annotate(
+            ann_nb_colis=Count("colis"),
+            ann_poids_total=Sum("colis__poids"),
+            ann_valeur_colis=Sum("colis__prix_final"),
             status_order=Case(
                 When(status="OUVERT", then=Value(0)),
                 When(status="FERME", then=Value(1)),
                 default=Value(2),
                 output_field=IntegerField(),
-            )
+            ),
         ).order_by("status_order", "-created_at")
 
         return queryset
@@ -990,6 +1002,7 @@ class LotListView(LoginRequiredMixin, ListView):
         context["countries"] = Country.objects.exclude(code="CN")
         context["selected_country"] = self.request.GET.get("country", "")
         context["search_query"] = self.request.GET.get("search", "")
+        context["selected_status"] = self.request.GET.get("status", "")
 
         # Contexte pour le filtre de dates
         context["selected_year"] = (
@@ -2160,3 +2173,100 @@ class DatabaseImportView(LoginRequiredMixin, AdminChineRequiredMixin, View):
                 os.remove(temp_path)
 
         return redirect("chine:dashboard")
+
+
+class MonthlyDetailedStatsView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateView):
+    """Stats complètes mensuelles avec détail par lot et type de transport."""
+
+    template_name = "chine/monthly_detailed_stats.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
+        # Filtres GET
+        try:
+            selected_year = int(self.request.GET.get("year", now.year))
+        except (ValueError, TypeError):
+            selected_year = now.year
+        try:
+            selected_month = int(self.request.GET.get("month", now.month))
+        except (ValueError, TypeError):
+            selected_month = now.month
+        selected_country = self.request.GET.get("country", "ML")
+        if selected_country not in ("ML", "CI"):
+            selected_country = "ML"
+
+        context["selected_year"] = selected_year
+        context["selected_month"] = selected_month
+        context["selected_country"] = selected_country
+        context["years"] = list(range(now.year, now.year - 8, -1))
+        context["months"] = [
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
+        ]
+
+        # Lots arrivés dans le pays pour la période
+        lots_qs = (
+            Lot.objects.filter(
+                destination__code=selected_country,
+                date_arrivee__year=selected_year,
+                date_arrivee__month=selected_month,
+            )
+            .select_related("destination")
+            .prefetch_related("colis")
+            .annotate(
+                colis_count=Count("colis"),
+                poids_total=Sum("colis__poids"),
+                cbm_total=Sum("colis__cbm"),
+                ca_brut=Sum("colis__prix_final"),
+                total_jc=Sum("colis__montant_jc"),
+                total_reste_a_payer=Sum("colis__reste_a_payer"),
+            )
+            .order_by("-date_arrivee")
+        )
+
+        # Séparer par type de transport
+        from decimal import Decimal as D
+
+        def build_type_data(qs):
+            lots_list = list(qs)
+            totals = {
+                "nb_lots": len(lots_list),
+                "nb_colis": sum(l.colis_count or 0 for l in lots_list),
+                "poids": sum(l.poids_total or D(0) for l in lots_list),
+                "cbm": sum(l.cbm_total or D(0) for l in lots_list),
+                "ca_brut": sum(l.ca_brut or D(0) for l in lots_list),
+                "total_jc": sum(l.total_jc or D(0) for l in lots_list),
+                "total_reste": sum(l.total_reste_a_payer or D(0) for l in lots_list),
+                "fret": sum(l.frais_transport or D(0) for l in lots_list),
+                "douane": sum(l.frais_douane or D(0) for l in lots_list),
+            }
+            totals["ca_net"] = totals["ca_brut"] - totals["total_jc"]
+            totals["benefice_brut"] = totals["ca_net"] - totals["fret"] - totals["douane"]
+            return {"lots": lots_list, "totals": totals}
+
+        cargo_data = build_type_data(lots_qs.filter(type_transport="CARGO"))
+        express_data = build_type_data(lots_qs.filter(type_transport="EXPRESS"))
+        bateau_data = build_type_data(lots_qs.filter(type_transport="BATEAU"))
+        global_data = build_type_data(lots_qs)
+
+        context["cargo"] = cargo_data
+        context["express"] = express_data
+        context["bateau"] = bateau_data
+        context["global"] = global_data
+
+        # Performance via FinanceEngine
+        perf = FinanceEngine.get_monthly_performance(selected_year, selected_month, selected_country)
+        context["perf"] = perf
+
+        # Taux d'encaissement
+        ca_brut_global = global_data["totals"]["ca_brut"]
+        ca_net_global = perf["chiffre_affaires"]
+        context["taux_encaissement"] = (
+            round((float(ca_net_global) / float(ca_brut_global)) * 100, 1)
+            if ca_brut_global > 0 else 0
+        )
+
+        return context

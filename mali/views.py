@@ -1839,9 +1839,22 @@ class ColisAttentePaiementView(
             .order_by("-sort_date", "-updated_at")
         )
 
+        # Filtre par mois/année
+        year = self.request.GET.get("year")
+        month = self.request.GET.get("month")
+        if year:
+            try:
+                queryset = queryset.filter(date_livraison__year=int(year))
+            except (ValueError, TypeError):
+                pass
+        if month:
+            try:
+                queryset = queryset.filter(date_livraison__month=int(month))
+            except (ValueError, TypeError):
+                pass
+
         query = self.request.GET.get("q")
         if query:
-            # (Recherche multi-mots gérée par le reste du code)
             queryset = apply_flexible_search(
                 queryset, query, ["client__nom", "client__prenom", "reference"]
             )
@@ -1850,12 +1863,22 @@ class ColisAttentePaiementView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
         # Calcul du total des impayés basé sur l'annotation
         total_impaye = (
             self.get_queryset().aggregate(total=Sum("montant_du"))["total"] or 0
         )
         context["total_impaye"] = total_impaye
         context["q"] = self.request.GET.get("q", "")
+        context["selected_year"] = self.request.GET.get("year", "")
+        context["selected_month"] = self.request.GET.get("month", "")
+        context["years"] = list(range(now.year, now.year - 5, -1))
+        context["months"] = [
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
+        ]
         return context
 
 
@@ -3401,6 +3424,250 @@ class PaiementsHistoriqueView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         context = super().get_context_data(**kwargs)
         mali = self.get_current_country()
         context["depots_avoir"] = AvoirMouvement.objects.filter(client__country=mali, type="DEPOT").select_related("client", "enregistre_par").order_by("-created_at")[:50]
+        return context
+
+
+class JetonsCedesListView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """Traçabilité des Jetons Cédés (JC) — colis avec remises."""
+
+    template_name = "mali/jetons_cedes.html"
+    context_object_name = "colis_list"
+    paginate_by = 30
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        if not mali:
+            return Colis.objects.none()
+
+        queryset = (
+            Colis.objects.filter(lot__destination=mali, montant_jc__gt=0)
+            .select_related("client", "lot")
+            .order_by("-date_livraison", "-updated_at")
+        )
+
+        # Filtres mois/année
+        year = self.request.GET.get("year")
+        month = self.request.GET.get("month")
+        if year:
+            try:
+                queryset = queryset.filter(date_encaissement__year=int(year))
+            except (ValueError, TypeError):
+                pass
+        if month:
+            try:
+                queryset = queryset.filter(date_encaissement__month=int(month))
+            except (ValueError, TypeError):
+                pass
+
+        # Recherche client
+        q = self.request.GET.get("q")
+        if q:
+            queryset = apply_flexible_search(
+                queryset, q,
+                ["client__nom", "client__prenom", "client__telephone", "reference"]
+            )
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+
+        # Totaux de la période filtrée
+        full_qs = self.get_queryset()
+        agg = full_qs.aggregate(
+            nb_colis_jc=Count("id"),
+            total_jc=Sum("montant_jc"),
+        )
+        context["nb_colis_jc"] = agg["nb_colis_jc"] or 0
+        context["total_jc"] = agg["total_jc"] or 0
+
+        context["selected_year"] = self.request.GET.get("year", "")
+        context["selected_month"] = self.request.GET.get("month", "")
+        context["q"] = self.request.GET.get("q", "")
+        context["years"] = list(range(now.year, now.year - 5, -1))
+        context["months"] = [
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
+        ]
+        return context
+
+
+class ClientListMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """Liste des clients Mali avec classement top 5 et recherche."""
+
+    template_name = "mali/client_list.html"
+    context_object_name = "clients"
+    paginate_by = 20
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        if not mali:
+            return Client.objects.none()
+
+        queryset = (
+            Client.objects.filter(country=mali)
+            .annotate(
+                total_colis=Count("colis", filter=Q(colis__lot__destination=mali)),
+                total_ca=Sum("colis__prix_final", filter=Q(colis__lot__destination=mali)),
+                colis_en_stock=Count("colis", filter=Q(colis__status="ARRIVE", colis__lot__destination=mali)),
+                colis_livres=Count("colis", filter=Q(colis__status="LIVRE", colis__lot__destination=mali)),
+                total_creances=Sum("colis__reste_a_payer", filter=Q(colis__est_paye=False, colis__lot__destination=mali)),
+            )
+        )
+
+        q = self.request.GET.get("q")
+        if q:
+            queryset = apply_flexible_search(
+                queryset, q,
+                ["nom", "prenom", "telephone"]
+            )
+
+        return queryset.order_by("-total_ca")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.get_current_country()
+
+        # Top 5 meilleurs clients par CA
+        context["top_clients"] = (
+            Client.objects.filter(country=mali)
+            .annotate(
+                total_ca=Sum("colis__prix_final", filter=Q(colis__lot__destination=mali)),
+                total_colis=Count("colis", filter=Q(colis__lot__destination=mali)),
+            )
+            .filter(total_ca__gt=0)
+            .order_by("-total_ca")[:5]
+        )
+
+        context["q"] = self.request.GET.get("q", "")
+        context["total_clients"] = Client.objects.filter(country=mali).count()
+        return context
+
+
+class ClientDetailMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailView):
+    """Fiche client enrichie pour l'agent Mali avec 4 onglets par statut."""
+
+    model = Client
+    template_name = "mali/client_detail.html"
+    context_object_name = "client"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.get_current_country()
+        client = self.object
+
+        # 4 querysets de colis filtrés par client et destination
+        base_qs = Colis.objects.filter(client=client, lot__destination=mali).select_related("lot")
+
+        en_chine = base_qs.filter(status="RECU")
+        en_expedition = base_qs.filter(status="EXPEDIE")
+        au_mali = base_qs.filter(status="ARRIVE")
+        livres = base_qs.filter(status="LIVRE")
+
+        def stats_for(qs):
+            agg = qs.aggregate(
+                count=Count("id"),
+                poids=Sum("poids"),
+                valeur=Sum("prix_final"),
+            )
+            return {
+                "qs": qs.order_by("-created_at"),
+                "count": agg["count"] or 0,
+                "poids": agg["poids"] or 0,
+                "valeur": agg["valeur"] or 0,
+            }
+
+        context["en_chine"] = stats_for(en_chine)
+        context["en_expedition"] = stats_for(en_expedition)
+        context["au_mali"] = stats_for(au_mali)
+        context["livres"] = stats_for(livres)
+
+        # Créances totales (reste_a_payer)
+        context["total_creances"] = (
+            base_qs.filter(est_paye=False).aggregate(total=Sum("reste_a_payer"))["total"] or 0
+        )
+
+        # Historique paiements récents
+        context["paiements_recents"] = (
+            EncaissementColis.objects.filter(colis__client=client, colis__lot__destination=mali)
+            .select_related("colis")
+            .order_by("-date", "-created_at")[:10]
+        )
+
+        return context
+
+
+class StockMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """Vue du stock de colis arrivés au Mali, groupés par lot."""
+
+    template_name = "mali/stock.html"
+    context_object_name = "colis_list"
+    paginate_by = 30
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        if not mali:
+            return Colis.objects.none()
+
+        from django.db.models.functions import Now, Coalesce as CoalesceFunc
+        from datetime import date
+
+        queryset = (
+            Colis.objects.filter(lot__destination=mali, status="ARRIVE")
+            .select_related("client", "lot")
+        )
+
+        # Filtre par type de transport
+        transport = self.request.GET.get("transport")
+        if transport in ("CARGO", "EXPRESS", "BATEAU"):
+            queryset = queryset.filter(lot__type_transport=transport)
+
+        # Recherche
+        q = self.request.GET.get("q")
+        if q:
+            queryset = apply_flexible_search(
+                queryset, q,
+                ["client__nom", "client__prenom", "client__telephone", "reference", "lot__numero"]
+            )
+
+        return queryset.order_by("lot__date_arrivee", "-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.get_current_country()
+
+        # Stats globales sur le stock
+        stock_qs = Colis.objects.filter(lot__destination=mali, status="ARRIVE")
+        from django.db.models import Avg
+        from datetime import date
+
+        agg = stock_qs.aggregate(
+            nb_colis=Count("id"),
+            poids_total=Sum("poids"),
+            valeur_totale=Sum("prix_final"),
+        )
+        context["nb_colis_stock"] = agg["nb_colis"] or 0
+        context["poids_total_stock"] = agg["poids_total"] or 0
+        context["valeur_totale_stock"] = agg["valeur_totale"] or 0
+
+        # Ancienneté moyenne (jours depuis date_arrivee du lot)
+        today = date.today()
+        lots_arrives = Lot.objects.filter(
+            destination=mali, colis__status="ARRIVE", date_arrivee__isnull=False
+        ).distinct()
+        if lots_arrives.exists():
+            total_days = sum(
+                (today - lot.date_arrivee.date()).days
+                for lot in lots_arrives if lot.date_arrivee
+            )
+            context["anciennete_moyenne"] = round(total_days / lots_arrives.count(), 1)
+        else:
+            context["anciennete_moyenne"] = 0
+
+        context["active_transport"] = self.request.GET.get("transport", "")
+        context["q"] = self.request.GET.get("q", "")
         return context
 
 

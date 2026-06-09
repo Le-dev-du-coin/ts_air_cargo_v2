@@ -1,0 +1,69 @@
+{% load humanize %}
+{% load currency_tags %}
+<div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Création</th>
+                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Expédition</th>
+                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Arrivée</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Colis</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Poids</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CBM</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CA Brut</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">JC</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Fret</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Douane</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bénéf. Brut</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for lot in data.lots %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-indigo-600">{{ lot.numero }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {% if lot.type_transport == 'CARGO' %}bg-blue-100 text-blue-800{% elif lot.type_transport == 'EXPRESS' %}bg-purple-100 text-purple-800{% else %}bg-cyan-100 text-cyan-800{% endif %}">
+                        {{ lot.get_type_transport_display }}
+                    </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 text-center">{{ lot.created_at|date:"d/m/Y" }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 text-center">{{ lot.date_expedition|date:"d/m/Y"|default:"-" }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 text-center">{{ lot.date_arrivee|date:"d/m/Y"|default:"-" }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold">{{ lot.colis_count|default:0 }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right">{{ lot.poids_total|floatformat:1|default:"0" }} kg</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right">{{ lot.cbm_total|floatformat:2|default:"0" }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{{ lot.ca_brut|default:0|currency_no_symbol }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-blue-600">{{ lot.total_jc|default:0|currency_no_symbol }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">{{ lot.frais_transport|default:0|currency_no_symbol }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">{{ lot.frais_douane|default:0|currency_no_symbol }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold {% if lot.ca_brut %}text-green-600{% else %}text-gray-400{% endif %}">
+                    {% with ca_net=lot.ca_brut|default:0 jc=lot.total_jc|default:0 fret=lot.frais_transport|default:0 douane=lot.frais_douane|default:0 %}
+                    {{ lot.ca_brut|default:0|currency_no_symbol }}
+                    {% endwith %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="13" class="px-4 py-8 text-center text-sm text-gray-400">Aucun lot pour cette période.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        {% if data.lots %}
+        <tfoot class="bg-indigo-50 font-bold">
+            <tr>
+                <td class="px-4 py-3 text-sm text-indigo-900" colspan="5">SOUS-TOTAL</td>
+                <td class="px-4 py-3 text-sm text-right text-indigo-900">{{ data.totals.nb_colis }}</td>
+                <td class="px-4 py-3 text-sm text-right text-indigo-900">{{ data.totals.poids|floatformat:1 }} kg</td>
+                <td class="px-4 py-3 text-sm text-right text-indigo-900">{{ data.totals.cbm|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-sm text-right text-indigo-900">{{ data.totals.ca_brut|currency_no_symbol }}</td>
+                <td class="px-4 py-3 text-sm text-right text-blue-700">{{ data.totals.total_jc|currency_no_symbol }}</td>
+                <td class="px-4 py-3 text-sm text-right text-red-700">{{ data.totals.fret|currency_no_symbol }}</td>
+                <td class="px-4 py-3 text-sm text-right text-red-700">{{ data.totals.douane|currency_no_symbol }}</td>
+                <td class="px-4 py-3 text-sm text-right {% if data.totals.benefice_brut >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ data.totals.benefice_brut|currency_no_symbol }}</td>
+            </tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</div>

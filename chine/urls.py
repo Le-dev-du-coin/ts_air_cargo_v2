@@ -3,6 +3,7 @@ from .views import (
     DashboardView,
     TransportStatsDetailView,
     MonthlyArchivesView,
+    MonthlyDetailedStatsView,
     ClientListView,
     ClientCreateView,
     LotListView,
@@ -58,6 +59,7 @@ urlpatterns = [
     path("database/import/", DatabaseImportView.as_view(), name="database_import"),
     path("archives/", MonthlyArchivesView.as_view(), name="monthly_archives"),
     path("stats/transport/", TransportStatsDetailView.as_view(), name="transport_stats"),
+    path("stats/monthly-detail/", MonthlyDetailedStatsView.as_view(), name="monthly_detail_stats"),
     # Background Tasks
     path("tasks/", TaskListView.as_view(), name="task_list"),
     path("notifications/", NotificationListView.as_view(), name="notification_list"),
