@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import DepenseListView, DepenseCreateView, DepenseDeleteView
+from .views import DepenseListView, DepenseCreateView, DepenseDeleteView, QuarterlyReportView
 
 app_name = "report"
 
@@ -9,4 +9,5 @@ urlpatterns = [
     path(
         "depenses/<int:pk>/delete/", DepenseDeleteView.as_view(), name="depense_delete"
     ),
+    path("quarterly/", QuarterlyReportView.as_view(), name="quarterly_report"),
 ]

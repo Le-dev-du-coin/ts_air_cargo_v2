@@ -54,6 +54,7 @@ from .views import (
     PaiementsHistoriqueView,
     LotBateauMaliCreateView,
     StockMaliView,
+    ClientListMaliView,
     ClientDetailMaliView,
     JetonsCedesListView,
 )
@@ -110,6 +111,7 @@ urlpatterns = [
     path("lots/<int:pk>/reset-douane/", LotResetDouaneView.as_view(), name="lot_reset_douane"),
     path("lots/creer-bateau/", LotBateauMaliCreateView.as_view(), name="lot_bateau_create"),
     path("stock/", StockMaliView.as_view(), name="stock"),
+    path("clients/", ClientListMaliView.as_view(), name="client_list"),
     path("clients/<int:pk>/", ClientDetailMaliView.as_view(), name="client_detail"),
     path("jetons-cedes/", JetonsCedesListView.as_view(), name="jetons_cedes"),
     path(

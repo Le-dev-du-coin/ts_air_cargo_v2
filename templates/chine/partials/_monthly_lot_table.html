@@ -1,4 +1,5 @@
 {% load humanize %}
+{% load currency_tags %}
 <div class="overflow-x-auto">
     <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
@@ -33,13 +34,13 @@
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold">{{ lot.colis_count|default:0 }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-right">{{ lot.poids_total|floatformat:1|default:"0" }} kg</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-right">{{ lot.cbm_total|floatformat:2|default:"0" }}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{{ lot.ca_brut|default:0|intcomma }}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-blue-600">{{ lot.total_jc|default:0|intcomma }}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">{{ lot.frais_transport|default:0|intcomma }}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">{{ lot.frais_douane|default:0|intcomma }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{{ lot.ca_brut|default:0|currency_no_symbol }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-blue-600">{{ lot.total_jc|default:0|currency_no_symbol }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">{{ lot.frais_transport|default:0|currency_no_symbol }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">{{ lot.frais_douane|default:0|currency_no_symbol }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold {% if lot.ca_brut %}text-green-600{% else %}text-gray-400{% endif %}">
                     {% with ca_net=lot.ca_brut|default:0 jc=lot.total_jc|default:0 fret=lot.frais_transport|default:0 douane=lot.frais_douane|default:0 %}
-                    {{ lot.ca_brut|default:0|intcomma }}
+                    {{ lot.ca_brut|default:0|currency_no_symbol }}
                     {% endwith %}
                 </td>
             </tr>
@@ -56,11 +57,11 @@
                 <td class="px-4 py-3 text-sm text-right text-indigo-900">{{ data.totals.nb_colis }}</td>
                 <td class="px-4 py-3 text-sm text-right text-indigo-900">{{ data.totals.poids|floatformat:1 }} kg</td>
                 <td class="px-4 py-3 text-sm text-right text-indigo-900">{{ data.totals.cbm|floatformat:2 }}</td>
-                <td class="px-4 py-3 text-sm text-right text-indigo-900">{{ data.totals.ca_brut|intcomma }}</td>
-                <td class="px-4 py-3 text-sm text-right text-blue-700">{{ data.totals.total_jc|intcomma }}</td>
-                <td class="px-4 py-3 text-sm text-right text-red-700">{{ data.totals.fret|intcomma }}</td>
-                <td class="px-4 py-3 text-sm text-right text-red-700">{{ data.totals.douane|intcomma }}</td>
-                <td class="px-4 py-3 text-sm text-right {% if data.totals.benefice_brut >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ data.totals.benefice_brut|intcomma }}</td>
+                <td class="px-4 py-3 text-sm text-right text-indigo-900">{{ data.totals.ca_brut|currency_no_symbol }}</td>
+                <td class="px-4 py-3 text-sm text-right text-blue-700">{{ data.totals.total_jc|currency_no_symbol }}</td>
+                <td class="px-4 py-3 text-sm text-right text-red-700">{{ data.totals.fret|currency_no_symbol }}</td>
+                <td class="px-4 py-3 text-sm text-right text-red-700">{{ data.totals.douane|currency_no_symbol }}</td>
+                <td class="px-4 py-3 text-sm text-right {% if data.totals.benefice_brut >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ data.totals.benefice_brut|currency_no_symbol }}</td>
             </tr>
         </tfoot>
         {% endif %}

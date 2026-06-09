@@ -1,5 +1,6 @@
 {% extends "mali/base.html" %}
 {% load humanize %}
+{% load currency_tags %}
 
 {% block title %}{{ client.nom }} {{ client.prenom }} - Fiche Client - TS Air Cargo{% endblock %}
 {% block header %}👤 {{ client.nom }} {{ client.prenom }}{% endblock %}
@@ -7,9 +8,9 @@
 {% block actions %}
 <div class="flex items-center gap-3 text-sm">
     <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-md font-medium">📱 {{ client.telephone }}</span>
-    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-md font-bold">Avoir : {{ client.solde_avoir|intcomma }} FCFA</span>
+    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-md font-bold">Avoir : {{ client.solde_avoir|fcfa }}</span>
     {% if total_creances > 0 %}
-    <span class="bg-red-100 text-red-800 px-3 py-1 rounded-md font-bold">Créances : {{ total_creances|intcomma }} FCFA</span>
+    <span class="bg-red-100 text-red-800 px-3 py-1 rounded-md font-bold">Créances : {{ total_creances|fcfa }}</span>
     {% endif %}
 </div>
 {% endblock %}
@@ -35,9 +36,6 @@
                 </button>
             </nav>
         </div>
-
-        {% for tab_name, tab_data in "en_chine,en_expedition,au_mali,livres" %}
-        {% endfor %}
 
         <!-- En Chine -->
         <div x-show="activeTab === 'en_chine'" x-cloak>
@@ -87,7 +85,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-2 text-sm text-gray-600">{{ p.date|date:"d/m/Y" }}</td>
                         <td class="px-4 py-2 text-sm font-medium text-indigo-600">{{ p.colis.reference }}</td>
-                        <td class="px-4 py-2 text-sm text-right font-bold text-green-600">{{ p.montant|intcomma }} FCFA</td>
+                        <td class="px-4 py-2 text-sm text-right font-bold text-green-600">{{ p.montant|fcfa }}</td>
                         <td class="px-4 py-2 text-sm text-gray-600">{{ p.get_methode_display }}</td>
                     </tr>
                     {% endfor %}

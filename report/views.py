@@ -520,3 +520,20 @@ class RapportExportView(LoginRequiredMixin, View):
             return render_to_pdf_playwright(
                 "mali/pdf/rapport_financier.html", context, request, filename=filename
             )
+
+
+class QuarterlyReportView(LoginRequiredMixin, TemplateView):
+    """Placeholder — la vraie vue est sur master (fix/critical-accounting-engine)."""
+    template_name = "report/quarterly_report.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["quarterly_data"] = []
+        context["year"] = 2026
+        context["quarter"] = 2
+        context["quarter_label"] = "T2 2026"
+        context["years"] = [2026, 2025, 2024]
+        context["quarters"] = [1, 2, 3, 4]
+        context["base_template"] = "mali/base.html" if hasattr(self.request.user, 'role') and self.request.user.role in ('ADMIN_MALI', 'AGENT_MALI') else "chine/base.html"
+        context["dashboard_url"] = "/mali/dashboard/" if hasattr(self.request.user, 'role') and self.request.user.role in ('ADMIN_MALI', 'AGENT_MALI') else "/chine/dashboard/"
+        return context

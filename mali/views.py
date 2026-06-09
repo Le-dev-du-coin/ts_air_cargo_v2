@@ -3598,6 +3598,58 @@ class JetonsCedesListView(LoginRequiredMixin, DestinationAgentRequiredMixin, Lis
         return context
 
 
+class ClientListMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """Liste des clients Mali avec classement top 5 et recherche."""
+
+    template_name = "mali/client_list.html"
+    context_object_name = "clients"
+    paginate_by = 20
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        if not mali:
+            return Client.objects.none()
+
+        queryset = (
+            Client.objects.filter(country=mali)
+            .annotate(
+                total_colis=Count("colis", filter=Q(colis__lot__destination=mali)),
+                total_ca=Sum("colis__prix_final", filter=Q(colis__lot__destination=mali)),
+                colis_en_stock=Count("colis", filter=Q(colis__status="ARRIVE", colis__lot__destination=mali)),
+                colis_livres=Count("colis", filter=Q(colis__status="LIVRE", colis__lot__destination=mali)),
+                total_creances=Sum("colis__reste_a_payer", filter=Q(colis__est_paye=False, colis__lot__destination=mali)),
+            )
+        )
+
+        q = self.request.GET.get("q")
+        if q:
+            queryset = apply_flexible_search(
+                queryset, q,
+                ["nom", "prenom", "telephone"]
+            )
+
+        return queryset.order_by("-total_ca")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.get_current_country()
+
+        # Top 5 meilleurs clients par CA
+        context["top_clients"] = (
+            Client.objects.filter(country=mali)
+            .annotate(
+                total_ca=Sum("colis__prix_final", filter=Q(colis__lot__destination=mali)),
+                total_colis=Count("colis", filter=Q(colis__lot__destination=mali)),
+            )
+            .filter(total_ca__gt=0)
+            .order_by("-total_ca")[:5]
+        )
+
+        context["q"] = self.request.GET.get("q", "")
+        context["total_clients"] = Client.objects.filter(country=mali).count()
+        return context
+
+
 class ClientDetailMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailView):
     """Fiche client enrichie pour l'agent Mali avec 4 onglets par statut."""
 

@@ -1,5 +1,6 @@
 {% extends "chine/base.html" %}
 {% load humanize %}
+{% load currency_tags %}
 
 {% block title %}Stats Détaillées Mensuelles - TS Air Cargo{% endblock %}
 {% block header %}📊 Stats Complètes Mensuelles{% endblock %}
@@ -43,15 +44,15 @@
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div class="bg-white rounded-lg shadow p-4 border-t-4 border-indigo-500">
             <p class="text-xs text-gray-500 uppercase font-semibold">CA Net</p>
-            <p class="text-lg font-bold text-gray-900 mt-1">{{ perf.chiffre_affaires|intcomma }} <span class="text-xs font-normal text-gray-500">FCFA</span></p>
+            <p class="text-lg font-bold text-gray-900 mt-1">{{ perf.chiffre_affaires|currency_no_symbol }} <span class="text-xs font-normal text-gray-500">FCFA</span></p>
         </div>
         <div class="bg-white rounded-lg shadow p-4 border-t-4 border-red-500">
             <p class="text-xs text-gray-500 uppercase font-semibold">Charges</p>
-            <p class="text-lg font-bold text-gray-900 mt-1">{{ perf.total_depenses|intcomma }} <span class="text-xs font-normal text-gray-500">FCFA</span></p>
+            <p class="text-lg font-bold text-gray-900 mt-1">{{ perf.total_depenses|currency_no_symbol }} <span class="text-xs font-normal text-gray-500">FCFA</span></p>
         </div>
         <div class="bg-white rounded-lg shadow p-4 border-t-4 {% if perf.benefice_net >= 0 %}border-green-500{% else %}border-red-500{% endif %}">
             <p class="text-xs text-gray-500 uppercase font-semibold">Bénéfice Net</p>
-            <p class="text-lg font-bold {% if perf.benefice_net >= 0 %}text-green-600{% else %}text-red-600{% endif %} mt-1">{{ perf.benefice_net|intcomma }} <span class="text-xs font-normal">FCFA</span></p>
+            <p class="text-lg font-bold {% if perf.benefice_net >= 0 %}text-green-600{% else %}text-red-600{% endif %} mt-1">{{ perf.benefice_net|currency_no_symbol }} <span class="text-xs font-normal">FCFA</span></p>
         </div>
         <div class="bg-white rounded-lg shadow p-4 border-t-4 border-blue-500">
             <p class="text-xs text-gray-500 uppercase font-semibold">Taux Encaissement</p>
@@ -127,15 +128,15 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-gray-50 rounded-lg p-4">
                 <p class="text-sm text-gray-500">Dépenses</p>
-                <p class="text-xl font-bold text-gray-900">{{ perf.total_depenses|intcomma }} FCFA</p>
+                <p class="text-xl font-bold text-gray-900">{{ perf.total_depenses|fcfa }}</p>
             </div>
             <div class="bg-gray-50 rounded-lg p-4">
                 <p class="text-sm text-gray-500">RH (Salaires + Avances)</p>
-                <p class="text-xl font-bold text-gray-900">{{ perf.total_rh|intcomma }} FCFA</p>
+                <p class="text-xl font-bold text-gray-900">{{ perf.total_rh|fcfa }}</p>
             </div>
             <div class="bg-gray-50 rounded-lg p-4">
                 <p class="text-sm text-gray-500">Bénéfice Brut (avant charges)</p>
-                <p class="text-xl font-bold {% if perf.benefice_brut >= 0 %}text-green-600{% else %}text-red-600{% endif %}">{{ perf.benefice_brut|intcomma }} FCFA</p>
+                <p class="text-xl font-bold {% if perf.benefice_brut >= 0 %}text-green-600{% else %}text-red-600{% endif %}">{{ perf.benefice_brut|fcfa }}</p>
             </div>
         </div>
     </div>

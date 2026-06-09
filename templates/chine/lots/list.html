@@ -32,7 +32,7 @@
             Ouverts
         </a>
         <a href="?status=fermes{% if selected_country %}&country={{ selected_country }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-           class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {% if selected_status == 'fermes' %}bg-yellow-600 text-white{% else %}bg-yellow-50 text-yellow-700 hover:bg-yellow-100{% endif %} transition-colors">
+           class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {% if selected_status == 'fermes' %}bg-yellow-600 text-white{% else %}bg-yellow-100 text-yellow-800 hover:bg-yellow-200{% endif %} transition-colors">
             Fermés
         </a>
         <a href="?status=transit{% if selected_country %}&country={{ selected_country }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"

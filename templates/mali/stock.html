@@ -1,5 +1,6 @@
 {% extends "mali/base.html" %}
 {% load humanize %}
+{% load currency_tags %}
 
 {% block title %}Stock Mali - TS Air Cargo{% endblock %}
 {% block header %}📦 Stock Colis — Entrepôt Mali{% endblock %}
@@ -19,7 +20,7 @@
         </div>
         <div class="bg-white rounded-lg shadow p-4 border-t-4 border-indigo-500">
             <p class="text-xs text-gray-500 uppercase font-semibold">Valeur totale</p>
-            <p class="text-2xl font-bold text-gray-900 mt-1">{{ valeur_totale_stock|intcomma }} <span class="text-sm font-normal">FCFA</span></p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ valeur_totale_stock|currency_no_symbol }} <span class="text-sm font-normal">FCFA</span></p>
         </div>
         <div class="bg-white rounded-lg shadow p-4 border-t-4 border-yellow-500">
             <p class="text-xs text-gray-500 uppercase font-semibold">Ancienneté moy.</p>
@@ -90,7 +91,12 @@
                     {% for colis in colis_list %}
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 whitespace-nowrap">
-                            <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded uppercase">{{ colis.reference }}</span>
+                            <div class="flex items-center gap-2">
+                                {% if colis.photo %}
+                                <img src="{{ colis.photo.url }}" alt="" class="h-8 w-8 rounded object-cover border border-gray-200 cursor-zoom-in" onclick="openImgZoom('{{ colis.photo.url }}')">
+                                {% endif %}
+                                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded uppercase">{{ colis.reference }}</span>
+                            </div>
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ colis.client.nom }} {{ colis.client.prenom }}</div>
@@ -104,7 +110,7 @@
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold">{{ colis.poids|floatformat:1|default:"0" }} kg</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right">{{ colis.cbm|floatformat:2|default:"0" }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-gray-900">{{ colis.prix_final|intcomma }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-gray-900">{{ colis.prix_final|currency_no_symbol }}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 text-center">{{ colis.lot.date_arrivee|date:"d/m/Y"|default:"-" }}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-center">
                             {% if colis.lot.date_arrivee %}
