@@ -2186,7 +2186,7 @@ class MonthlyDetailedStatsView(LoginRequiredMixin, AdminChineRequiredMixin, Temp
             .select_related("destination")
             .prefetch_related("colis")
             .annotate(
-                nb_colis=Count("colis"),
+                colis_count=Count("colis"),
                 poids_total=Sum("colis__poids"),
                 cbm_total=Sum("colis__cbm"),
                 ca_brut=Sum("colis__prix_final"),
@@ -2203,7 +2203,7 @@ class MonthlyDetailedStatsView(LoginRequiredMixin, AdminChineRequiredMixin, Temp
             lots_list = list(qs)
             totals = {
                 "nb_lots": len(lots_list),
-                "nb_colis": sum(l.nb_colis or 0 for l in lots_list),
+                "nb_colis": sum(l.colis_count or 0 for l in lots_list),
                 "poids": sum(l.poids_total or D(0) for l in lots_list),
                 "cbm": sum(l.cbm_total or D(0) for l in lots_list),
                 "ca_brut": sum(l.ca_brut or D(0) for l in lots_list),

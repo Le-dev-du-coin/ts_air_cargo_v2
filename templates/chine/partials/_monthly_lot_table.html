@@ -30,7 +30,7 @@
                 <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 text-center">{{ lot.created_at|date:"d/m/Y" }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 text-center">{{ lot.date_expedition|date:"d/m/Y"|default:"-" }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 text-center">{{ lot.date_arrivee|date:"d/m/Y"|default:"-" }}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold">{{ lot.nb_colis|default:0 }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold">{{ lot.colis_count|default:0 }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-right">{{ lot.poids_total|floatformat:1|default:"0" }} kg</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-right">{{ lot.cbm_total|floatformat:2|default:"0" }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{{ lot.ca_brut|default:0|intcomma }}</td>
