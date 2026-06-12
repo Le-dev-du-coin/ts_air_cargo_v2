@@ -310,7 +310,8 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             .filter(
                 Q(encaissements__date=today) | 
                 Q(date_encaissement=today) |
-                Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True)
+                Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True) |
+                Q(updated_at__date=today, montant_jc__gt=0)
             )
             .distinct()
             .select_related("client", "lot")
@@ -1435,13 +1436,6 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
             request.POST.get("date_livraison") or timezone.now().date()
         )
 
-        # Calcul du montant payé aujourd'hui
-        old_paid = (
-            (old_colis.prix_final or 0)
-            - (old_colis.montant_jc or 0)
-            - (old_colis.reste_a_payer or 0)
-        )
-
         if colis.est_paye or status_paiement == "PARTIEL":
             colis.date_encaissement = (
                 request.POST.get("date_encaissement") or timezone.now().date()
@@ -1937,11 +1931,11 @@ class ColisSolderJCView(LoginRequiredMixin, DestinationAgentRequiredMixin, View)
             colis.montant_jc = (colis.montant_jc or 0) + reste
             colis.reste_a_payer = 0
             colis.est_paye = True
-            
-            # On fixe la date d'encaissement à aujourd'hui pour le rapport
-            colis.date_encaissement = timezone.now().date()
-            colis.save()
 
+            # Note: On ne touche pas à date_encaissement ici pour ne pas 
+            # faire apparaître d'encaissement fictif dans le rapport journalier 
+            # (particulièrement pour les colis legacy).
+            colis.save()
             messages.success(
                 request, 
                 f"Le colis {colis.reference} a été totalement soldé par Jeton Cédé ({reste:,.0f} FCFA)."
@@ -3403,12 +3397,11 @@ class PaiementsHistoriqueView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         q = self.request.GET.get("q")
         if q:
             qs = qs.filter(
-                Q(colis__reference__icontains=q) | 
+                Q(colis__reference__icontains=q) |
                 Q(colis__client__nom__icontains=q) |
                 Q(colis__client__prenom__icontains=q) |
-                Q(colis__client__phone__icontains=q)
+                Q(colis__client__telephone__icontains=q)
             )
-            
         # Filtre par date
         date_start = self.request.GET.get("date_start")
         if date_start:

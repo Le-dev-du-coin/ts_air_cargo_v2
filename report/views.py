@@ -495,7 +495,7 @@ class RapportExportView(LoginRequiredMixin, View):
             writer.writerow(["Généré par", request.user.get_full_name()])
             writer.writerow([])
             writer.writerow(["Total Recettes", total_recettes])
-            writer.writerow(["Total Dépenses", total_depenses])
+            writer.writerow(["Total Dépenses", total_depenses_reelles])
             writer.writerow(["Total Transferts", total_transferts])
             writer.writerow(["Solde Période", solde])
             writer.writerow([])
