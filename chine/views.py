@@ -288,11 +288,28 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
             context["active_period"] = period
 
             if period == "quarter":
-                current_quarter = (now.month - 1) // 3 + 1
-                quarter_start_month = (current_quarter - 1) * 3 + 1
+                month = now.month
+                if 3 <= month <= 5:
+                    current_quarter = 1
+                elif 6 <= month <= 8:
+                    current_quarter = 2
+                elif 9 <= month <= 11:
+                    current_quarter = 3
+                else:
+                    current_quarter = 4
+
+                if current_quarter == 1:
+                    months_data = [(now.year, 3), (now.year, 4), (now.year, 5)]
+                elif current_quarter == 2:
+                    months_data = [(now.year, 6), (now.year, 7), (now.year, 8)]
+                elif current_quarter == 3:
+                    months_data = [(now.year, 9), (now.year, 10), (now.year, 11)]
+                else:
+                    months_data = [(now.year, 12), (now.year + 1, 1), (now.year + 1, 2)]
+
                 from decimal import Decimal
-                stats_ml_months = [get_country_stats("ML", now.year, m) for m in range(quarter_start_month, quarter_start_month + 3)]
-                stats_ci_months = [get_country_stats("CI", now.year, m) for m in range(quarter_start_month, quarter_start_month + 3)]
+                stats_ml_months = [get_country_stats("ML", y, m) for y, m in months_data]
+                stats_ci_months = [get_country_stats("CI", y, m) for y, m in months_data]
 
                 def merge_stats(stats_list):
                     merged = {}

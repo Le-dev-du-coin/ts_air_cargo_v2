@@ -124,7 +124,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-400">Aucun colis en stock.</td>
+                        <td colspan="10" class="px-4 py-8 text-center text-sm text-gray-400">Aucun colis en stock.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -142,6 +142,19 @@
             <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                 {% if page_obj.has_previous %}
                 <a href="?page={{ page_obj.previous_page_number }}{% if active_transport %}&transport={{ active_transport }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Précédent</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if active_transport %}&transport={{ active_transport }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Suivant</a>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+%}{% if q %}&q={{ q }}{% endif %}"
                    class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Précédent</a>
                 {% endif %}
                 {% if page_obj.has_next %}

@@ -536,16 +536,47 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
         from decimal import Decimal
         import calendar
 
+        MONTH_NAMES_FR = {
+            1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril",
+            5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août",
+            9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre"
+        }
+
         today = timezone.now()
         try:
             year = int(self.request.GET.get("year", today.year))
-            quarter = int(self.request.GET.get("quarter", (today.month - 1) // 3 + 1))
+            # Nouvelle logique chinoise: T1 commence en Mars
+            # Mars(3), Avril(4), Mai(5) -> T1
+            # Juin(6), Juil(7), Aout(8) -> T2
+            # Sept(9), Oct(10), Nov(11) -> T3
+            # Dec(12), Jan(1), Fev(2)   -> T4
+            
+            month = today.month
+            if 3 <= month <= 5:
+                default_quarter = 1
+            elif 6 <= month <= 8:
+                default_quarter = 2
+            elif 9 <= month <= 11:
+                default_quarter = 3
+            else: # 12, 1, 2
+                default_quarter = 4
+                
+            quarter = int(self.request.GET.get("quarter", default_quarter))
         except ValueError:
             year = today.year
-            quarter = (today.month - 1) // 3 + 1
+            quarter = 1
 
         quarter = max(1, min(4, quarter))
-        months = list(range((quarter - 1) * 3 + 1, quarter * 3 + 1))
+        
+        # Définition des mois selon le trimestre décalé
+        if quarter == 1:
+            months_data = [(year, 3), (year, 4), (year, 5)]
+        elif quarter == 2:
+            months_data = [(year, 6), (year, 7), (year, 8)]
+        elif quarter == 3:
+            months_data = [(year, 9), (year, 10), (year, 11)]
+        else: # T4: Décembre N, Janvier N+1, Février N+1
+            months_data = [(year, 12), (year + 1, 1), (year + 1, 2)]
 
         # Exclure la Chine — elle n'a pas de calculs propres
         countries = Country.objects.exclude(code="CN")
@@ -562,10 +593,11 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
 
         for country in countries:
             monthly_perfs = []
-            for m in months:
-                perf = FinanceEngine.get_monthly_performance(year, m, country.code)
+            for y, m in months_data:
+                perf = FinanceEngine.get_monthly_performance(y, m, country.code)
                 perf["month"] = m
-                perf["month_name"] = calendar.month_name[m]
+                perf["year"] = y
+                perf["month_name"] = MONTH_NAMES_FR[m]
 
                 # Transferts du mois depuis ce pays
                 transfers_month = TransfertArgent.objects.filter(
@@ -609,8 +641,10 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
         context["year"] = year
         context["quarter"] = quarter
         context["quarter_label"] = f"T{quarter} {year}"
-        context["months"] = months
+        context["months_data"] = months_data
+        context["months"] = [m for y, m in months_data]
         context["quarterly_data"] = quarterly_data
+
         context["years"] = list(range(2024, today.year + 1))
         context["quarters"] = [1, 2, 3, 4]
 
