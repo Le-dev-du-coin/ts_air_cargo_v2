@@ -338,8 +338,12 @@
 
         // Auto-update on input change
         [clientSelect, typeColisSelect, poidsInput, cbmInput, piecesInput].forEach(el => {
-            if (el) el.addEventListener('change', updatePrice);
-            if (el && el.tagName === 'INPUT') el.addEventListener('input', updatePrice);
+            if (el) {
+                el.addEventListener('change', updatePrice);
+                if (el.tagName === 'INPUT') {
+                    el.addEventListener('input', updatePrice);
+                }
+            }
         });
 
         // Also update when prix_final is manually changed (show formatted preview)
