@@ -297,13 +297,15 @@
                 client_id: clientId,
                 lot_id: "{{ lot.pk }}",
                 type_colis: typeColisSelect ? typeColisSelect.value : 'STANDARD',
-                poids: poidsInput ? poidsInput.value : 0,
-                cbm: cbmInput ? cbmInput.value : 0,
-                nombre_pieces: piecesInput ? piecesInput.value : 1
+                poids: (poidsInput && poidsInput.value) ? poidsInput.value : 0,
+                cbm: (cbmInput && cbmInput.value) ? cbmInput.value : 0,
+                nombre_pieces: (piecesInput && piecesInput.value) ? piecesInput.value : 1
             });
 
             priceStatus.textContent = "⏳ Calcul en cours...";
             priceStatus.className = "text-xs font-bold text-indigo-400 animate-pulse";
+            
+            console.log("Calcul prix avec params:", Object.fromEntries(params));
 
             fetch("{% url 'mali:admin_calculate_price' %}?" + params)
                 .then(response => response.json())

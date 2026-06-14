@@ -3072,7 +3072,7 @@ class MaliColisAddToArrivalView(DestinationAgentRequiredMixin, View):
 from django.http import JsonResponse
 
 
-class MaliCalculatePriceView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
+class MaliCalculatePriceView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
     """
     API pour calculer le prix d'un colis en temps réel via AJAX.
     """
