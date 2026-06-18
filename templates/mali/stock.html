@@ -154,16 +154,4 @@
     {% endif %}
 </div>
 {% endblock %}
-%}{% if q %}&q={{ q }}{% endif %}"
-                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Précédent</a>
-                {% endif %}
-                {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}{% if active_transport %}&transport={{ active_transport }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
-                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Suivant</a>
-                {% endif %}
-            </nav>
-        </div>
-    </div>
-    {% endif %}
-</div>
-{% endblock %}
+
