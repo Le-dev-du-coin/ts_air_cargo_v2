@@ -200,25 +200,43 @@ class FinanceEngine:
         total_charges = Decimal(depenses_exploit) + Decimal(avances_rh) + Decimal(salaires_rh)
         benefice_net = benefice_brut - total_charges
 
-        # 4. DÉTAILS AVION / BATEAU
+        # 4. DÉTAILS AVION / BATEAU (Segmentation Complète)
         colis_avion = colis_periode.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
         colis_bateau = colis_periode.filter(lot__type_transport="BATEAU")
         
-        # Pour le détail Avion/Bateau, on applique la même logique en base engagement
         lots_avion = lots_periode.filter(type_transport__in=["CARGO", "EXPRESS"])
         lots_bateau = lots_periode.filter(type_transport="BATEAU")
         
-        ca_avion = (
-            (colis_avion.aggregate(total=Sum("prix_final"))["total"] or 0) - 
-            (colis_avion.aggregate(total=Sum("montant_jc"))["total"] or 0)
-        )
-        ca_bateau = (
-            (colis_bateau.aggregate(total=Sum("prix_final"))["total"] or 0) - 
-            (colis_bateau.aggregate(total=Sum("montant_jc"))["total"] or 0)
-        )
+        # CA et Marges Brutes
+        ca_avion = (colis_avion.aggregate(t=Sum("prix_final"))["t"] or 0) - (colis_avion.aggregate(t=Sum("montant_jc"))["t"] or 0)
+        ca_bateau = (colis_bateau.aggregate(t=Sum("prix_final"))["t"] or 0) - (colis_bateau.aggregate(t=Sum("montant_jc"))["t"] or 0)
         
-        brut_avion = Decimal(ca_avion) - (lots_avion.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_avion.aggregate(total=Sum("frais_douane"))["total"] or 0)
-        brut_bateau = Decimal(ca_bateau) - (lots_bateau.aggregate(total=Sum("frais_transport"))["total"] or 0) - (lots_bateau.aggregate(total=Sum("frais_douane"))["total"] or 0)
+        fret_avion = lots_avion.aggregate(t=Sum("frais_transport"))["t"] or 0
+        fret_bateau = lots_bateau.aggregate(t=Sum("frais_transport"))["t"] or 0
+        
+        douane_avion = lots_avion.aggregate(t=Sum("frais_douane"))["t"] or 0
+        douane_bateau = lots_bateau.aggregate(t=Sum("frais_douane"))["t"] or 0
+        
+        brut_avion = Decimal(ca_avion) - Decimal(fret_avion) - Decimal(douane_avion)
+        brut_bateau = Decimal(ca_bateau) - Decimal(fret_bateau) - Decimal(douane_bateau)
+
+        # Attribution des Dépenses
+        # Dépenses spécifiques
+        dep_spec_avion = depenses_exploit_qs.filter(type_transport="AVION").aggregate(t=Sum("montant"))["t"] or 0
+        dep_spec_bateau = depenses_exploit_qs.filter(type_transport="BATEAU").aggregate(t=Sum("montant"))["t"] or 0
+        
+        # Dépenses communes (Transport non spécifié) et RH (toujours commun pour l'instant)
+        charges_communes = total_charges - Decimal(dep_spec_avion) - Decimal(dep_spec_bateau)
+        
+        # Ratio basé sur le CA pour ventiler les charges communes
+        ratio_avion = Decimal(ca_avion) / Decimal(ca_net) if ca_net > 0 else Decimal(0.5)
+        ratio_bateau = Decimal(1) - ratio_avion
+        
+        charges_communes_avion = charges_communes * ratio_avion
+        charges_communes_bateau = charges_communes * ratio_bateau
+        
+        net_avion = brut_avion - Decimal(dep_spec_avion) - charges_communes_avion
+        net_bateau = brut_bateau - Decimal(dep_spec_bateau) - charges_communes_bateau
 
         return {
             "chiffre_affaires": ca_net,
@@ -230,14 +248,27 @@ class FinanceEngine:
             "benefice_net": benefice_net,
             "nb_colis": colis_periode.count(),
             "nb_lots": lots_periode.count(),
+            # Avion
             "ca_avion": ca_avion,
-            "ca_bateau": ca_bateau,
+            "fret_avion": fret_avion,
+            "douane_avion": douane_avion,
             "benefice_brut_avion": brut_avion,
-            "benefice_brut_bateau": brut_bateau,
+            "charges_avion": Decimal(dep_spec_avion) + charges_communes_avion,
+            "benefice_net_avion": net_avion,
             "nb_colis_avion": colis_avion.count(),
-            "nb_colis_bateau": colis_bateau.count(),
             "nb_colis_livres_avion": colis_avion.filter(status="LIVRE").count(),
+            "poids_avion": colis_avion.aggregate(t=Sum("poids"))["t"] or 0,
+            # Bateau
+            "ca_bateau": ca_bateau,
+            "fret_bateau": fret_bateau,
+            "douane_bateau": douane_bateau,
+            "benefice_brut_bateau": brut_bateau,
+            "charges_bateau": Decimal(dep_spec_bateau) + charges_communes_bateau,
+            "benefice_net_bateau": net_bateau,
+            "nb_colis_bateau": colis_bateau.count(),
             "nb_colis_livres_bateau": colis_bateau.filter(status="LIVRE").count(),
+            "cbm_bateau": colis_bateau.aggregate(t=Sum("cbm"))["t"] or 0,
+            
             "poids_total": colis_periode.aggregate(total=Sum("poids"))["total"] or 0,
             "total_reste_a_payer": total_reste,
             "total_encaisse": ca_net - Decimal(total_reste),

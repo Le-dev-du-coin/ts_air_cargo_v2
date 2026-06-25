@@ -123,7 +123,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <input type="checkbox" name="colis_ids" value="{{ colis.pk }}" 
-                                   data-poids="{{ colis.poids|default:0|unlocalize }}"
+                                   data-poids="{{ colis.quantite_logistique|stringformat:".3f" }}"
                                    data-montant="{{ colis.montant_du|default:0|unlocalize }}"
                                    data-paye-chine="{% if colis.paye_en_chine %}true{% else %}false{% endif %}"
                                    @change="updateSelection"
@@ -153,7 +153,7 @@
                             <div class="text-xs text-gray-500">{{ colis.client.telephone }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-bold">
-                            {% if colis.type_colis == 'TELEPHONE' %}{{ colis.nombre_pieces }} unités{% else %}{{ colis.poids|floatformat:1 }} {% if colis.lot.type_transport == 'BATEAU' %}CBM{% else %}kg{% endif %}{% endif %}
+                            {{ colis.quantite_logistique }} {{ colis.unite_logistique }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {{ colis.date_livraison|default:colis.updated_at|date:"d/m/Y" }}

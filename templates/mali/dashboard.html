@@ -8,7 +8,64 @@
 
 {% block mali_content %}
 <div class="space-y-8">
-    <!-- Statistiques - 9 cartes réorganisées -->
+    <!-- Statistiques Segmentées Avion / Bateau -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- BLOC AVION -->
+        <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 opacity-10">
+                <svg class="h-32 w-32" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.97 4.44c-.32.18-.71.18-1.03 0l-7.97-4.44c-.31-.17-.52-.5-.52-.88v-9c0-.38.21-.71.53-.88l7.97-4.44c.32-.18.71-.18 1.03 0l7.97 4.44c.31.17.52.5.52.88v9z"/></svg>
+            </div>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold flex items-center">
+                    <span class="bg-white/20 p-2 rounded-lg mr-3">✈️</span> FRET AÉRIEN
+                </h3>
+                <span class="text-xs bg-white/20 px-2 py-1 rounded-full font-semibold uppercase tracking-wider">Ce mois-ci</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Colis Livrés</p>
+                    <p class="text-2xl font-black mt-1">{{ colis_livres_avion|intcomma }}</p>
+                </div>
+                <div>
+                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Poids Total</p>
+                    <p class="text-2xl font-black mt-1">{{ total_poids_mois|floatformat:1 }} <span class="text-xs font-normal">kg</span></p>
+                </div>
+                <div class="col-span-2 mt-2 pt-4 border-t border-white/10">
+                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Recettes</p>
+                    <p class="text-3xl font-black mt-1">{{ recettes_avion|fcfa }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOC BATEAU -->
+        <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 opacity-10">
+                <svg class="h-32 w-32" fill="currentColor" viewBox="0 0 24 24"><path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.65 2.62.99 4 .99h2v-2h-2zM3.95 19H4c1.6 0 3.11-.55 4.35-1.56.64-.52 1.35-.52 1.99 0 1.24 1.01 2.75 1.56 4.35 1.56 1.6 0 3.11-.55 4.35-1.56.64-.52 1.35-.52 1.99 0 1.24 1.01 2.75 1.56 4.35 1.56h.05l1.09-6.31-1.04-.19H2.9l-1.04.19L2.95 19h1z"/></svg>
+            </div>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold flex items-center">
+                    <span class="bg-white/20 p-2 rounded-lg mr-3">🚢</span> FRET MARITIME
+                </h3>
+                <span class="text-xs bg-white/20 px-2 py-1 rounded-full font-semibold uppercase tracking-wider">Ce mois-ci</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Colis Livrés</p>
+                    <p class="text-2xl font-black mt-1">{{ colis_livres_bateau|intcomma }}</p>
+                </div>
+                <div>
+                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Volume Total</p>
+                    <p class="text-2xl font-black mt-1">{{ total_cbm_mois|floatformat:3 }} <span class="text-xs font-normal">m³</span></p>
+                </div>
+                <div class="col-span-2 mt-2 pt-4 border-t border-white/10">
+                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Recettes</p>
+                    <p class="text-3xl font-black mt-1">{{ recettes_bateau|fcfa }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anciennes cartes pour les indicateurs restants -->
     <div class="mt-4">
         <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <!-- LIGNE 1: LOTS -->
@@ -23,8 +80,12 @@
                     </div>
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots en Transit</p>
                 </dt>
-                <dd class="ml-16 flex items-baseline">
+                <dd class="ml-16 flex items-baseline justify-between">
                     <p class="text-2xl font-semibold text-orange-600">{{ lots_en_transit|intcomma }}</p>
+                    <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
+                        <span class="text-blue-500">✈️ {{ lots_en_transit_avion }}</span>
+                        <span class="text-teal-600">🚢 {{ lots_en_transit_bateau }}</span>
+                    </div>
                 </dd>
             </a>
 
@@ -39,8 +100,12 @@
                     </div>
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots Arrivés (Incomplets)</p>
                 </dt>
-                <dd class="ml-16 flex items-baseline">
+                <dd class="ml-16 flex items-baseline justify-between">
                     <p class="text-2xl font-semibold text-teal-600">{{ lots_arrives_incomplets|intcomma }}</p>
+                    <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
+                        <span class="text-blue-500">✈️ {{ lots_arrives_incomplets_avion }}</span>
+                        <span class="text-teal-600">🚢 {{ lots_arrives_incomplets_bateau }}</span>
+                    </div>
                 </dd>
             </a>
 
@@ -60,29 +125,6 @@
                 </dd>
             </a>
 
-            <!-- Poids Total (Mois) - Maintenant visible sur mobile -->
-            <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="bg-indigo-100 rounded-md p-3">
-                                <svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Poids Total (Mois)</dt>
-                                <dd>
-                                    <div class="text-base sm:text-lg font-bold text-indigo-700">{{ total_poids_mois|default:"0"|floatformat:1 }} kg</div>
-                                </dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- LIGNE 2: COLIS -->
             <!-- 3. Colis à Traiter -->
             <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
@@ -95,8 +137,12 @@
                     </div>
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis à Traiter</p>
                 </dt>
-                <dd class="ml-16 flex items-baseline">
+                <dd class="ml-16 flex items-baseline justify-between">
                     <p class="text-2xl font-semibold text-yellow-600">{{ colis_a_traiter|intcomma }}</p>
+                    <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
+                        <span class="text-blue-500">✈️ {{ colis_a_traiter_avion }}</span>
+                        <span class="text-teal-600">🚢 {{ colis_a_traiter_bateau }}</span>
+                    </div>
                 </dd>
             </div>
 
@@ -111,26 +157,14 @@
                     </div>
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Attente Paiement</p>
                 </dt>
-                <dd class="ml-16 flex items-baseline">
+                <dd class="ml-16 flex items-baseline justify-between">
                     <p class="text-2xl font-semibold text-amber-600">{{ colis_attente_paiement|intcomma }}</p>
+                    <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
+                        <span class="text-blue-500">✈️ {{ colis_attente_paiement_avion }}</span>
+                        <span class="text-teal-600">🚢 {{ colis_attente_paiement_bateau }}</span>
+                    </div>
                 </dd>
             </a>
-
-            <!-- 5. Colis Livrés (Mois) -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
-                <dt>
-                    <div class="absolute bg-indigo-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Livrés (Mois)</p>
-                </dt>
-                <dd class="ml-16 flex items-baseline">
-                    <p class="text-2xl font-semibold text-indigo-600">{{ colis_livres_mois|intcomma }}</p>
-                </dd>
-            </div>
 
             <!-- 6. Colis Perdus (Mois) -->
             <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
@@ -143,28 +177,16 @@
                     </div>
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Perdus (Mois)</p>
                 </dt>
-                <dd class="ml-16 flex items-baseline">
+                <dd class="ml-16 flex items-baseline justify-between">
                     <p class="text-2xl font-semibold text-gray-600">{{ colis_perdus_mois|intcomma }}</p>
+                    <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
+                        <span class="text-blue-500">✈️ {{ colis_perdus_avion }}</span>
+                        <span class="text-teal-600">🚢 {{ colis_perdus_bateau }}</span>
+                    </div>
                 </dd>
             </div>
 
             <!-- LIGNE 3: FINANCES + CLIENTS -->
-            <!-- 7. Recettes (Mois) -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
-                <dt>
-                    <div class="absolute bg-emerald-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Recettes (Mois)</p>
-                </dt>
-                <dd class="ml-16 flex items-baseline">
-                    <p class="text-xl font-semibold text-emerald-600">{{ recettes_mois|fcfa }}</p>
-                </dd>
-            </div>
-
             <!-- 8. Dépenses (Mois) -->
             <a href="{% url 'mali:depenses_list' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-red-300 transition-colors">
                 <dt>

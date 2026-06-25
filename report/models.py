@@ -35,6 +35,13 @@ class Depense(models.Model):
         verbose_name=_("Dépense Chine (Indicatif)"),
         help_text=_("Si coché, ne sera pas pris en compte dans le solde de caisse Mali")
     )
+    type_transport = models.CharField(
+        max_length=20,
+        choices=[("AVION", "Avion (Cargo/Express)"), ("BATEAU", "Bateau")],
+        null=True,
+        blank=True,
+        help_text=_("Lier cette dépense à un flux spécifique (laisser vide si global)")
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

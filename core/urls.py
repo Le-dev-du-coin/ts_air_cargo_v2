@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CustomLoginView, logout_view, flower_redirect
+from .views import CustomLoginView, logout_view, flower_redirect, CalculatePriceAPIView
 
 app_name = "core"
 
@@ -11,6 +11,11 @@ urlpatterns = [
             extra_context={"title": "Espace Client", "user_type": "client"}
         ),
         name="login",
+    ),
+    path(
+        "api/calculate-price/",
+        CalculatePriceAPIView.as_view(),
+        name="calculate_price",
     ),
     # Routes spécifiques
     # Routes spécifiques par Pays (Branding)

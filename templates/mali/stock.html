@@ -80,8 +80,7 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Poids</th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CBM</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Quantité</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Prix Final</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Arrivée</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Jours Stock</th>
@@ -104,12 +103,11 @@
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{{ colis.lot.numero }}</td>
                         <td class="px-4 py-3 whitespace-nowrap">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {% if colis.lot.type_transport == 'CARGO' %}bg-blue-100 text-blue-800{% elif colis.lot.type_transport == 'EXPRESS' %}bg-purple-100 text-purple-800{% else %}bg-cyan-100 text-cyan-800{% endif %}">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {% if colis.lot.type_transport == 'CARGO' %}bg-orange-100 text-orange-800{% elif colis.lot.type_transport == 'EXPRESS' %}bg-blue-100 text-blue-800{% else %}bg-teal-100 text-teal-800{% endif %}">
                                 {{ colis.lot.get_type_transport_display }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold">{{ colis.poids|floatformat:1|default:"0" }} kg</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right">{{ colis.cbm|floatformat:2|default:"0" }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-indigo-600">{{ colis.quantite_logistique_display }}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-gray-900">{{ colis.prix_final|currency_no_symbol }}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 text-center">{{ colis.lot.date_arrivee|date:"d/m/Y"|default:"-" }}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-center">

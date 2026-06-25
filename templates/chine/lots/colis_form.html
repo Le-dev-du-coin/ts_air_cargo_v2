@@ -64,21 +64,35 @@
                     </div>
 
                     <!-- Prix Final & Paiement -->
-                    <div class="pt-4 border-t border-gray-100 bg-gray-50 p-4 rounded-md">
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <!-- Prix Final -->
-                <div class="space-y-1">
-                    <label class="block text-sm font-bold text-gray-700 mb-1">
-                        {{ form.prix_final.label }} <span class="text-red-500">*</span>
-                    </label>
-                    {{ form.prix_final }}
-                    <p id="price-error" class="hidden text-[10px] text-red-600 font-bold animate-pulse"></p>
-                    <p class="text-[10px] text-gray-500">Auto-rempli selon les tarifs.</p>
-                    {% if form.prix_final.errors %}<p class="mt-1 text-xs text-red-600">{{ form.prix_final.errors.0 }}</p>{% endif %}
-                </div>
-                            <div class="flex items-center pt-6">
-                                {{ form.est_paye }}
-                                <label class="ml-2 block text-sm text-gray-900 font-medium">Déjà Payé en Chine ?</label>
+                    <div class="rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 p-4 mt-4 mb-4">
+                        <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6 items-start">
+                            <div class="sm:col-span-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-sm font-bold text-indigo-800">
+                                        💰 Prix Final (FCFA) <span class="text-red-500">*</span>
+                                    </label>
+                                    <span id="price-status" class="text-[10px] font-bold text-indigo-500">En attente</span>
+                                </div>
+                                <div class="relative">
+                                    {{ form.prix_final }}
+                                    <div id="price-badge" class="hidden absolute right-3 top-1/2 -translate-y-1/2 bg-green-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                                        ✓ Calculé
+                                    </div>
+                                </div>
+                                <p class="mt-1 text-xs text-indigo-500">Auto-calculé, modifiable.</p>
+                                
+                                <!-- Aperçu du montant formaté -->
+                                <div id="price-preview" class="hidden mt-3 text-center">
+                                    <p class="text-2xl font-black text-indigo-700" id="price-formatted">—</p>
+                                </div>
+                                <p id="price-error" class="hidden text-[10px] text-red-600 font-bold animate-pulse mt-1"></p>
+                                {% if form.prix_final.errors %}<p class="mt-1 text-xs text-red-600">{{ form.prix_final.errors.0 }}</p>{% endif %}
+                            </div>
+                            <div class="sm:col-span-3 sm:pt-7">
+                                <div class="flex items-center bg-white p-3 rounded-xl border border-indigo-100 shadow-sm">
+                                    {{ form.est_paye }}
+                                    <label for="{{ form.est_paye.id_for_label }}" class="ml-2 block text-sm font-bold text-gray-700">Déjà Payé en Chine ?</label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -185,51 +199,58 @@
             },
 
             calculate() {
-                const parseNum = (val) => {
-                    if (val === undefined || val === null || val === '') return 0;
-                    const cleanVal = String(val).replace(',', '.').replace(/\s/g, '');
-                    return parseFloat(cleanVal) || 0;
-                };
+                const clientId = this.clientId;
+                if (!clientId) return;
 
-                const cbmVal = parseNum(this.cbm);
-                const p = parseNum(this.poids);
-                const pieces = parseInt(this.nombre_pieces) || 0;
-                const prixManuel = parseNum(this.prix_kilo_manuel);
+                const params = new URLSearchParams({
+                    client_id: clientId,
+                    lot_id: "{{ object.lot.pk|escapejs }}",
+                    type_colis: this.type_colis,
+                    poids: this.poids || 0,
+                    cbm: this.cbm || 0,
+                    nombre_pieces: this.nombre_pieces || 1,
+                    prix_kilo_manuel: this.prix_kilo_manuel || ''
+                });
 
-                if (this.type_colis === 'ELECTRONIQUE') return;
-                if (!this.tarifs) return; 
-
-                let prix = 0;
-                const typeT = String(this.transportType).trim().toUpperCase();
-                const currentTarif = this.tarifs[typeT] || {};
+                const priceStatus = document.getElementById("price-status");
+                const priceBadge = document.getElementById("price-badge");
+                const pricePreview = document.getElementById("price-preview");
+                const priceFormatted = document.getElementById("price-formatted");
                 
-                if (typeT === 'BATEAU') {
-                    // Bateau : CBM * (Prix Manuel CBM || Tarif Standard CBM)
-                    const unitPrice = prixManuel > 0 ? prixManuel : (currentTarif.prix_cbm || 0);
-                    prix = cbmVal * unitPrice;
-                } else if (this.type_colis === 'MANUEL') {
-                    // Manuel (Poids) : Poids * Prix Manuel
-                    prix = p * prixManuel;
-                } else if (this.type_colis === 'TELEPHONE') {
-                    // Téléphone : Pièces * (Prix Manuel Pièce || Tarif Standard Pièce du transport actuel)
-                    const unitPrice = prixManuel > 0 ? prixManuel : (currentTarif.prix_piece || 0);
-                    prix = pieces * unitPrice;
-                } else {
-                    // Standard (Cargo/Express) : Poids * (Tarif Spécial || Tarif Standard Kilo)
-                    let prixKilo = 0;
-                    if (this.hasSpecialTarif()) {
-                        prixKilo = this.getSpecialTarif();
-                    } else {
-                        prixKilo = currentTarif.prix_kilo || 0;
-                    }
-                    prix = p * prixKilo;
+                if (priceStatus) {
+                    priceStatus.textContent = "⏳ Calcul en cours...";
+                    priceStatus.className = "text-[10px] font-bold text-indigo-400 animate-pulse";
                 }
-                
-                const prixFinalInput = document.getElementById('id_prix_final');
-                if (prixFinalInput) {
-                    prixFinalInput.value = Math.ceil(prix);
-                    prixFinalInput.dispatchEvent(new Event('input', { bubbles: true }));
-                }
+
+                fetch("{% url 'core:calculate_price' %}?" + params)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.prix_final !== undefined) {
+                            const prixFinalInput = document.getElementById('id_prix_final');
+                            if (prixFinalInput) {
+                                prixFinalInput.value = Math.ceil(data.prix_final);
+                                prixFinalInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                            
+                            if (priceStatus) {
+                                priceStatus.textContent = "✓ Auto-calculé";
+                                priceStatus.className = "text-[10px] font-bold text-green-600";
+                            }
+                            if (priceBadge) priceBadge.classList.remove('hidden');
+                            if (pricePreview) {
+                                pricePreview.classList.remove('hidden');
+                                const formatted = new Intl.NumberFormat('fr-FR').format(Math.ceil(data.prix_final));
+                                if (priceFormatted) priceFormatted.textContent = formatted + " FCFA";
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Erreur calcul prix:", err);
+                        if (priceStatus) {
+                            priceStatus.textContent = "Erreur de calcul";
+                            priceStatus.className = "text-[10px] font-bold text-red-500";
+                        }
+                    });
             }
         }));
 

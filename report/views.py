@@ -624,6 +624,14 @@ class QuarterlyReportView(LoginRequiredMixin, TemplateView):
                 "benefice_net": sum(p["benefice_net"] for p in monthly_perfs),
                 "nb_colis": sum(p["nb_colis"] for p in monthly_perfs),
                 "nb_lots": sum(p["nb_lots"] for p in monthly_perfs),
+                # Séparation Totaux
+                "ca_avion": sum(p["ca_avion"] for p in monthly_perfs),
+                "ca_bateau": sum(p["ca_bateau"] for p in monthly_perfs),
+                "benefice_net_avion": sum(p["benefice_net_avion"] for p in monthly_perfs),
+                "benefice_net_bateau": sum(p["benefice_net_bateau"] for p in monthly_perfs),
+                "poids_avion": sum(p["poids_avion"] for p in monthly_perfs),
+                "cbm_bateau": sum(p["cbm_bateau"] for p in monthly_perfs),
+
                 "transferts_chine": sum(Decimal(str(p["transferts_chine"])) for p in monthly_perfs),
                 "transferts_gaoussou": sum(Decimal(str(p["transferts_gaoussou"])) for p in monthly_perfs),
                 "transferts_guisse": sum(Decimal(str(p["transferts_guisse"])) for p in monthly_perfs),

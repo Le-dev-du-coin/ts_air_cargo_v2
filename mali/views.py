@@ -91,26 +91,26 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         # Note: Le modèle Colis utilise les status: RECU, EXPEDIE, ARRIVE, LIVRE
         # Pas TRANSIT ou STOCK. Nous devons ajuster selon les vrais statuts.
 
-        # 1. Colis Livrés (mois en cours) et Recettes
+        # 1. Colis Livrés (mois en cours) et Recettes (SEGMENTÉ)
         from django.db.models import Q as Q_filter
 
-        colis_livres_mois_qs = Colis.objects.filter(
-            lot__destination=mali, status="LIVRE"
-        ).filter(
-            Q_filter(
-                date_encaissement__year=today.year, date_encaissement__month=today.month
-            )
-            | Q_filter(
-                date_encaissement__isnull=True,
-                date_livraison__year=today.year,
-                date_livraison__month=today.month,
-            )
+        base_qs = Colis.objects.filter(lot__destination=mali, status="LIVRE").filter(
+            Q_filter(date_encaissement__year=today.year, date_encaissement__month=today.month)
+            | Q_filter(date_encaissement__isnull=True, date_livraison__year=today.year, date_livraison__month=today.month)
         )
-        context["colis_livres_mois"] = colis_livres_mois_qs.count()
 
-        # Recettes nettes du mois complètes avec la formule de caisse standard
-        recettes_mois = (
-            colis_livres_mois_qs.aggregate(
+        # Totaux Globaux
+        context["colis_livres_mois"] = base_qs.count()
+        
+        # Segmentation utilisant les nouveaux Managers
+        colis_avion = base_qs.avion()
+        colis_bateau = base_qs.bateau()
+        
+        context["colis_livres_avion"] = colis_avion.count()
+        context["colis_livres_bateau"] = colis_bateau.count()
+
+        def calculate_recettes(qs):
+            return qs.aggregate(
                 total=Sum(
                     Case(
                         When(paye_en_chine=True, then=Value(0)),
@@ -119,9 +119,11 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
                         output_field=DecimalField(),
                     )
                 )
-            )["total"]
-            or 0
-        )
+            )["total"] or 0
+
+        recettes_avion = calculate_recettes(colis_avion)
+        recettes_bateau = calculate_recettes(colis_bateau)
+        recettes_mois = recettes_avion + recettes_bateau
 
         from core.models import AvoirMouvement
 
@@ -136,12 +138,12 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         )
 
         context["recettes_mois"] = recettes_mois + rechargements_avoir_mois
+        context["recettes_avion"] = recettes_avion
+        context["recettes_bateau"] = recettes_bateau
 
-        # Poids total des colis livrés (mois en cours)
-        total_poids_mois = (
-            colis_livres_mois_qs.aggregate(total=Sum("poids"))["total"] or 0
-        )
-        context["total_poids_mois"] = total_poids_mois
+        # Poids / Volume
+        context["total_poids_mois"] = colis_avion.aggregate(total=Sum("poids"))["total"] or 0
+        context["total_cbm_mois"] = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
 
         # 2. Dépenses (mois)
         depenses_base_mois_qs = Depense.objects.filter(
@@ -179,30 +181,44 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         context["solde_mois"] = recettes_mois - depenses_mois
 
         # 3. Colis Perdus (mois en cours)
-        context["colis_perdus_mois"] = Colis.objects.filter(
+        colis_perdus_base = Colis.objects.filter(
             lot__destination=mali, status="PERDU", updated_at__gte=first_day_of_month
-        ).count()
+        )
+        context["colis_perdus_mois"] = colis_perdus_base.count()
+        context["colis_perdus_avion"] = colis_perdus_base.avion().count()
+        context["colis_perdus_bateau"] = colis_perdus_base.bateau().count()
 
         # 4. Colis en attente de paiement (non payés)
-        context["colis_attente_paiement"] = Colis.objects.filter(
+        colis_attente_base = Colis.objects.filter(
             lot__destination=mali, status="LIVRE", est_paye=False
-        ).count()
+        )
+        context["colis_attente_paiement"] = colis_attente_base.count()
+        context["colis_attente_paiement_avion"] = colis_attente_base.avion().count()
+        context["colis_attente_paiement_bateau"] = colis_attente_base.bateau().count()
 
         # 5. Colis à Traiter (Arrivés, non livrés)
-        context["colis_a_traiter"] = Colis.objects.filter(
+        colis_a_traiter_base = Colis.objects.filter(
             lot__destination=mali, status="ARRIVE"
-        ).count()
+        )
+        context["colis_a_traiter"] = colis_a_traiter_base.count()
+        context["colis_a_traiter_avion"] = colis_a_traiter_base.avion().count()
+        context["colis_a_traiter_bateau"] = colis_a_traiter_base.bateau().count()
 
         # 6. Lots en Transit
-        context["lots_en_transit"] = Lot.objects.filter(
+        lots_en_transit_base = Lot.objects.filter(
             destination=mali, status="EN_TRANSIT"
-        ).count()
+        )
+        context["lots_en_transit"] = lots_en_transit_base.count()
+        context["lots_en_transit_avion"] = lots_en_transit_base.avion().count()
+        context["lots_en_transit_bateau"] = lots_en_transit_base.bateau().count()
 
         # 7. Lots Arrivés (Incomplets) - Au moins 1 colis status ARRIVE
         lots_avec_stock = Lot.objects.filter(
             destination=mali, colis__status="ARRIVE"
         ).distinct()
         context["lots_arrives_incomplets"] = lots_avec_stock.count()
+        context["lots_arrives_incomplets_avion"] = lots_avec_stock.avion().count()
+        context["lots_arrives_incomplets_bateau"] = lots_avec_stock.bateau().count()
 
         # 7b. Lots Livrés (Mois) - Lots ayant des colis livrés ce mois ci
         context["lots_livres_mois"] = (
@@ -461,6 +477,9 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
                 "prenom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
+            transport = self.request.GET.get("transport")
+            if transport in ["CARGO", "EXPRESS", "BATEAU"]:
+                queryset = queryset.filter(lot__type_transport=transport)
             return queryset.order_by("-created_at")
 
         # AFFICHAGE PAR LOT (Sans recherche)
@@ -546,6 +565,9 @@ class LotsArrivesView(LotsEnTransitView):
                 "prenom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
+            transport = self.request.GET.get("transport")
+            if transport in ["CARGO", "EXPRESS", "BATEAU"]:
+                queryset = queryset.filter(lot__type_transport=transport)
             return queryset.order_by("-updated_at")
 
         # AFFICHAGE PAR LOT (Sans recherche)
@@ -627,6 +649,15 @@ class LotsLivresView(LotsEnTransitView):
                 "prenom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
+            transport = self.request.GET.get("transport")
+            if transport in ["CARGO", "EXPRESS", "BATEAU"]:
+                queryset = queryset.filter(lot__type_transport=transport)
+            
+            month = self.request.GET.get("month")
+            year = self.request.GET.get("year")
+            if month and year:
+                queryset = queryset.filter(updated_at__month=month, updated_at__year=year)
+
             return queryset.order_by("-updated_at")
 
         # AFFICHAGE PAR LOT (Sans recherche)
@@ -1426,8 +1457,15 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
                     colis.est_paye = False
             else:  # ATTENTE ou autre
                 colis.est_paye = False
+                # Calcul absolu : on se base sur ce qui a RÉELLEMENT été encaissé en BDD
+                from core.models import EncaissementColis as _EC
+                from django.db.models import Sum as _Sum
+                deja_encaisse = (
+                    _EC.objects.filter(colis=colis).aggregate(t=_Sum("montant"))["t"] or 0
+                )
                 colis.reste_a_payer = max(
-                    0, (colis.prix_final or 0) - (colis.montant_jc or 0)
+                    0,
+                    (colis.prix_final or 0) - (colis.montant_jc or 0) - deja_encaisse,
                 )
 
         colis.mode_paiement = request.POST.get("mode_paiement")
@@ -1577,11 +1615,15 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             total_net_selection = Decimal("0")
             reste_global = Decimal("0")
 
-        # Sauvegarde des montants déjà payés
-        old_paid_map = {
-            c.id: (c.prix_final or 0) - (c.montant_jc or 0) - (c.reste_a_payer or 0)
-            for c in colis_list
-        }
+        # Sauvegarde des montants RÉELLEMENT encaissés pour chaque colis (base absolue)
+        from core.models import EncaissementColis as _BulkEC
+        from django.db.models import Sum as _BulkSum
+        encaissement_sums = (
+            _BulkEC.objects.filter(colis__in=colis_list)
+            .values("colis_id")
+            .annotate(total=_BulkSum("montant"))
+        )
+        old_paid_map = {row["colis_id"]: row["total"] or 0 for row in encaissement_sums}
 
         for c in colis_list:
             c.status = "LIVRE"
@@ -1617,9 +1659,13 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                     c.est_paye = c.reste_a_payer <= Decimal("0")
                 else:  # ATTENTE
                     c.est_paye = False
+                    # Calcul absolu : on préserve les paiements partiels déjà encaissés en BDD
+                    deja_encaisse_c = Decimal(str(old_paid_map.get(c.id, 0)))
                     c.reste_a_payer = max(
                         Decimal("0"),
-                        (c.prix_final or Decimal("0")) - (c.montant_jc or Decimal("0")),
+                        (c.prix_final or Decimal("0"))
+                        - (c.montant_jc or Decimal("0"))
+                        - deja_encaisse_c,
                     )
 
                 # Assign date_encaissement if paid fully or partially
@@ -2396,15 +2442,15 @@ class ColisUpdateMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, Upd
         return reverse("mali:lot_arrived_detail", kwargs={"pk": lot.pk})
 
     def form_valid(self, form):
-        # On sauvegarde les anciennes valeurs pour recalculer le reste à payer si besoin
+        # On sauvegarde les anciennes valeurs pour conserver ce qui a été encaissé
         old_colis = self.get_object()
-        
-        # On récupère le prix_final actuel de la BDD avant sauvegarde
-        old_prix_final = old_colis.prix_final or 0
-        old_reste = old_colis.reste_a_payer or 0
-        
-        # Ce qui a déjà été payé par le client sur ce colis
-        deja_paye = old_prix_final - old_reste
+
+        # Calcul absolu : somme des encaissements RÉELS enregistrés en BDD pour ce colis
+        from core.models import EncaissementColis as _UpdateEC
+        from django.db.models import Sum as _UpdateSum
+        deja_encaisse = (
+            _UpdateEC.objects.filter(colis=old_colis).aggregate(t=_UpdateSum("montant"))["t"] or 0
+        )
 
         # Sauvegarde du formulaire (sans commit pour ajuster le type)
         colis = form.save(commit=False)
@@ -2417,9 +2463,8 @@ class ColisUpdateMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, Upd
         # Recalculer les prix via la méthode centrale du modèle
         colis.recalculate_prices()
 
-        # Ajuster le reste à payer en fonction du nouveau prix
-        # On repart du nouveau prix final et on enlève ce qui a déjà été payé
-        colis.reste_a_payer = colis.prix_final - deja_paye
+        # Ajuster le reste à payer en fonction du nouveau prix et de ce qui a RÉELLEMENT été encaissé
+        colis.reste_a_payer = (colis.prix_final or 0) - (colis.montant_jc or 0) - deja_encaisse
 
         # Si le reste à payer devient négatif (baisse de prix importante), on le remet à 0
         # Cela signifie que le client a un trop-perçu sur ce colis (géré manuellement ou via avoir plus tard)
@@ -2898,17 +2943,45 @@ class MaliActionRevertView(DestinationAgentRequiredMixin, View):
             )
 
         elif action == "revert_to_arrive" and colis.status == "LIVRE":
-            # Annuler la livraison et l'encaissement et repasser en ARRIVE
-            colis.status = "ARRIVE"
-            colis.date_livraison = None
-            colis.date_encaissement = None
-            colis.est_paye = False
-            # On remet le reste à payer à la valeur du prix final calculé
-            colis.reste_a_payer = colis.prix_final or 0
-            colis.montant_jc = 0
-            colis.sortie_sous_garantie = False
-            colis.sortie_autorisee_par = ""
-            colis.save()
+            # Annuler la livraison : nettoyage atomique des encaissements et des avoirs
+            from django.db import transaction as db_transaction
+            from core.models import AvoirMouvement, EncaissementColis as EC
+
+            with db_transaction.atomic():
+                # 1. Rembourser les mouvements d'avoir de type CONSOMMATION liés à ce colis
+                if colis.client:
+                    from django.db.models import Sum as _Sum
+                    avoir_consommes = AvoirMouvement.objects.filter(
+                        colis=colis, type="CONSOMMATION"
+                    )
+                    total_avoir_a_rembourser = (
+                        avoir_consommes.aggregate(t=_Sum("montant"))["t"] or 0
+                    )
+                    if total_avoir_a_rembourser > 0:
+                        # Verrouiller le client et recréditer l'avoir
+                        client = colis.client.__class__.objects.select_for_update().get(
+                            pk=colis.client.pk
+                        )
+                        client.solde_avoir += total_avoir_a_rembourser
+                        client.save()
+                    # Supprimer les mouvements d'avoir associés à ce colis
+                    avoir_consommes.delete()
+
+                # 2. Supprimer tous les encaissements liés à ce colis
+                EC.objects.filter(colis=colis).delete()
+
+                # 3. Réinitialiser proprement le colis
+                colis.status = "ARRIVE"
+                colis.date_livraison = None
+                colis.date_encaissement = None
+                colis.est_paye = False
+                colis.paye_par_avance = False
+                colis.reste_a_payer = (colis.prix_final or 0) - (colis.montant_jc or 0)
+                colis.montant_jc = 0
+                colis.sortie_sous_garantie = False
+                colis.sortie_autorisee_par = ""
+                colis.mode_paiement = None
+                colis.save()
 
             # Notification d'excuse
             if colis.client and colis.client.user:
@@ -2932,7 +3005,7 @@ class MaliActionRevertView(DestinationAgentRequiredMixin, View):
 
             messages.warning(
                 request,
-                f"Le carton {colis.reference} est repassé en ARRIVÉ. Les données de livraison et de paiement ont été effacées.",
+                f"Le carton {colis.reference} est repassé en ARRIVÉ. Les encaissements et avoirs associés ont été annulés.",
             )
 
         # Revert complet d'un colis perdu

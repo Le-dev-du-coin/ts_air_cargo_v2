@@ -149,16 +149,21 @@ def get_country_stats(country_code, year=None, month=None):
     # Le Bénéfice Net = Recettes - (Fret + Douane + Dépenses + RH)
     stats["benefice"] = perf["benefice_net"]
 
-    # Détails Avion / Bateau
+    # Détails Avion / Bateau (Segmentation Complète)
     stats["ca_avion"] = perf["ca_avion"]
     stats["ca_bateau"] = perf["ca_bateau"]
     stats["benefice_brut_avion"] = perf["benefice_brut_avion"]
     stats["benefice_brut_bateau"] = perf["benefice_brut_bateau"]
+    stats["benefice_net_avion"] = perf["benefice_net_avion"]
+    stats["benefice_net_bateau"] = perf["benefice_net_bateau"]
 
     stats["nb_colis_expedies_avion"] = perf["nb_colis_avion"]
     stats["nb_colis_expedies_bateau"] = perf["nb_colis_bateau"]
     stats["nb_colis_livres_avion"] = perf["nb_colis_livres_avion"]
     stats["nb_colis_livres_bateau"] = perf["nb_colis_livres_bateau"]
+    
+    stats["poids_avion"] = perf["poids_avion"]
+    stats["cbm_bateau"] = perf["cbm_bateau"]
     
     stats["nb_lots"] = perf["nb_lots"]
     stats["nb_colis"] = perf["nb_colis"]
@@ -257,25 +262,44 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
             country__code="CN", status=Lot.Status.FERME
         ).count()
         context["colis_total_count"] = Colis.objects.count()
+        context["colis_total_avion"] = Colis.objects.avion().count()
+        context["colis_total_bateau"] = Colis.objects.bateau().count()
         context["total_clients_count"] = Client.objects.count()
 
-        # Stats spécifiques Agent Chine (Reste inchangé ?)
+        # Stats spécifiques Agent Chine
         if self.request.user.role == "AGENT_CHINE":
-            context["lots_transit_count"] = Lot.objects.filter(
-                country__code="CN", status="EN_TRANSIT"
-            ).count()
-            context["lots_arrives_mali_count"] = Lot.objects.filter(
+            lots_transit_qs = Lot.objects.filter(country__code="CN", status="EN_TRANSIT")
+            context["lots_transit_count"] = lots_transit_qs.count()
+            context["lots_transit_avion"] = lots_transit_qs.avion().count()
+            context["lots_transit_bateau"] = lots_transit_qs.bateau().count()
+
+            lots_arrives_qs = Lot.objects.filter(
                 country__code="CN",
                 status__in=[Lot.Status.ARRIVE, Lot.Status.DOUANE, Lot.Status.DISPONIBLE]
-            ).count()
+            )
+            context["lots_arrives_mali_count"] = lots_arrives_qs.count()
+            context["lots_arrives_mali_avion"] = lots_arrives_qs.avion().count()
+            context["lots_arrives_mali_bateau"] = lots_arrives_qs.bateau().count()
 
             # Stats financières Agent Chine - User didn't specify, assume all time or unchanged.
             context["montant_total_colis_agent"] = (
                 Colis.objects.aggregate(total=Sum("prix_final"))["total"] or 0
             )
+            context["montant_total_colis_avion"] = (
+                Colis.objects.avion().aggregate(total=Sum("prix_final"))["total"] or 0
+            )
+            context["montant_total_colis_bateau"] = (
+                Colis.objects.bateau().aggregate(total=Sum("prix_final"))["total"] or 0
+            )
 
             context["montant_total_transport_agent"] = (
                 Lot.objects.filter(country__code="CN").aggregate(total=Sum("frais_transport"))["total"] or 0
+            )
+            context["montant_total_transport_avion"] = (
+                Lot.objects.filter(country__code="CN").avion().aggregate(total=Sum("frais_transport"))["total"] or 0
+            )
+            context["montant_total_transport_bateau"] = (
+                Lot.objects.filter(country__code="CN").bateau().aggregate(total=Sum("frais_transport"))["total"] or 0
             )
 
         # Stats avancées pour l'Admin Chine

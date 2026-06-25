@@ -95,6 +95,25 @@ class Client(TenantAwareModel):
         return f"{self.nom} {self.prenom} ({self.telephone})"
 
 
+class LotQuerySet(models.QuerySet):
+    def avion(self):
+        return self.filter(type_transport__in=["CARGO", "EXPRESS"])
+
+    def bateau(self):
+        return self.filter(type_transport="BATEAU")
+
+
+class LotManager(models.Manager):
+    def get_queryset(self):
+        return LotQuerySet(self.model, using=self._db)
+
+    def avion(self):
+        return self.get_queryset().avion()
+
+    def bateau(self):
+        return self.get_queryset().bateau()
+
+
 class Lot(TenantAwareModel):
     class TypeTransport(models.TextChoices):
         CARGO = "CARGO", _("Cargo")
@@ -109,6 +128,8 @@ class Lot(TenantAwareModel):
         ARRIVE = "ARRIVE", _("Arrivé au Pays")
         DOUANE = "DOUANE", _("En Douane")
         DISPONIBLE = "DISPONIBLE", _("Disponible pour retrait")
+
+    objects = LotManager()
 
     numero = models.CharField(
         max_length=50,
@@ -235,6 +256,25 @@ class ClientLotTarif(models.Model):
         return f"{self.client} - Lot {self.lot.numero} : {self.prix_kilo} FCFA/kg"
 
 
+class ColisQuerySet(models.QuerySet):
+    def avion(self):
+        return self.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
+
+    def bateau(self):
+        return self.filter(lot__type_transport="BATEAU")
+
+
+class ColisManager(models.Manager):
+    def get_queryset(self):
+        return ColisQuerySet(self.model, using=self._db)
+
+    def avion(self):
+        return self.get_queryset().avion()
+
+    def bateau(self):
+        return self.get_queryset().bateau()
+
+
 class Colis(TenantAwareModel):
     class Meta:
         verbose_name = _("Carton")
@@ -251,6 +291,8 @@ class Colis(TenantAwareModel):
         TELEPHONE = "TELEPHONE", "Téléphone"
         ELECTRONIQUE = "ELECTRONIQUE", "Électronique"
         MANUEL = "MANUEL", "Manuel"
+
+    objects = ColisManager()
 
     lot = models.ForeignKey(Lot, on_delete=models.CASCADE, related_name="colis")
     client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name="colis")
@@ -382,6 +424,34 @@ class Colis(TenantAwareModel):
     reference = models.CharField(max_length=50, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def quantite_logistique(self):
+        """Renvoie le poids (kg), le volume (m3) ou le nombre de pièces selon le contexte."""
+        if self.type_colis == "TELEPHONE":
+            return self.nombre_pieces
+        if self.lot.type_transport == "BATEAU":
+            return self.cbm
+        return self.poids or 0
+
+    @property
+    def unite_logistique(self):
+        """Renvoie l'unité associée au type de transport ou au type de colis."""
+        if self.type_colis == "TELEPHONE":
+            return "pce"
+        if self.lot.type_transport == "BATEAU":
+            return "m³"
+        return "kg"
+
+    @property
+    def quantite_logistique_display(self):
+        """Renvoie la quantité formatée avec son unité."""
+        val = self.quantite_logistique
+        if self.type_colis == "TELEPHONE":
+            return f"{int(val)} pce"
+        if self.lot.type_transport == "BATEAU":
+            return f"{val:g} m³".replace(".", ",") # Utilise le format compact g pour éviter les zéros inutiles ou forcer si besoin
+        return f"{val:g} kg".replace(".", ",")
 
     def save(self, *args, **kwargs):
         if not self.reference:

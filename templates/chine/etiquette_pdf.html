@@ -171,15 +171,7 @@
                     </tr>
                     <tr>
                         <td class="label-cell">Poids/Qté</td>
-                        <td class="value-cell">
-                            {% if colis.type_colis == 'TELEPHONE' %}
-                                {{ colis.nombre_pieces }} PCS
-                            {% elif colis.lot.type_transport == 'BATEAU' %}
-                                {{ colis.cbm|default:"0" }} CBM
-                            {% else %}
-                                {{ colis.poids|default:"0" }} KG
-                            {% endif %}
-                        </td>
+                        <td class="value-cell">{{ colis.quantite_logistique_display|upper }}</td>
                     </tr>
                     <tr>
                         <td class="label-cell">Prix Total</td>

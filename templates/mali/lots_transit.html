@@ -234,10 +234,10 @@
         <p class="text-sm text-gray-600">Page <span class="font-bold text-green-700">{{ page_obj.number }}</span> sur {{ page_obj.paginator.num_pages }}</p>
         <div class="flex space-x-2">
             {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 font-bold transition-colors">← Précédent</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if active_transport %}&transport={{ active_transport }}{% endif %}" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 font-bold transition-colors">← Précédent</a>
             {% endif %}
             {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 font-bold transition-colors">Suivant →</a>
+            <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if active_transport %}&transport={{ active_transport }}{% endif %}" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 font-bold transition-colors">Suivant →</a>
             {% endif %}
         </div>
     </div>

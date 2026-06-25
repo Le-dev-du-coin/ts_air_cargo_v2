@@ -47,14 +47,131 @@
                 {% if entry.country.code == "ML" %}🇲🇱{% elif entry.country.code == "CI" %}🇨🇮{% endif %}
                 <span class="ml-2">{{ entry.country.name }}</span>
             </h2>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
-                {{ entry.totals.nb_lots }} lots — {{ entry.totals.nb_colis }} colis
-            </span>
+            <div class="flex gap-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                    ✈️ {{ entry.totals.poids_avion|floatformat:1 }} kg
+                </span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800">
+                    🚢 {{ entry.totals.cbm_bateau|floatformat:3 }} m³
+                </span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+                    {{ entry.totals.nb_lots }} lots — {{ entry.totals.nb_colis }} colis
+                </span>
+            </div>
         </div>
 
-        <div class="px-6 py-4">
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm table-fixed">
+        <div class="px-6 py-4 space-y-8">
+            <!-- SECTION AVION -->
+            <div>
+                <h3 class="text-sm font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center">
+                    <span class="bg-blue-600 text-white p-1 rounded mr-2">✈️</span> FRET AÉRIEN (CARGO / EXPRESS)
+                </h3>
+                <div class="overflow-x-auto border border-blue-100 rounded-lg">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="bg-blue-50 border-b border-blue-100">
+                                <th class="text-left py-2 px-3 text-xs font-bold text-blue-700 uppercase">Indicateur</th>
+                                {% for perf in entry.months %}
+                                <th class="text-right py-2 px-3 text-xs font-bold text-blue-700 uppercase">{{ perf.month_name }}</th>
+                                {% endfor %}
+                                <th class="text-right py-2 px-3 text-xs font-bold text-blue-900 uppercase bg-blue-100">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-blue-50">
+                            <tr>
+                                <td class="py-2 px-3 font-medium text-gray-700">Chiffre d'Affaires</td>
+                                {% for perf in entry.months %}<td class="py-2 px-3 text-right">{{ perf.ca_avion|floatformat:0|intcomma }}</td>{% endfor %}
+                                <td class="py-2 px-3 text-right font-bold bg-blue-50">{{ entry.totals.ca_avion|floatformat:0|intcomma }}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-3 font-medium text-gray-700">Coûts Directs (Fret + Douane)</td>
+                                {% for perf in entry.months %}
+                                <td class="py-2 px-3 text-right text-red-600">
+                                    {% with fret=perf.fret_avion|default:0 douane=perf.douane_avion|default:0 %}
+                                    - {{ fret|add:douane|floatformat:0|intcomma }}
+                                    {% endwith %}
+                                </td>
+                                {% endfor %}
+                                <td class="py-2 px-3 text-right font-bold text-red-700 bg-blue-50">
+                                    {% with fret=entry.totals.fret_avion|default:0 douane=entry.totals.douane_avion|default:0 %}
+                                    - {{ fret|add:douane|floatformat:0|intcomma }}
+                                    {% endwith %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-3 font-medium text-gray-700">Charges d'Exploitation (Spéc. + Prorata)</td>
+                                {% for perf in entry.months %}<td class="py-2 px-3 text-right text-red-500">- {{ perf.charges_avion|floatformat:0|intcomma }}</td>{% endfor %}
+                                <td class="py-2 px-3 text-right font-bold text-red-600 bg-blue-50">- {{ entry.totals.charges_avion|floatformat:0|intcomma }}</td>
+                            </tr>
+                            <tr class="bg-blue-50/50">
+                                <td class="py-2 px-3 font-black text-blue-900">Bénéfice Net AVION</td>
+                                {% for perf in entry.months %}<td class="py-2 px-3 text-right font-black {% if perf.benefice_net_avion >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ perf.benefice_net_avion|floatformat:0|intcomma }}</td>{% endfor %}
+                                <td class="py-2 px-3 text-right font-black {% if entry.totals.benefice_net_avion >= 0 %}text-green-800{% else %}text-red-800{% endif %} bg-blue-100">{{ entry.totals.benefice_net_avion|floatformat:0|intcomma }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SECTION BATEAU -->
+            <div>
+                <h3 class="text-sm font-black text-teal-600 uppercase tracking-widest mb-3 flex items-center">
+                    <span class="bg-teal-600 text-white p-1 rounded mr-2">🚢</span> FRET MARITIME (BATEAU)
+                </h3>
+                <div class="overflow-x-auto border border-teal-100 rounded-lg">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="bg-teal-50 border-b border-teal-100">
+                                <th class="text-left py-2 px-3 text-xs font-bold text-teal-700 uppercase">Indicateur</th>
+                                {% for perf in entry.months %}
+                                <th class="text-right py-2 px-3 text-xs font-bold text-teal-700 uppercase">{{ perf.month_name }}</th>
+                                {% endfor %}
+                                <th class="text-right py-2 px-3 text-xs font-bold text-teal-900 uppercase bg-teal-100">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-teal-50">
+                            <tr>
+                                <td class="py-2 px-3 font-medium text-gray-700">Chiffre d'Affaires</td>
+                                {% for perf in entry.months %}<td class="py-2 px-3 text-right">{{ perf.ca_bateau|floatformat:0|intcomma }}</td>{% endfor %}
+                                <td class="py-2 px-3 text-right font-bold bg-teal-50">{{ entry.totals.ca_bateau|floatformat:0|intcomma }}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-3 font-medium text-gray-700">Coûts Directs (Fret + Douane)</td>
+                                {% for perf in entry.months %}
+                                <td class="py-2 px-3 text-right text-red-600">
+                                    {% with fret=perf.fret_bateau|default:0 douane=perf.douane_bateau|default:0 %}
+                                    - {{ fret|add:douane|floatformat:0|intcomma }}
+                                    {% endwith %}
+                                </td>
+                                {% endfor %}
+                                <td class="py-2 px-3 text-right font-bold text-red-700 bg-teal-50">
+                                    {% with fret=entry.totals.fret_bateau|default:0 douane=entry.totals.douane_bateau|default:0 %}
+                                    - {{ fret|add:douane|floatformat:0|intcomma }}
+                                    {% endwith %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-3 font-medium text-gray-700">Charges d'Exploitation (Spéc. + Prorata)</td>
+                                {% for perf in entry.months %}<td class="py-2 px-3 text-right text-red-500">- {{ perf.charges_bateau|floatformat:0|intcomma }}</td>{% endfor %}
+                                <td class="py-2 px-3 text-right font-bold text-red-600 bg-teal-50">- {{ entry.totals.charges_bateau|floatformat:0|intcomma }}</td>
+                            </tr>
+                            <tr class="bg-teal-50/50">
+                                <td class="py-2 px-3 font-black text-teal-900">Bénéfice Net BATEAU</td>
+                                {% for perf in entry.months %}<td class="py-2 px-3 text-right font-black {% if perf.benefice_net_bateau >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ perf.benefice_net_bateau|floatformat:0|intcomma }}</td>{% endfor %}
+                                <td class="py-2 px-3 text-right font-black {% if entry.totals.benefice_net_bateau >= 0 %}text-green-800{% else %}text-red-800{% endif %} bg-teal-100">{{ entry.totals.benefice_net_bateau|floatformat:0|intcomma }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SECTION CONSOLIDÉE -->
+            <div class="border-t-2 border-dashed border-gray-200 pt-6">
+                <h3 class="text-sm font-black text-gray-500 uppercase tracking-widest mb-3 flex items-center">
+                    📉 PERFORMANCE GLOBALE CONSOLIDÉE
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
                     <colgroup>
                         <col class="w-56">
                         {% for perf in entry.months %}<col>{% endfor %}

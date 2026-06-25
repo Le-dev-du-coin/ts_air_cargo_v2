@@ -165,13 +165,7 @@
                             {{ colis.created_at|date:"d/m/y à H:i" }}
                         </td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {% if colis.type_colis == 'TELEPHONE' %}
-                                <span class="font-semibold text-gray-700">{{ colis.nombre_pieces|default:"0" }} pièce{{ colis.nombre_pieces|pluralize }}</span>
-                            {% elif colis.lot and colis.lot.type_transport == 'BATEAU' %}
-                                <span class="font-semibold text-gray-700">{{ colis.cbm|default:"0" }} CBM</span>
-                            {% else %}
-                                <span class="font-semibold text-gray-700">{{ colis.poids|default:"-" }} kg</span>
-                            {% endif %}
+                            <span class="font-semibold text-gray-700">{{ colis.quantite_logistique_display }}</span>
                         </td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm">
                             {% if colis.status == 'RECU' %}

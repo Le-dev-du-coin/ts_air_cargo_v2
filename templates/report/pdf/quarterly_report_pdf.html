@@ -41,9 +41,59 @@
     <div class="country-section">
         <div class="country-header">
             {% if entry.country.code == "ML" %}🇲🇱{% elif entry.country.code == "CI" %}🇨🇮{% endif %} {{ entry.country.name }}
-            &nbsp;—&nbsp; {{ entry.totals.nb_lots }} lots, {{ entry.totals.nb_colis }} colis
+            &nbsp;—&nbsp; {{ entry.totals.poids_avion|floatformat:1 }} kg Avion / {{ entry.totals.cbm_bateau|floatformat:3 }} m³ Bateau
         </div>
 
+        <!-- TABLEAU AVION -->
+        <h3 style="font-size: 9px; margin-bottom: 4px; color: #1d4ed8;">✈️ FRET AÉRIEN</h3>
+        <table style="margin-bottom: 10px;">
+            <thead>
+                <tr style="background:#eff6ff;">
+                    <th>Indicateur</th>
+                    {% for perf in entry.months %}<th>{{ perf.month_name }}</th>{% endfor %}
+                    <th class="total-col" style="background:#dbeafe;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Chiffre d'Affaires</td>
+                    {% for perf in entry.months %}<td>{{ perf.ca_avion|floatformat:0|intcomma }}</td>{% endfor %}
+                    <td class="total-col">{{ entry.totals.ca_avion|floatformat:0|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td>Bénéfice Net Avion (incl. prorata charges)</td>
+                    {% for perf in entry.months %}<td class="{% if perf.benefice_net_avion >= 0 %}positive{% else %}negative{% endif %}" style="font-weight:700;">{{ perf.benefice_net_avion|floatformat:0|intcomma }}</td>{% endfor %}
+                    <td class="total-col {% if entry.totals.benefice_net_avion >= 0 %}positive{% else %}negative{% endif %}" style="font-weight:800;">{{ entry.totals.benefice_net_avion|floatformat:0|intcomma }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- TABLEAU BATEAU -->
+        <h3 style="font-size: 9px; margin-bottom: 4px; color: #0f766e;">🚢 FRET MARITIME</h3>
+        <table style="margin-bottom: 10px;">
+            <thead>
+                <tr style="background:#f0fdfa;">
+                    <th>Indicateur</th>
+                    {% for perf in entry.months %}<th>{{ perf.month_name }}</th>{% endfor %}
+                    <th class="total-col" style="background:#ccfbf1;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Chiffre d'Affaires</td>
+                    {% for perf in entry.months %}<td>{{ perf.ca_bateau|floatformat:0|intcomma }}</td>{% endfor %}
+                    <td class="total-col">{{ entry.totals.ca_bateau|floatformat:0|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td>Bénéfice Net Bateau (incl. prorata charges)</td>
+                    {% for perf in entry.months %}<td class="{% if perf.benefice_net_bateau >= 0 %}positive{% else %}negative{% endif %}" style="font-weight:700;">{{ perf.benefice_net_bateau|floatformat:0|intcomma }}</td>{% endfor %}
+                    <td class="total-col {% if entry.totals.benefice_net_bateau >= 0 %}positive{% else %}negative{% endif %}" style="font-weight:800;">{{ entry.totals.benefice_net_bateau|floatformat:0|intcomma }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- TABLEAU CONSOLIDÉ -->
+        <h3 style="font-size: 9px; margin-bottom: 4px; color: #4b5563;">📉 PERFORMANCE GLOBALE CONSOLIDÉE</h3>
         <table>
             <thead>
                 <tr>

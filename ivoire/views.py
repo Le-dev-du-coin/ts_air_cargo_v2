@@ -39,20 +39,35 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         # Note: Le modèle Colis utilise les status: RECU, EXPEDIE, ARRIVE, LIVRE
         # Pas TRANSIT ou STOCK. Nous devons ajuster selon les vrais statuts.
 
-        # 1. Colis Livrés (mois en cours) et Recettes
-        colis_livres_mois_qs = Colis.objects.filter(
+        # 1. Colis Livrés (mois en cours) et Recettes (SEGMENTÉ)
+        base_qs = Colis.objects.filter(
             lot__destination=mali, status="LIVRE", updated_at__gte=first_day_of_month
         )
-        context["colis_livres_mois"] = colis_livres_mois_qs.count()
+        context["colis_livres_mois"] = base_qs.count()
 
-        # Recettes nettes du mois (déjà payés + livrés)
-        recettes_mois = (
-            colis_livres_mois_qs.filter(est_paye=True).aggregate(
+        # Segmentation
+        colis_avion = base_qs.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
+        colis_bateau = base_qs.filter(lot__type_transport="BATEAU")
+        
+        context["colis_livres_avion"] = colis_avion.count()
+        context["colis_livres_bateau"] = colis_bateau.count()
+
+        def calculate_recettes(qs):
+            return qs.filter(est_paye=True).aggregate(
                 total=Sum(F("prix_final") - F("montant_jc"))
-            )["total"]
-            or 0
-        )
+            )["total"] or 0
+
+        recettes_avion = calculate_recettes(colis_avion)
+        recettes_bateau = calculate_recettes(colis_bateau)
+        recettes_mois = recettes_avion + recettes_bateau
+
         context["recettes_mois"] = recettes_mois
+        context["recettes_avion"] = recettes_avion
+        context["recettes_bateau"] = recettes_bateau
+
+        # Poids / Volume
+        context["total_poids_mois"] = colis_avion.aggregate(total=Sum("poids"))["total"] or 0
+        context["total_cbm_mois"] = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
 
         # 2. Dépenses (mois)
         depenses_classiques_mois_qs = Depense.objects.filter(
