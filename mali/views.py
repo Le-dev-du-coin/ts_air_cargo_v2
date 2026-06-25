@@ -2657,15 +2657,16 @@ class MaliCorrectionLotListView(AdminMaliRequiredMixin, ListView):
             .order_by("-date_arrivee", "-created_at")
         )
         search = self.request.GET.get("q")
+        from django.db.models import Q
         if search:
             qs = qs.filter(numero__icontains=search)
         tab = self.request.GET.get("tab", "arrive")
         if tab == "transit":
-            qs = qs.filter(colis__status="EXPEDIE").distinct()
+            qs = qs.filter(Q(colis__status="EXPEDIE") | Q(status="EN_TRANSIT") | Q(status="EXPEDIE")).distinct()
         elif tab == "livre":
-            qs = qs.filter(colis__status__in=["LIVRE", "PERDU"]).distinct()
+            qs = qs.filter(Q(colis__status__in=["LIVRE", "PERDU"]) | Q(status="FERME")).distinct()
         else:  # arrive (default)
-            qs = qs.filter(colis__status="ARRIVE").distinct()
+            qs = qs.filter(Q(colis__status="ARRIVE") | Q(status="ARRIVE")).distinct()
 
         # Filtrage par type de transport
         transport = self.request.GET.get("transport")
@@ -3611,8 +3612,11 @@ class LotBateauMaliCreateView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         else:
             new_seq = 1
             
+        from core.models import Country
+        chine = Country.objects.get(code="CN")
+            
         form.instance.numero = f"{prefix}{new_seq:03d}"
-        form.instance.country = mali 
+        form.instance.country = chine 
         form.instance.destination = mali
         form.instance.type_transport = "BATEAU"
         form.instance.status = "ARRIVE"

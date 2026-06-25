@@ -40,7 +40,7 @@
         <form method="POST" class="flex items-center gap-3">
             {% csrf_token %}
             <div class="relative">
-                <input type="number" name="frais_douane" value="{{ lot.frais_douane|default:'' }}" placeholder="Ex: 500000" class="block w-48 pl-3 pr-12 py-2 border border-gray-200 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <input type="number" name="frais_douane" value="{{ lot.frais_douane|stringformat:'.0f'|default:'' }}" placeholder="Ex: 500000" class="block w-48 pl-3 pr-12 py-2 border border-gray-200 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span class="text-gray-500 sm:text-xs">FCFA</span>
                 </div>
