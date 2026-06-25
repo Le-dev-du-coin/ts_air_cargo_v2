@@ -632,6 +632,15 @@ class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailVie
     template_name = "mali/lot_detail.html"
     context_object_name = "lot"
 
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        frais_douane = request.POST.get("frais_douane")
+        if frais_douane is not None:
+            self.object.frais_douane = frais_douane
+            self.object.save()
+            messages.success(request, f"Frais de douane mis à jour à {frais_douane} FCFA.")
+        return redirect(request.path)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         from django.db.models import Sum, Q

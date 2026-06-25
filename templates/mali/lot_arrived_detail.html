@@ -202,10 +202,36 @@
                     <p class="text-xs font-bold text-gray-500 uppercase">Réceptionné le</p>
                     <p class="text-sm font-bold text-gray-900">{{ lot.date_arrivee|date:"d M Y" }}</p>
                 </div>
-                <!-- Frais Douane (Info) -->
-                <div class="space-y-1">
+                <!-- Frais Douane (Info / Form) -->
+                <div class="space-y-1" x-data="{ editing: false, frais: '{% if lot.frais_douane %}{{ lot.frais_douane|floatformat:'0u' }}{% endif %}' }">
                     <p class="text-xs font-bold text-gray-500 uppercase">Frais Douane</p>
-                    <p class="text-sm font-black text-gray-900 uppercase">{{ lot.frais_douane|fcfa|default:"Non saisi" }}</p>
+                    
+                    <!-- Affichage Texte -->
+                    <div x-show="!editing" class="flex items-center gap-2">
+                        <p class="text-sm font-black text-gray-900 uppercase">
+                            {% if lot.frais_douane %}{{ lot.frais_douane|fcfa }}{% else %}Non saisi{% endif %}
+                        </p>
+                        <button type="button" @click="editing = true" class="text-gray-400 hover:text-indigo-600 transition-colors" title="Modifier">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- Formulaire de Modification -->
+                    <form x-show="editing" x-cloak method="POST" class="flex items-center gap-2">
+                        {% csrf_token %}
+                        <div class="relative rounded-md shadow-sm">
+                            <input type="number" name="frais_douane" x-model="frais" class="form-input block w-32 sm:text-sm sm:leading-5 transition duration-150 ease-in-out font-black text-gray-900 border border-gray-300 rounded-md py-1 px-2 pr-10 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: 500000">
+                            <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-xs">FCFA</span>
+                            </div>
+                        </div>
+                        <button type="submit" class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs leading-4 font-bold rounded text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none transition ease-in-out duration-150 shadow-sm" title="Sauvegarder">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        </button>
+                        <button type="button" @click="editing = false" class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs leading-4 font-bold rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition ease-in-out duration-150 shadow-sm" title="Annuler">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
