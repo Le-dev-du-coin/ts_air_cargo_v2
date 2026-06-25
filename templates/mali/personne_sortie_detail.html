@@ -1,0 +1,122 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block mali_content %}
+<div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="sm:flex sm:items-center sm:justify-between bg-white px-6 py-5 rounded-2xl shadow-sm border border-gray-100">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'mali:lots_livres' %}" class="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-black text-gray-900 tracking-tight flex items-center">
+                    Garant : <span class="text-amber-600 ml-2">{{ nom_personne }}</span>
+                </h1>
+                <p class="text-sm text-gray-500 font-medium mt-1">Colis sortis sous l'autorisation de cette personne</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="bg-white px-6 py-5 rounded-2xl shadow-sm border border-gray-100">
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-xs font-black text-gray-700 uppercase mb-1">Recherche (Nom, Réf, Tel)</label>
+                <input type="text" name="q" value="{{ q }}" placeholder="Mamadou, ML-001..." class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-medium">
+            </div>
+            <div>
+                <label class="block text-xs font-black text-gray-700 uppercase mb-1">Date de début</label>
+                <input type="date" name="date_debut" value="{{ date_debut }}" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-medium">
+            </div>
+            <div>
+                <label class="block text-xs font-black text-gray-700 uppercase mb-1">Date de fin</label>
+                <input type="date" name="date_fin" value="{{ date_fin }}" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-medium">
+            </div>
+            <div class="flex items-end space-x-2">
+                <button type="submit" class="flex-1 bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-800 transition-colors">Filtrer</button>
+                <a href="?" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold text-sm hover:bg-gray-200 transition-colors">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Liste des colis -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Colis</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Client</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Date Sortie</th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-black text-gray-500 uppercase tracking-wider">Statut Paiement</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-black text-gray-500 uppercase tracking-wider">Valeur</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-black text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for colis in colis_list %}
+                    <tr class="hover:bg-amber-50/30 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs mr-3">
+                                    {{ colis.lot.numero|slice:"-3:" }}
+                                </div>
+                                <div>
+                                    <div class="text-sm font-black text-gray-900">{{ colis.reference }}</div>
+                                    <div class="text-xs text-gray-500">{{ colis.quantite_logistique_display }} • {{ colis.lot.get_type_transport_display }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-bold text-gray-900">{{ colis.client.get_full_name }}</div>
+                            <div class="text-xs text-gray-500">{{ colis.client.telephone }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 font-medium">{{ colis.date_livraison|date:"d M Y" }}</div>
+                            <div class="text-xs text-gray-500">Lot: {{ colis.lot.numero }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if colis.status_paiement == 'PAYE' %}
+                                <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-black rounded-full bg-green-100 text-green-800">PAYÉ</span>
+                            {% elif colis.status_paiement == 'PARTIEL' %}
+                                <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-black rounded-full bg-yellow-100 text-yellow-800">PARTIEL</span>
+                            {% else %}
+                                <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-black rounded-full bg-red-100 text-red-800">NON PAYÉ</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-black text-gray-900">
+                            {{ colis.prix_final|default:0|floatformat:0|intcomma }} FCFA
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="{% url 'mali:lot_livre_detail' colis.lot.pk %}?qc={{ colis.reference }}" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors">Détails</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500 font-medium">
+                            Aucun colis trouvé pour cette personne avec les critères sélectionnés.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+            <span class="text-sm text-gray-700">Page <span class="font-bold">{{ page_obj.number }}</span> sur {{ paginator.num_pages }}</span>
+            <div class="flex space-x-2">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if date_debut %}&date_debut={{ date_debut }}{% endif %}{% if date_fin %}&date_fin={{ date_fin }}{% endif %}" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium bg-white text-gray-700 hover:bg-gray-50">Précédent</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if date_debut %}&date_debut={{ date_debut }}{% endif %}{% if date_fin %}&date_fin={{ date_fin }}{% endif %}" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium bg-white text-gray-700 hover:bg-gray-50">Suivant</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

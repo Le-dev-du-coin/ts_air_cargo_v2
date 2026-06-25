@@ -357,22 +357,28 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             colis=OuterRef("pk"),
             date=today
         )
+        enc_day_hors_avance_qs = enc_day_qs.exclude(methode="AVANCE")
         
         sum_enc_day = enc_day_qs.values("colis").annotate(total=Sum("montant")).values("total")
+        sum_enc_day_hors_avance = enc_day_hors_avance_qs.values("colis").annotate(total=Sum("montant")).values("total")
         latest_enc = enc_day_qs.order_by("-created_at")
 
         colis_livres_jour = colis_livres_jour.annotate(
             heure_paiement=Subquery(latest_enc.values("created_at")[:1]),
-            # Somme des encaissements réels du jour
+            # Somme des encaissements réels du jour (inclus AVANCE pour affichage)
             sum_enc=Coalesce(Subquery(sum_enc_day[:1]), Value(0), output_field=DecimalField()),
+            # Somme hors AVANCE pour le calcul des totaux de caisse
+            sum_enc_hors_avance=Coalesce(Subquery(sum_enc_day_hors_avance[:1]), Value(0), output_field=DecimalField()),
             # Valeur théorique si c'est un ancien colis (legacy) payé ce jour sans objet EncaissementColis
             val_legacy=Case(
                 When(date_encaissement=today, encaissements__isnull=True, then=F("prix_final") - Coalesce(F("montant_jc"), Value(0))),
                 default=Value(0),
                 output_field=DecimalField()
             ),
-            # Le montant payé affiché est la somme des deux
-            montant_paye_jour=F("sum_enc") + F("val_legacy")
+            # Le montant payé affiché est la somme des deux (avec avance)
+            montant_paye_jour=F("sum_enc") + F("val_legacy"),
+            # Le montant pour les totaux (sans avance)
+            montant_paye_jour_hors_avance=F("sum_enc_hors_avance") + F("val_legacy")
         )
 
         # Séparation par type de transport (via le Lot)
@@ -381,14 +387,14 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         # A. Cargo (Air)
         colis_cargo = colis_livres_jour.filter(lot__type_transport="CARGO")
         context["colis_cargo_list"] = colis_cargo.annotate(
-            # On n'affiche QUE ce qui a été payé aujourd'hui pour la cohérence caisse
+            # On affiche ce qui a été payé (y compris avance)
             net_price=F("montant_paye_jour"),
             sort_date=Coalesce(
                 "date_livraison", "updated_at", output_field=DateField()
             ),
         ).order_by("-heure_paiement", "-sort_date", "-updated_at")
         
-        context["recette_cargo_jour"] = (colis_cargo.aggregate(total=Sum("montant_paye_jour"))["total"] or 0)
+        context["recette_cargo_jour"] = (colis_cargo.aggregate(total=Sum("montant_paye_jour_hors_avance"))["total"] or 0)
         context["poids_cargo_jour"] = colis_cargo.aggregate(total=Sum("poids"))["total"] or 0
         context["nb_cargo_jour"] = colis_cargo.count()
 
@@ -401,7 +407,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             ),
         ).order_by("-heure_paiement", "-sort_date", "-updated_at")
         
-        context["recette_express_jour"] = (colis_express.aggregate(total=Sum("montant_paye_jour"))["total"] or 0)
+        context["recette_express_jour"] = (colis_express.aggregate(total=Sum("montant_paye_jour_hors_avance"))["total"] or 0)
         context["poids_express_jour"] = colis_express.aggregate(total=Sum("poids"))["total"] or 0
         context["nb_express_jour"] = colis_express.count()
 
@@ -414,7 +420,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             ),
         ).order_by("-heure_paiement", "-sort_date", "-updated_at")
         
-        context["recette_bateau_jour"] = (colis_bateau.aggregate(total=Sum("montant_paye_jour"))["total"] or 0)
+        context["recette_bateau_jour"] = (colis_bateau.aggregate(total=Sum("montant_paye_jour_hors_avance"))["total"] or 0)
         context["poids_bateau_jour"] = colis_bateau.aggregate(total=Sum("poids"))["total"] or 0
         context["cbm_bateau_jour"] = colis_bateau.aggregate(total=Sum("cbm"))["total"] or 0
         context["nb_bateau_jour"] = colis_bateau.count()
@@ -617,214 +623,17 @@ class LotsArrivesView(LotsEnTransitView):
         return queryset.order_by("-date_arrivee", "-created_at")
 
 
-class LotsLivresView(LotsEnTransitView):
-    """Historique des lots ayant des colis LIVRÉS ou PERDUS"""
-
-    paginate_by = 10
-    template_name = "mali/lots_livres.html"
-
-    def get_queryset(self):
-        mali = self.get_current_country()
-        if not mali:
-            return Lot.objects.none()
-
-        query = self.request.GET.get("q")
-        if query:
-            # RECHERCHE GLOBALE PAR COLIS (Demande utilisateur)
-            queryset = Colis.objects.filter(
-                lot__destination=mali, status__in=["LIVRE", "PERDU"]
-            )
-            queryset = queryset.select_related("lot", "client", "client__user")
-            queryset = queryset.annotate(
-                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
-                prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
-            )
-            search_fields = [
-                "reference",
-                "lot__numero",
-                "client__nom",
-                "client__prenom",
-                "client__telephone",
-                "nom_complet",
-                "prenom_complet",
-            ]
-            queryset = apply_flexible_search(queryset, query, search_fields)
-            transport = self.request.GET.get("transport")
-            if transport in ["CARGO", "EXPRESS", "BATEAU"]:
-                queryset = queryset.filter(lot__type_transport=transport)
             
-            month = self.request.GET.get("month")
-            year = self.request.GET.get("year")
-            if month and year:
-                queryset = queryset.filter(updated_at__month=month, updated_at__year=year)
-
-            return queryset.order_by("-updated_at")
-
-        # AFFICHAGE PAR LOT (Sans recherche)
-        # Un lot apparaît en livrés s'il a au moins un colis LIVRE ou PERDU
-        queryset = (
-            Lot.objects.filter(destination=mali, colis__status__in=["LIVRE", "PERDU"])
-            .select_related("destination")
-            .prefetch_related("colis")
-            .annotate(
-                nb_colis_livre=Count(
-                    "colis", filter=Q(colis__status__in=["LIVRE", "PERDU"])
-                ),
-                total_recettes_livre=Sum(
-                    "colis__prix_final", filter=Q(colis__status__in=["LIVRE", "PERDU"])
-                )
-                - Sum(
-                    "colis__montant_jc", filter=Q(colis__status__in=["LIVRE", "PERDU"])
-                ),
-                # Nombre de colis payés en Chine parmi les livrés/perdus
-                nb_colis_payes_chine=Count(
-                    "colis",
-                    filter=Q(
-                        colis__status__in=["LIVRE", "PERDU"], colis__paye_en_chine=True
-                    ),
-                ),
-                cbm_total_livre=Sum(
-                    "colis__cbm", filter=Q(colis__status__in=["LIVRE", "PERDU"])
-                ),
-                poids_total_livre=Sum(
-                    "colis__poids", filter=Q(colis__status__in=["LIVRE", "PERDU"])
-                ),
-            )
-            .annotate(
-                benefice_calcule=ExpressionWrapper(
-                    Coalesce(
-                        F("total_recettes_livre"), 0.0, output_field=DecimalField()
-                    )
-                    - Coalesce(F("frais_transport"), 0.0, output_field=DecimalField())
-                    - Coalesce(F("frais_douane"), 0.0, output_field=DecimalField()),
-                    output_field=DecimalField(),
-                )
-            )
-            .filter(nb_colis_livre__gt=0)
-            .distinct()
-        )
-
-        # Filtrage par type de transport
-        transport = self.request.GET.get("transport")
-        if transport in ["CARGO", "EXPRESS", "BATEAU"]:
-            queryset = queryset.filter(type_transport=transport)
-
-        # Filtrage par mois/année
-        month = self.request.GET.get("month")
-        year = self.request.GET.get("year")
-        if month and year:
-            queryset = queryset.filter(
-                colis__date_livraison__month=month, colis__date_livraison__year=year
-            )
-        elif year:
-            queryset = queryset.filter(colis__date_livraison__year=year)
-
-        return queryset.order_by("-updated_at")
-
-
-class ColisSortieGarantieView(
-    LoginRequiredMixin, DestinationAgentRequiredMixin, ListView
-):
-    """Liste des colis sortis sous garantie avec filtres de période et stats"""
-
-    template_name = "mali/colis_sortie_garantie.html"
-    context_object_name = "colis_list"
-    paginate_by = 20
-
-    def get_queryset(self):
-        mali = self.get_current_country()
-        if not mali:
-            return Colis.objects.none()
-
-        queryset = Colis.objects.filter(
-            lot__destination=mali,
-            status="LIVRE",
-            sortie_sous_garantie=True,
-        ).select_related("client", "lot")
-
-        now = timezone.now()
-        self.filter_month = self.request.GET.get("month", "")
-        self.filter_year = self.request.GET.get("year", "")
-
-        if self.filter_year:
-            try:
-                queryset = queryset.filter(
-                    date_encaissement__year=int(self.filter_year)
-                )
-            except (ValueError, TypeError):
-                pass
-        if self.filter_month:
-            try:
-                queryset = queryset.filter(
-                    date_encaissement__month=int(self.filter_month)
-                )
-            except (ValueError, TypeError):
-                pass
-
-        return queryset.annotate(
-            sort_date=Coalesce("date_livraison", "updated_at", output_field=DateField())
-        ).order_by("-sort_date", "-updated_at")
+        return qs.select_related("lot", "client", "client__user").order_by("-date_livraison")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["nom_personne"] = self.kwargs.get('nom')
+        context["q"] = self.request.GET.get('q', '')
+        context["date_debut"] = self.request.GET.get('date_debut', '')
+        context["date_fin"] = self.request.GET.get('date_fin', '')
 
-        now = timezone.now()
 
-        mali = self.get_current_country()
-
-        # Queryset non paginé pour stats
-        base_qs = (
-            Colis.objects.filter(
-                lot__destination=mali,
-                status="LIVRE",
-                sortie_sous_garantie=True,
-            )
-            if mali
-            else Colis.objects.none()
-        )
-
-        # Stats globales
-        total_stats = base_qs.aggregate(
-            total_count=Count("id"),
-            total_montant=Sum(F("prix_final") - F("montant_jc")),
-        )
-
-        # Stats mois en cours
-        stats_month = base_qs.filter(
-            date_encaissement__year=now.year, date_encaissement__month=now.month
-        ).aggregate(
-            count=Count("id"),
-            montant=Sum(F("prix_final") - F("montant_jc")),
-        )
-
-        # Stats année en cours
-        stats_year = base_qs.filter(date_encaissement__year=now.year).aggregate(
-            count=Count("id"),
-            montant=Sum(F("prix_final") - F("montant_jc")),
-        )
-
-        context.update(
-            {
-                "filter_month": self.filter_month,
-                "filter_year": self.filter_year,
-                "current_year": now.year,
-                "current_month": now.month,
-                "years_range": range(now.year - 2, now.year + 1),
-                "stats_total": {
-                    "count": total_stats["total_count"] or 0,
-                    "montant": total_stats["total_montant"] or 0,
-                },
-                "stats_month": {
-                    "count": stats_month["count"] or 0,
-                    "montant": stats_month["montant"] or 0,
-                },
-                "stats_year": {
-                    "count": stats_year["count"] or 0,
-                    "montant": stats_year["montant"] or 0,
-                },
-            }
-        )
-        return context
 
 
 class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailView):
@@ -978,6 +787,10 @@ class LotArriveDetailView(LotDetailView):
         context["colis_list"] = paginator.get_page(self.request.GET.get("page"))
         context["qc"] = qc or ""
         context["is_arrive_mode"] = True
+        
+        from core.models import PersonneSortie
+        context["personnes_sortie"] = PersonneSortie.objects.all().order_by("nom")
+        
         return context
 
 
@@ -1426,17 +1239,22 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
             or request.POST.get("is_sortie") == "true"
         ):
             colis.sortie_sous_garantie = True
-            colis.sortie_autorisee_par = request.POST.get("sortie_autorisee_par", "")
+            autorisee = request.POST.get("sortie_autorisee_par", "")
+            colis.sortie_autorisee_par = autorisee
+            if autorisee:
+                from core.models import PersonneSortie
+                PersonneSortie.objects.get_or_create(nom=autorisee)
         else:
             colis.sortie_sous_garantie = False
             colis.sortie_autorisee_par = ""
 
-        # Gestion Jeton Cédé
+        # Gestion Jeton Cédé (ajout à un éventuel JC existant)
         try:
-            jc = request.POST.get("montant_jc", "0")
-            colis.montant_jc = float(jc) if jc else 0
+            jc_input = request.POST.get("montant_jc", "0")
+            new_jc = float(jc_input) if jc_input else 0
+            colis.montant_jc = (colis.montant_jc or 0) + new_jc
         except ValueError:
-            colis.montant_jc = 0
+            pass
 
         # Gestion Paiement
         if colis.paye_en_chine:
@@ -1449,11 +1267,22 @@ class ColisLivreView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
                 colis.reste_a_payer = 0
             elif status_paiement == "PARTIEL":
                 try:
-                    rp = request.POST.get("reste_a_payer", "0")
-                    colis.reste_a_payer = float(rp) if rp else 0
+                    encaisse_input = request.POST.get("montant_encaisse", "0")
+                    encaisse = float(encaisse_input) if encaisse_input else 0
+                    
+                    from core.models import EncaissementColis as _EC
+                    from django.db.models import Sum as _Sum
+                    deja_encaisse = (
+                        _EC.objects.filter(colis=colis).aggregate(t=_Sum("montant"))["t"] or 0
+                    )
+                    
+                    colis.reste_a_payer = max(
+                        0,
+                        (colis.prix_final or 0) - (colis.montant_jc or 0) - deja_encaisse - encaisse,
+                    )
                     colis.est_paye = colis.reste_a_payer <= 0
                 except ValueError:
-                    colis.reste_a_payer = 0
+                    colis.reste_a_payer = max(0, (colis.prix_final or 0) - (colis.montant_jc or 0))
                     colis.est_paye = False
             else:  # ATTENTE ou autre
                 colis.est_paye = False
@@ -1630,10 +1459,11 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
             c.mode_livraison = mode_livraison
             c.mode_paiement = mode_paiement
             c.infos_recepteur = infos_recepteur
+            c.updated_at = timezone.now()
             
             # Application de la remise si 1 seul colis
             if len(colis_list) == 1:
-                c.montant_jc = montant_jc
+                c.montant_jc = (c.montant_jc or Decimal("0")) + montant_jc
 
             # Application des dates
             if date_livraison:
@@ -1647,12 +1477,25 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                     c.est_paye = True
                     c.reste_a_payer = 0
                 elif status_paiement == "PARTIEL":
-                    # Distribution proportionnelle du reste
+                    # Distribution proportionnelle du reste, en prenant en compte le JC
+                    total_net_selection = sum(
+                        (col.prix_final or Decimal("0")) - (col.montant_jc or Decimal("0"))
+                        for col in colis_list if not col.paye_en_chine
+                    )
+                    
                     if total_net_selection > Decimal("0"):
                         part_colis = (c.prix_final or Decimal("0")) - (
                             c.montant_jc or Decimal("0")
                         )
                         share = part_colis / total_net_selection
+                        
+                        try:
+                            encaisse_global = Decimal(request.POST.get("montant_encaisse", "0") or "0")
+                        except Exception:
+                            encaisse_global = Decimal("0")
+                            
+                        reste_global = max(Decimal("0"), total_net_selection - encaisse_global)
+                        
                         c.reste_a_payer = (reste_global * share).quantize(Decimal("1"))
                     else:
                         c.reste_a_payer = Decimal("0")
@@ -1684,6 +1527,8 @@ class ColisLivreBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
                 "infos_recepteur",
                 "date_livraison",
                 "date_encaissement",
+                "montant_jc",
+                "updated_at",
             ],
         )
 
@@ -2552,7 +2397,7 @@ class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        mali = self.request.user.country
+        mali = self.get_current_country()
         now = timezone.now()
 
         # Stats globales
@@ -2811,7 +2656,7 @@ class MaliCorrectionLotListView(AdminMaliRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        mali = self.request.user.country
+        mali = self.get_current_country()
         qs = (
             Lot.objects.filter(destination=mali)
             .annotate(
@@ -2843,7 +2688,7 @@ class MaliCorrectionLotListView(AdminMaliRequiredMixin, ListView):
         context["q"] = self.request.GET.get("q", "")
         context["active_tab"] = self.request.GET.get("tab", "arrive")
         context["active_transport"] = self.request.GET.get("transport", "")
-        mali = self.request.user.country
+        mali = self.get_current_country()
         # Comptes par statut pour les badges de nav
         qs_base = Lot.objects.filter(destination=mali)
         search = self.request.GET.get("q")
@@ -2976,8 +2821,8 @@ class MaliActionRevertView(DestinationAgentRequiredMixin, View):
                 colis.date_encaissement = None
                 colis.est_paye = False
                 colis.paye_par_avance = False
-                colis.reste_a_payer = (colis.prix_final or 0) - (colis.montant_jc or 0)
                 colis.montant_jc = 0
+                colis.reste_a_payer = colis.prix_final or 0
                 colis.sortie_sous_garantie = False
                 colis.sortie_autorisee_par = ""
                 colis.mode_paiement = None
@@ -3769,3 +3614,198 @@ class LotBateauMaliCreateView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         form.instance.created_by = self.request.user
         messages.success(self.request, f"Lot Bateau {form.instance.numero} créé avec succès (Badge créé au Mali).")
         return super().form_valid(form)
+class LotsLivresView(LotsEnTransitView):
+    """Historique des lots ayant des colis LIVRÉS ou PERDUS"""
+
+    paginate_by = 10
+    template_name = "mali/lots_livres.html"
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        if not mali:
+            return Lot.objects.none()
+
+        query = self.request.GET.get("q")
+        if query:
+            # RECHERCHE GLOBALE PAR COLIS (Demande utilisateur)
+            queryset = Colis.objects.filter(
+                lot__destination=mali, status__in=["LIVRE", "PERDU"]
+            )
+            queryset = queryset.select_related("lot", "client", "client__user")
+            queryset = queryset.annotate(
+                nom_complet=Concat("client__nom", Value(" "), "client__prenom"),
+                prenom_complet=Concat("client__prenom", Value(" "), "client__nom"),
+            )
+            search_fields = [
+                "reference",
+                "lot__numero",
+                "client__nom",
+                "client__prenom",
+                "client__telephone",
+                "nom_complet",
+                "prenom_complet",
+            ]
+            queryset = apply_flexible_search(queryset, query, search_fields)
+            transport = self.request.GET.get("transport")
+            if transport in ["CARGO", "EXPRESS", "BATEAU"]:
+                queryset = queryset.filter(lot__type_transport=transport)
+            
+            month = self.request.GET.get("month")
+            year = self.request.GET.get("year")
+            if month and year:
+                queryset = queryset.filter(updated_at__month=month, updated_at__year=year)
+
+            return queryset.order_by("-updated_at")
+
+        # AFFICHAGE PAR LOT (Sans recherche)
+        # Un lot apparaît en livrés s'il a au moins un colis LIVRE ou PERDU
+        queryset = (
+            Lot.objects.filter(destination=mali, colis__status__in=["LIVRE", "PERDU"])
+            .select_related("destination")
+            .prefetch_related("colis")
+            .annotate(
+                nb_colis_livre=Count(
+                    "colis", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                ),
+                total_recettes_livre=Sum(
+                    "colis__prix_final", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                )
+                - Sum(
+                    "colis__montant_jc", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                ),
+                # Nombre de colis payés en Chine parmi les livrés/perdus
+                nb_colis_payes_chine=Count(
+                    "colis",
+                    filter=Q(
+                        colis__status__in=["LIVRE", "PERDU"], colis__paye_en_chine=True
+                    ),
+                ),
+                cbm_total_livre=Sum(
+                    "colis__cbm", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                ),
+                poids_total_livre=Sum(
+                    "colis__poids", filter=Q(colis__status__in=["LIVRE", "PERDU"])
+                ),
+            )
+            .annotate(
+                benefice_calcule=ExpressionWrapper(
+                    Coalesce(
+                        F("total_recettes_livre"), 0.0, output_field=DecimalField()
+                    )
+                    - Coalesce(F("frais_transport"), 0.0, output_field=DecimalField())
+                    - Coalesce(F("frais_douane"), 0.0, output_field=DecimalField()),
+                    output_field=DecimalField(),
+                )
+            )
+            .filter(nb_colis_livre__gt=0)
+            .distinct()
+        )
+
+        # Filtrage par type de transport
+        transport = self.request.GET.get("transport")
+        if transport in ["CARGO", "EXPRESS", "BATEAU"]:
+            queryset = queryset.filter(type_transport=transport)
+
+        # Filtrage par mois/année
+        month = self.request.GET.get("month")
+        year = self.request.GET.get("year")
+        if month and year:
+            queryset = queryset.filter(
+                colis__date_livraison__month=month, colis__date_livraison__year=year
+            )
+        elif year:
+            queryset = queryset.filter(colis__date_livraison__year=year)
+
+        return queryset.order_by("-updated_at")
+
+
+from django.views.generic import ListView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Sum, Q
+from core.models import Colis
+from mali.views import DestinationAgentRequiredMixin
+
+class ColisSortieGarantieView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    """
+    Page Sortie Garantie : Affiche les colis sortis sous garantie, regroupés par personne autorisée.
+    """
+    template_name = "mali/colis_sortie_garantie.html"
+    context_object_name = "personnes"
+    
+    def get_queryset(self):
+        mali = self.get_current_country()
+        qs = Colis.objects.filter(status="LIVRE", sortie_sous_garantie=True)
+        if mali:
+            qs = qs.filter(lot__destination=mali)
+            
+        q = self.request.GET.get('q')
+        date_debut = self.request.GET.get('date_debut')
+        date_fin = self.request.GET.get('date_fin')
+        
+        if q:
+            qs = qs.filter(sortie_autorisee_par__icontains=q)
+        if date_debut:
+            qs = qs.filter(date_livraison__date__gte=date_debut)
+        if date_fin:
+            qs = qs.filter(date_livraison__date__lte=date_fin)
+            
+        personnes_names = qs.exclude(sortie_autorisee_par__isnull=True).exclude(sortie_autorisee_par="").values_list('sortie_autorisee_par', flat=True).distinct()
+        return list(personnes_names)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # We need to apply the same date filters to the aggregates!
+        date_debut = self.request.GET.get('date_debut')
+        date_fin = self.request.GET.get('date_fin')
+        
+        personnes_data = []
+        for nom in self.object_list:
+            colis_personne = Colis.objects.filter(status="LIVRE", sortie_sous_garantie=True, sortie_autorisee_par=nom)
+            if date_debut:
+                colis_personne = colis_personne.filter(date_livraison__date__gte=date_debut)
+            if date_fin:
+                colis_personne = colis_personne.filter(date_livraison__date__lte=date_fin)
+                
+            personnes_data.append({
+                'nom': nom,
+                'nb_colis': colis_personne.count(),
+                'total_poids': colis_personne.aggregate(t=Sum('poids'))['t'] or 0,
+                'total_cbm': colis_personne.aggregate(t=Sum('cbm'))['t'] or 0,
+            })
+        
+        context["personnes_data"] = personnes_data
+        context["q"] = self.request.GET.get('q', '')
+        context["date_debut"] = self.request.GET.get('date_debut', '')
+        context["date_fin"] = self.request.GET.get('date_fin', '')
+        return context
+
+class ColisSortieGarantieDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView):
+    template_name = "mali/personne_sortie_detail.html"
+    context_object_name = "colis_list"
+    paginate_by = 50
+
+    def get_queryset(self):
+        nom_personne = self.kwargs.get('nom')
+        qs = Colis.objects.filter(status="LIVRE", sortie_sous_garantie=True, sortie_autorisee_par=nom_personne)
+        
+        q = self.request.GET.get('q')
+        date_debut = self.request.GET.get('date_debut')
+        date_fin = self.request.GET.get('date_fin')
+        
+        if q:
+            qs = qs.filter(Q(reference__icontains=q) | Q(client__nom__icontains=q) | Q(client__telephone__icontains=q))
+        if date_debut:
+            qs = qs.filter(date_livraison__date__gte=date_debut)
+        if date_fin:
+            qs = qs.filter(date_livraison__date__lte=date_fin)
+            
+        return qs.select_related("lot", "client", "client__user").order_by("-date_livraison")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["nom_personne"] = self.kwargs.get('nom')
+        context["q"] = self.request.GET.get('q', '')
+        context["date_debut"] = self.request.GET.get('date_debut', '')
+        context["date_fin"] = self.request.GET.get('date_fin', '')
+        return context

@@ -13,7 +13,7 @@ from core.models import Colis
 class DepenseListView(LoginRequiredMixin, ListView):
     model = Depense
     context_object_name = "depenses"
-    paginate_by = 50
+    paginate_by = 10
 
     def get_queryset(self):
         qs = super().get_queryset()

@@ -676,8 +676,13 @@
                         </div>
                         <div>
                             <label class="block text-xs font-black text-gray-700 uppercase mb-1">Autorisé par (Garant)</label>
-                            <input type="text" name="sortie_autorisee_par" required placeholder="Nom du responsable"
+                            <input type="text" name="sortie_autorisee_par" required placeholder="Nom du responsable" list="personnes-sortie-list"
                                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-bold">
+                            <datalist id="personnes-sortie-list">
+                                {% for ps in personnes_sortie %}
+                                <option value="{{ ps.nom }}">{{ ps.nom }}{% if ps.telephone %} ({{ ps.telephone }}){% endif %}</option>
+                                {% endfor %}
+                            </datalist>
                         </div>
                     </div>
 

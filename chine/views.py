@@ -1000,8 +1000,13 @@ class LotListView(LoginRequiredMixin, ListView):
             "transit": ["EN_TRANSIT", "EXPEDIE"],
             "arrives": ["ARRIVE", "DOUANE", "DISPONIBLE"],
         }
-        if status_filter and status_filter in status_map:
-            queryset = queryset.filter(status__in=status_map[status_filter])
+        if status_filter:
+            if status_filter == "arrives":
+                queryset = queryset.filter(
+                    Q(status__in=status_map["arrives"]) | Q(colis__status__in=["ARRIVE", "LIVRE", "PERDU"])
+                ).distinct()
+            elif status_filter in status_map:
+                queryset = queryset.filter(status__in=status_map[status_filter])
 
         # Search
         search_query = self.request.GET.get("search")
@@ -1025,6 +1030,7 @@ class LotListView(LoginRequiredMixin, ListView):
         queryset = queryset.annotate(
             ann_nb_colis=Count("colis"),
             ann_poids_total=Sum("colis__poids"),
+            ann_cbm_total=Sum("colis__cbm"),
             ann_valeur_colis=Sum("colis__prix_final"),
             status_order=Case(
                 When(status="OUVERT", then=Value(0)),

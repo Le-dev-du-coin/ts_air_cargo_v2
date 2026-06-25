@@ -714,3 +714,18 @@ class DatabaseBackup(models.Model):
     def __str__(self):
         return f"Backup du {self.created_at.strftime('%d/%m/%Y %H:%M')}"
 
+
+class PersonneSortie(TenantAwareModel):
+    """
+    Personne autorisée à récupérer des colis (Agent, Livreur, Client spécifique, etc.).
+    """
+    nom = models.CharField(max_length=255)
+    telephone = models.CharField(max_length=50, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        if self.telephone:
+            return f"{self.nom} ({self.telephone})"
+        return self.nom
+

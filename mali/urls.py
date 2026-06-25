@@ -4,7 +4,7 @@ from .views import (
     AujourdhuiView,
     LotsEnTransitView,
     LotsArrivesView,
-    LotsLivresView,
+    LotsLivresView, ColisSortieGarantieDetailView,
     LotArriveView,
     LotResetDouaneView,
     LotTransitDetailView,
@@ -89,6 +89,7 @@ urlpatterns = [
     path("lots/transit/", LotsEnTransitView.as_view(), name="lots_transit"),
     path("lots/arrives/", LotsArrivesView.as_view(), name="lots_arrives"),
     path("lots/livres/", LotsLivresView.as_view(), name="lots_livres"),
+
     path(
         "lots/transit/<int:pk>/",
         LotTransitDetailView.as_view(),
@@ -139,6 +140,7 @@ urlpatterns = [
         ColisSortieGarantieView.as_view(),
         name="colis_sortie_garantie",
     ),
+    path("colis/sortie-garantie/<str:nom>/", ColisSortieGarantieDetailView.as_view(), name="colis_sortie_garantie_detail"),
     path(
         "colis/<int:pk>/encaisser/",
         ColisEncaissementView.as_view(),
