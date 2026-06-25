@@ -623,17 +623,6 @@ class LotsArrivesView(LotsEnTransitView):
         return queryset.order_by("-date_arrivee", "-created_at")
 
 
-            
-        return qs.select_related("lot", "client", "client__user").order_by("-date_livraison")
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["nom_personne"] = self.kwargs.get('nom')
-        context["q"] = self.request.GET.get('q', '')
-        context["date_debut"] = self.request.GET.get('date_debut', '')
-        context["date_fin"] = self.request.GET.get('date_fin', '')
-
-
 
 
 class LotDetailView(LoginRequiredMixin, DestinationAgentRequiredMixin, DetailView):
@@ -2397,7 +2386,8 @@ class MaliAdminDashboardView(AdminMaliRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        mali = self.get_current_country()
+        from core.models import Country
+        mali = Country.objects.get(code="ML")
         now = timezone.now()
 
         # Stats globales
