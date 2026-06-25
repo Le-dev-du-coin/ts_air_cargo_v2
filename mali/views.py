@@ -2646,7 +2646,8 @@ class MaliCorrectionLotListView(AdminMaliRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        mali = self.get_current_country()
+        from core.models import Country
+        mali = Country.objects.get(code="ML")
         qs = (
             Lot.objects.filter(destination=mali)
             .annotate(
@@ -2678,7 +2679,8 @@ class MaliCorrectionLotListView(AdminMaliRequiredMixin, ListView):
         context["q"] = self.request.GET.get("q", "")
         context["active_tab"] = self.request.GET.get("tab", "arrive")
         context["active_transport"] = self.request.GET.get("transport", "")
-        mali = self.get_current_country()
+        from core.models import Country
+        mali = Country.objects.get(code="ML")
         # Comptes par statut pour les badges de nav
         qs_base = Lot.objects.filter(destination=mali)
         search = self.request.GET.get("q")
@@ -2700,6 +2702,15 @@ class MaliCorrectionLotDetailView(AdminMaliRequiredMixin, DetailView):
     model = Lot
     template_name = "mali/admin/correction_lot_detail.html"
     context_object_name = "lot"
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        frais_douane = request.POST.get("frais_douane")
+        if frais_douane is not None:
+            self.object.frais_douane = frais_douane
+            self.object.save()
+            messages.success(request, f"Frais de douane mis à jour à {frais_douane} FCFA.")
+        return redirect("mali:admin_correction_lot_detail", pk=self.object.pk)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -3552,6 +3563,10 @@ class StockMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView)
         context["nb_colis_stock"] = agg["nb_colis"] or 0
         context["poids_total_stock"] = agg["poids_total"] or 0
         context["valeur_totale_stock"] = agg["valeur_totale"] or 0
+        
+        context["valeur_cargo"] = stock_qs.filter(lot__type_transport="CARGO").aggregate(v=Sum("prix_final"))["v"] or 0
+        context["valeur_express"] = stock_qs.filter(lot__type_transport="EXPRESS").aggregate(v=Sum("prix_final"))["v"] or 0
+        context["valeur_bateau"] = stock_qs.filter(lot__type_transport="BATEAU").aggregate(v=Sum("prix_final"))["v"] or 0
 
         # Ancienneté moyenne (jours depuis date_arrivee du lot)
         today = date.today()
@@ -3799,3 +3814,95 @@ class ColisSortieGarantieDetailView(LoginRequiredMixin, DestinationAgentRequired
         context["date_debut"] = self.request.GET.get('date_debut', '')
         context["date_fin"] = self.request.GET.get('date_fin', '')
         return context
+
+class MaliClientLotTarifCreateView(AdminMaliRequiredMixin, CreateView):
+    """
+    Attribue un tarif spécial à un client pour un lot spécifique.
+    Recalcule automatiquement les prix de tous les colis du client dans ce lot.
+    """
+
+    model = ClientLotTarif
+    form_class = MaliClientLotTarifForm
+    template_name = "mali/admin/client_lot_tarif_form.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        self.lot = get_object_or_404(Lot, pk=self.kwargs.get("lot_pk"))
+
+        if self.lot.type_transport == "BATEAU":
+            messages.error(
+                self.request,
+                "La tarification spéciale n'est pas disponible pour les lots de type BATEAU.",
+            )
+
+        kwargs["lot"] = self.lot
+        return kwargs
+
+    def form_valid(self, form):
+        form.instance.admin_mali = self.request.user
+
+        existing = ClientLotTarif.objects.filter(
+            client=form.instance.client, destination=self.request.user.country
+        ).first()
+
+        if existing:
+            existing.prix_kilo = form.instance.prix_kilo
+            existing.admin_mali = self.request.user
+            existing.destination = self.request.user.country
+            existing.save()
+            tarif = existing
+        else:
+            form.instance.destination = self.request.user.country
+            tarif = form.save()
+
+        from core.models import Colis
+        colis_list = Colis.objects.filter(
+            client=tarif.client, lot__destination=tarif.destination
+        )
+        count = colis_list.count()
+        for colis in colis_list:
+            colis.recalculate_prices()
+            colis.save()
+
+        messages.success(
+            self.request,
+            f"Le tarif GLOBAL de {tarif.prix_kilo} FCFA/kg a été appliqué aux {count} colis de {tarif.client} dans le système.",
+        )
+        return redirect("mali:admin_client_lot_tarif", lot_pk=self.lot.pk)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        self.lot = getattr(
+            self, "lot", get_object_or_404(Lot, pk=self.kwargs.get("lot_pk"))
+        )
+        context["lot"] = self.lot
+        context["existing_tarifs"] = ClientLotTarif.objects.filter(
+            destination=self.request.user.country,
+            client__country=self.request.user.country,
+        ).select_related("client")
+        return context
+
+
+class MaliClientLotTarifDeleteView(AdminMaliRequiredMixin, View):
+    def post(self, request, lot_pk, pk):
+        tarif = get_object_or_404(
+            ClientLotTarif, pk=pk, destination=request.user.country
+        )
+        client = tarif.client
+
+        tarif.delete()
+
+        from core.models import Colis
+        colis_list = Colis.objects.filter(
+            client=client, lot__destination=request.user.country
+        )
+        for colis in colis_list:
+            colis.recalculate_prices()
+            colis.save()
+
+        messages.warning(
+            request,
+            f"La convention tarifaire pour {client} a été supprimée. Les prix de tous ses colis vers {request.user.country} ont été rétablis au tarif standard.",
+        )
+        return redirect("mali:admin_client_lot_tarif", lot_pk=lot_pk)
+

@@ -21,6 +21,20 @@
         <div class="bg-white rounded-lg shadow p-4 border-t-4 border-indigo-500">
             <p class="text-xs text-gray-500 uppercase font-semibold">Valeur totale</p>
             <p class="text-2xl font-bold text-gray-900 mt-1">{{ valeur_totale_stock|currency_no_symbol }} <span class="text-sm font-normal">FCFA</span></p>
+            <div class="mt-2 text-[10px] space-y-1">
+                <div class="flex justify-between items-center text-orange-600">
+                    <span>✈️ Cargo</span>
+                    <span class="font-bold">{{ valeur_cargo|currency_no_symbol }}</span>
+                </div>
+                <div class="flex justify-between items-center text-blue-600">
+                    <span>🚀 Express</span>
+                    <span class="font-bold">{{ valeur_express|currency_no_symbol }}</span>
+                </div>
+                <div class="flex justify-between items-center text-teal-600">
+                    <span>🚢 Bateau</span>
+                    <span class="font-bold">{{ valeur_bateau|currency_no_symbol }}</span>
+                </div>
+            </div>
         </div>
         <div class="bg-white rounded-lg shadow p-4 border-t-4 border-yellow-500">
             <p class="text-xs text-gray-500 uppercase font-semibold">Ancienneté moy.</p>
