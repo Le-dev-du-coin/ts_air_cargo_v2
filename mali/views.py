@@ -447,7 +447,60 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         context["transferts_chine_list"] = context["transferts_list"].filter(destinataire="CHINE")
         context["transferts_gaoussou_list"] = context["transferts_list"].filter(destinataire="GAOUSSOU")
 
-        return context
+        # --- CALCULS RÉPARTITION VENTES DU JOUR (SÉPARÉS AÉRIEN / BATEAU) ---
+        # 1. Aérien (Cargo + Express)
+        enc_aerien = EncaissementColis.objects.filter(
+            colis__lot__destination=mali,
+            colis__lot__type_transport__in=["CARGO", "EXPRESS"],
+            date=today
+        )
+        colis_legacy_aerien = Colis.objects.filter(
+            lot__destination=mali,
+            lot__type_transport__in=["CARGO", "EXPRESS"],
+            date_encaissement=today,
+            encaissements__isnull=True
+        )
+
+        context["recette_aerien_jour"] = context["recette_cargo_jour"] + context["recette_express_jour"]
+        context["nb_aerien_jour"] = context["nb_cargo_jour"] + context["nb_express_jour"]
+        context["poids_aerien_jour"] = context["poids_cargo_jour"] + context["poids_express_jour"]
+
+        context["aerien_espece"] = (enc_aerien.filter(methode="ESPECE").aggregate(total=Sum("montant"))["total"] or 0) + \
+                                   (colis_legacy_aerien.filter(mode_paiement="ESPECE").aggregate(total=Sum(F("prix_final") - Coalesce(F("montant_jc"), Value(0, output_field=DecimalField()), output_field=DecimalField()), output_field=DecimalField()))["total"] or 0)
+
+        context["aerien_om"] = (enc_aerien.filter(methode="ORANGE_MONEY").aggregate(total=Sum("montant"))["total"] or 0) + \
+                                (colis_legacy_aerien.filter(mode_paiement="ORANGE_MONEY").aggregate(total=Sum(F("prix_final") - Coalesce(F("montant_jc"), Value(0, output_field=DecimalField()), output_field=DecimalField()), output_field=DecimalField()))["total"] or 0)
+
+        context["aerien_wave"] = (enc_aerien.filter(methode="WAVE").aggregate(total=Sum("montant"))["total"] or 0) + \
+                                 (colis_legacy_aerien.filter(mode_paiement="WAVE").aggregate(total=Sum(F("prix_final") - Coalesce(F("montant_jc"), Value(0, output_field=DecimalField()), output_field=DecimalField()), output_field=DecimalField()))["total"] or 0)
+
+        context["aerien_avance"] = (enc_aerien.filter(methode="AVANCE").aggregate(total=Sum("montant"))["total"] or 0) + \
+                                   (colis_legacy_aerien.filter(mode_paiement="AVANCE").aggregate(total=Sum(F("prix_final") - Coalesce(F("montant_jc"), Value(0, output_field=DecimalField()), output_field=DecimalField()), output_field=DecimalField()))["total"] or 0)
+
+        # 2. Bateau
+        enc_bateau = EncaissementColis.objects.filter(
+            colis__lot__destination=mali,
+            colis__lot__type_transport="BATEAU",
+            date=today
+        )
+        colis_legacy_bateau = Colis.objects.filter(
+            lot__destination=mali,
+            lot__type_transport="BATEAU",
+            date_encaissement=today,
+            encaissements__isnull=True
+        )
+
+        context["bateau_espece"] = (enc_bateau.filter(methode="ESPECE").aggregate(total=Sum("montant"))["total"] or 0) + \
+                                   (colis_legacy_bateau.filter(mode_paiement="ESPECE").aggregate(total=Sum(F("prix_final") - Coalesce(F("montant_jc"), Value(0, output_field=DecimalField()), output_field=DecimalField()), output_field=DecimalField()))["total"] or 0)
+
+        context["bateau_om"] = (enc_bateau.filter(methode="ORANGE_MONEY").aggregate(total=Sum("montant"))["total"] or 0) + \
+                                (colis_legacy_bateau.filter(mode_paiement="ORANGE_MONEY").aggregate(total=Sum(F("prix_final") - Coalesce(F("montant_jc"), Value(0, output_field=DecimalField()), output_field=DecimalField()), output_field=DecimalField()))["total"] or 0)
+
+        context["bateau_wave"] = (enc_bateau.filter(methode="WAVE").aggregate(total=Sum("montant"))["total"] or 0) + \
+                                 (colis_legacy_bateau.filter(mode_paiement="WAVE").aggregate(total=Sum(F("prix_final") - Coalesce(F("montant_jc"), Value(0, output_field=DecimalField()), output_field=DecimalField()), output_field=DecimalField()))["total"] or 0)
+
+        context["bateau_avance"] = (enc_bateau.filter(methode="AVANCE").aggregate(total=Sum("montant"))["total"] or 0) + \
+                                   (colis_legacy_bateau.filter(mode_paiement="AVANCE").aggregate(total=Sum(F("prix_final") - Coalesce(F("montant_jc"), Value(0, output_field=DecimalField()), output_field=DecimalField()), output_field=DecimalField()))["total"] or 0)
 
         return context
 
