@@ -18,6 +18,7 @@ from .views import (
     ColisEncaissementView,
     ColisEncaissementBulkView,
     ColisSolderJCView,
+    ColisAnnulerJCView,
     RapportJourPDFView,
     LotTransitPDFView,
     NotificationConfigView,
@@ -152,6 +153,11 @@ urlpatterns = [
         "colis/<int:pk>/solder-jc/",
         ColisSolderJCView.as_view(),
         name="colis_solder_jc",
+    ),
+    path(
+        "colis/<int:pk>/annuler-jc/",
+        ColisAnnulerJCView.as_view(),
+        name="colis_annuler_jc",
     ),
     path(
         "colis/encaisser-bulk/",

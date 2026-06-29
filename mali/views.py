@@ -1888,6 +1888,29 @@ class ColisSolderJCView(LoginRequiredMixin, DestinationAgentRequiredMixin, View)
         return redirect("mali:colis_attente_paiement")
 
 
+class ColisAnnulerJCView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+    """Annuler un Jeton Cédé (JC) pour remettre le colis en attente de paiement"""
+
+    def post(self, request, pk):
+        colis = get_object_or_404(Colis, pk=pk)
+        montant = colis.montant_jc or 0
+
+        if montant > 0:
+            # On remet le montant JC à 0. Le reste à payer et est_paye seront recalculés 
+            # automatiquement par save() à partir des encaissements réels restés intacts.
+            colis.montant_jc = 0
+            colis.save()
+            
+            messages.success(
+                request, 
+                f"Le jeton cédé pour le colis {colis.reference} a été annulé ({montant:,.0f} FCFA). Le colis est retourné dans les paiements en attente."
+            )
+        else:
+            messages.warning(request, f"Le colis {colis.reference} n'a pas de jeton cédé à annuler.")
+
+        return redirect("mali:colis_attente_paiement")
+
+
 class ColisEncaissementBulkView(
     LoginRequiredMixin, DestinationAgentRequiredMixin, View
 ):
