@@ -488,58 +488,66 @@ class Colis(TenantAwareModel):
             # Si un tarif spécial est défini (Cargo/Express uniquement), il s'applique en priorité
             self.prix_transport = poids_dec * special_tarif.prix_kilo
             self.prix_final = self.prix_transport
-            return
-
-        # 2. Recherche du tarif standard pour la destination et le type de transport du lot
-        # On utilise _base_manager ici aussi pour contourner tout filtrage automatique par pays
-        try:
-            tarif = Tarif._base_manager.get(
-                destination=self.lot.destination, type_transport=self.lot.type_transport
-            )
-        except (Tarif.DoesNotExist, Tarif.MultipleObjectsReturned):
-            # En cas de multiple, on prend le premier pour ne pas bloquer
-            tarif = Tarif._base_manager.filter(
-                destination=self.lot.destination, type_transport=self.lot.type_transport
-            ).first()
-
-        if self.type_colis == "MANUEL" and self.prix_kilo_manuel:
-            self.prix_transport = poids_dec * self.prix_kilo_manuel
-        elif self.type_colis == "TELEPHONE":
-            # Priorité au prix manuel s'il existe (utilisé comme prix à la pièce)
-            if self.prix_kilo_manuel:
-                self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * self.prix_kilo_manuel
-            else:
-                try:
-                    tarif_tel = Tarif._base_manager.get(
-                        destination=self.lot.destination, type_transport="TELEPHONE"
-                    )
-                    self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * tarif_tel.prix_piece
-                except Tarif.DoesNotExist:
-                    if tarif:
-                        self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * tarif.prix_piece
-                    else:
-                        self.prix_transport = Decimal('0')
-        elif self.lot.type_transport == "BATEAU":
-            # Pour le bateau, le prix manuel est traité comme prix au CBM
-            if self.prix_kilo_manuel:
-                self.prix_transport = cbm_dec * self.prix_kilo_manuel
-            elif tarif:
-                self.prix_transport = cbm_dec * tarif.prix_cbm
-            else:
-                self.prix_transport = Decimal('0')
         else:
-            # Cargo / Express standard
-            if tarif:
-                self.prix_transport = poids_dec * tarif.prix_kilo
+            # 2. Recherche du tarif standard pour la destination et le type de transport du lot
+            # On utilise _base_manager ici aussi pour contourner tout filtrage automatique par pays
+            try:
+                tarif = Tarif._base_manager.get(
+                    destination=self.lot.destination, type_transport=self.lot.type_transport
+                )
+            except (Tarif.DoesNotExist, Tarif.MultipleObjectsReturned):
+                # En cas de multiple, on prend le premier pour ne pas bloquer
+                tarif = Tarif._base_manager.filter(
+                    destination=self.lot.destination, type_transport=self.lot.type_transport
+                ).first()
+
+            if self.type_colis == "MANUEL" and self.prix_kilo_manuel:
+                self.prix_transport = poids_dec * self.prix_kilo_manuel
+            elif self.type_colis == "TELEPHONE":
+                # Priorité au prix manuel s'il existe (utilisé comme prix à la pièce)
+                if self.prix_kilo_manuel:
+                    self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * self.prix_kilo_manuel
+                else:
+                    try:
+                        tarif_tel = Tarif._base_manager.get(
+                            destination=self.lot.destination, type_transport="TELEPHONE"
+                        )
+                        self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * tarif_tel.prix_piece
+                    except Tarif.DoesNotExist:
+                        if tarif:
+                            self.prix_transport = Decimal(str(self.nombre_pieces or 1)) * tarif.prix_piece
+                        else:
+                            self.prix_transport = Decimal('0')
+            elif self.lot.type_transport == "BATEAU":
+                # Pour le bateau, le prix manuel est traité comme prix au CBM
+                if self.prix_kilo_manuel:
+                    self.prix_transport = cbm_dec * self.prix_kilo_manuel
+                elif tarif:
+                    self.prix_transport = cbm_dec * tarif.prix_cbm
+                else:
+                    self.prix_transport = Decimal('0')
             else:
-                self.prix_transport = Decimal('0')
+                # Cargo / Express standard
+                if tarif:
+                    self.prix_transport = poids_dec * tarif.prix_kilo
+                else:
+                    self.prix_transport = Decimal('0')
 
-        # Par défaut, le prix final est égal au prix transport
-        self.prix_final = self.prix_transport
+            # Par défaut, le prix final est égal au prix transport
+            self.prix_final = self.prix_transport
 
-        # Initialisation du reste à payer à la création
+        # Mise à jour du reste à payer et de est_paye
         if not self.pk:
             self.reste_a_payer = self.prix_final
+            self.est_paye = self.reste_a_payer <= 0
+        else:
+            from django.db.models import Sum
+            deja_encaisse = self.encaissements.aggregate(total=Sum("montant"))["total"] or Decimal("0")
+            self.reste_a_payer = max(
+                Decimal("0"),
+                self.prix_final - (self.montant_jc or Decimal("0")) - deja_encaisse
+            )
+            self.est_paye = self.reste_a_payer <= 0
 
     def __str__(self):
         return f"Carton {self.reference} - {self.client}"
