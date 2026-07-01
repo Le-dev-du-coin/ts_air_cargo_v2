@@ -1852,6 +1852,12 @@ class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, V
         else:
             colis.date_encaissement = timezone.now().date()
 
+        # Si le colis était à l'état ARRIVE et est maintenant totalement payé,
+        # on le marque automatiquement comme LIVRE (retiré par le client)
+        if colis.status == "ARRIVE":
+            colis.status = "LIVRE"
+            colis.date_livraison = colis.date_encaissement
+
         # Nom du payeur
         infos_recepteur = request.POST.get("infos_recepteur")
         if infos_recepteur:
@@ -2003,6 +2009,9 @@ class ColisEncaissementBulkView(
                     c.est_paye = True
                     c.reste_a_payer = 0
                     nb_colis_soldes += 1
+                    if c.status == "ARRIVE":
+                        c.status = "LIVRE"
+                        c.date_livraison = date_encaissement
 
                 c.mode_paiement = mode_paiement
                 c.date_encaissement = date_encaissement
@@ -2035,6 +2044,9 @@ class ColisEncaissementBulkView(
                 c.est_paye = True
                 c.reste_a_payer = 0
                 nb_colis_soldes += 1
+                if c.status == "ARRIVE":
+                    c.status = "LIVRE"
+                    c.date_livraison = date_encaissement
 
             c.mode_paiement = mode_paiement
             c.date_encaissement = date_encaissement
@@ -2062,6 +2074,8 @@ class ColisEncaissementBulkView(
                     "mode_paiement",
                     "date_encaissement",
                     "updated_at",
+                    "status",
+                    "date_livraison",
                 ],
             )
 
