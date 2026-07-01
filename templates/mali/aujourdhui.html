@@ -67,45 +67,91 @@
         </div>
     </div>
 </div>
-<!-- Synthèse Financière (Cartes) -->
-<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-    <!-- Report Veille -->
-    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-gray-400">
-        <div class="px-4 py-5 sm:p-6">
-            <dt class="text-xs font-medium text-gray-500 truncate uppercase">Report Veille</dt>
-            <dd class="mt-1 text-xl font-bold text-gray-700 truncate" title="{{ solde_veille|fcfa }}">{{ solde_veille|fcfa }}</dd>
+<!-- Synthèse Financière Bateau -->
+<div class="mb-6">
+    <h3 class="text-sm font-black text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+        <span>🚢</span> Trésorerie Maritime (Bateau)
+    </h3>
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Report Veille Bateau -->
+        <div class="bg-white overflow-hidden shadow shadow-blue-50/50 rounded-xl border border-gray-100 border-l-4 border-blue-400">
+            <div class="px-4 py-4 sm:p-5">
+                <dt class="text-xs font-semibold text-gray-500 uppercase">Report Veille Bateau</dt>
+                <dd class="mt-1 text-lg font-black text-gray-800 truncate" title="{{ bateau_solde_veille|fcfa }}">{{ bateau_solde_veille|fcfa }}</dd>
+            </div>
         </div>
-    </div>
 
-    <!-- Recettes Jour -->
-    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-green-500">
-        <div class="px-4 py-5 sm:p-6">
-            <dt class="text-xs font-medium text-gray-500 truncate uppercase">Recettes Jour</dt>
-            <dd class="mt-1 text-2xl font-black text-green-600 truncate" title="{{ total_recettes_jour|fcfa }}">{{ total_recettes_jour|fcfa }}</dd>
-            <div class="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
-                <p class="text-[10px] text-green-500 font-medium">Dont JC: -{{ total_jc_jour|fcfa }}</p>
-                <p class="text-[10px] text-emerald-600 font-bold">| Avances: +{{ rechargements_avoir_jour|fcfa }}</p>
+        <!-- Recettes Jour Bateau -->
+        <div class="bg-white overflow-hidden shadow shadow-green-50/50 rounded-xl border border-gray-100 border-l-4 border-green-500">
+            <div class="px-4 py-4 sm:p-5">
+                <dt class="text-xs font-semibold text-gray-500 uppercase">Recettes Jour Bateau</dt>
+                <dd class="mt-1 text-xl font-black text-green-600 truncate" title="{{ bateau_total_recettes_jour|fcfa }}">{{ bateau_total_recettes_jour|fcfa }}</dd>
+            </div>
+        </div>
+
+        <!-- Sorties Jour Bateau -->
+        <div class="bg-white overflow-hidden shadow shadow-red-50/50 rounded-xl border border-gray-100 border-l-4 border-red-500">
+            <div class="px-4 py-4 sm:p-5">
+                <dt class="text-xs font-semibold text-gray-500 uppercase">Sorties Jour Bateau</dt>
+                <dd class="mt-1 text-lg font-black text-red-600 truncate" title="-{{ bateau_total_sorties_jour|fcfa }}">-{{ bateau_total_sorties_jour|fcfa }}</dd>
+            </div>
+        </div>
+
+        <!-- Balance Caisse Bateau -->
+        <div class="bg-blue-50 overflow-hidden shadow-sm rounded-xl border border-blue-200 border-l-4 border-l-blue-600">
+            <div class="px-4 py-4 sm:p-5">
+                <dt class="text-xs font-semibold text-blue-600 uppercase">Balance Caisse Bateau</dt>
+                <dd class="mt-1 text-xl font-black text-blue-900 truncate" title="{{ bateau_solde_caisse_actuel|fcfa }}">{{ bateau_solde_caisse_actuel|fcfa }}</dd>
+                <p class="text-[10px] text-blue-500 font-bold mt-1">Disponible Maritime</p>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Sorties Jour (Dépenses + Transferts) -->
-    <div class="bg-white overflow-hidden shadow rounded-lg border-l-4 border-red-500">
-        <div class="px-4 py-5 sm:p-6">
-            <dt class="text-xs font-medium text-gray-500 truncate uppercase">Sorties Jour</dt>
-            <dd class="mt-1 text-xl font-bold text-red-600 truncate" title="-{{ total_sorties_jour|fcfa }}">-{{ total_sorties_jour|fcfa }}</dd>
-            <p class="mt-1 text-[10px] text-red-500 font-medium">Dép: {{ total_depenses_only|fcfa }} | Trans: {{ total_transferts_only|fcfa }}</p>
+<!-- Synthèse Financière Aérien -->
+<div class="mb-8">
+    <h3 class="text-sm font-black text-indigo-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+        <span>✈️</span> Trésorerie Aérienne (Cargo + Express)
+    </h3>
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Report Veille Aérien -->
+        <div class="bg-white overflow-hidden shadow shadow-indigo-50/50 rounded-xl border border-gray-100 border-l-4 border-indigo-400">
+            <div class="px-4 py-4 sm:p-5">
+                <dt class="text-xs font-semibold text-gray-500 uppercase">Report Veille Aérien</dt>
+                <dd class="mt-1 text-lg font-black text-gray-800 truncate" title="{{ aerien_solde_veille|fcfa }}">{{ aerien_solde_veille|fcfa }}</dd>
+            </div>
         </div>
-    </div>
 
-    <!-- Solde Caisse Actuel -->
-    <div class="bg-indigo-900 overflow-hidden shadow rounded-lg border border-indigo-700">
-        <div class="px-4 py-5 sm:p-6">
-            <dt class="text-xs font-medium text-indigo-200 truncate uppercase">Balance Caisse</dt>
-            <dd class="mt-1 text-2xl font-black text-white truncate" title="{{ solde_caisse_actuel|fcfa }}">{{ solde_caisse_actuel|fcfa }}</dd>
-            <div class="flex justify-between items-center mt-1">
-                <p class="text-[10px] text-indigo-300">Disponible Immédiatement</p>
-                <p class="text-[10px] font-bold text-white">{{ total_poids_jour|floatformat:2 }} kg</p>
+        <!-- Recettes Jour Aérien -->
+        <div class="bg-white overflow-hidden shadow shadow-green-50/50 rounded-xl border border-gray-100 border-l-4 border-green-500">
+            <div class="px-4 py-4 sm:p-5">
+                <dt class="text-xs font-semibold text-gray-500 uppercase">Recettes Jour Aérien</dt>
+                <dd class="mt-1 text-xl font-black text-green-600 truncate" title="{{ aerien_total_recettes_jour|fcfa }}">{{ aerien_total_recettes_jour|fcfa }}</dd>
+                <div class="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                    <p class="text-[9px] text-green-500 font-medium">Dont JC: -{{ total_jc_jour|fcfa }}</p>
+                    <p class="text-[9px] text-emerald-600 font-bold">| Avances: +{{ rechargements_avoir_jour|fcfa }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sorties Jour Aérien -->
+        <div class="bg-white overflow-hidden shadow shadow-red-50/50 rounded-xl border border-gray-100 border-l-4 border-red-500">
+            <div class="px-4 py-4 sm:p-5">
+                <dt class="text-xs font-semibold text-gray-500 uppercase">Sorties Jour Aérien</dt>
+                <dd class="mt-1 text-lg font-black text-red-600 truncate" title="-{{ aerien_total_sorties_jour|fcfa }}">-{{ aerien_total_sorties_jour|fcfa }}</dd>
+                <p class="mt-0.5 text-[9px] text-red-500 font-medium">Dép: {{ total_depenses_only|fcfa }} | Trans: {{ total_transferts_only|fcfa }}</p>
+            </div>
+        </div>
+
+        <!-- Balance Caisse Aérien -->
+        <div class="bg-indigo-50 overflow-hidden shadow-sm rounded-xl border border-indigo-200 border-l-4 border-l-indigo-600">
+            <div class="px-4 py-4 sm:p-5">
+                <dt class="text-xs font-semibold text-indigo-600 uppercase">Balance Caisse Aérien</dt>
+                <dd class="mt-1 text-xl font-black text-indigo-900 truncate" title="{{ aerien_solde_caisse_actuel|fcfa }}">{{ aerien_solde_caisse_actuel|fcfa }}</dd>
+                <div class="flex justify-between items-center mt-1">
+                    <p class="text-[10px] text-indigo-500 font-bold">Disponible Aérien</p>
+                    <p class="text-[10px] font-bold text-indigo-600">{{ total_poids_jour|floatformat:2 }} kg</p>
+                </div>
             </div>
         </div>
     </div>

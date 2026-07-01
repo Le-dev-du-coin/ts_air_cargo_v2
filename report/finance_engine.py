@@ -15,110 +15,255 @@ class FinanceEngine:
     """
 
     @staticmethod
-    def get_daily_summary(target_date, country):
+    def get_daily_summary(target_date, country, transport_filter=None):
         """
-        Calcule les flux financiers pour une journée spécifique dans un pays donné.
-        Utilisé pour le Dashboard Mali et les rapports journaliers.
+        Calcule les flux financiers pour une journée spécifique dans un pays donné,
+        avec filtrage optionnel par type de transport (AERIEN ou BATEAU).
         """
-        # 1. ENTRÉES DE CAISSE (Liquidités entrantes)
-        # On compte les encaissements de colis RÉELS du jour (hors méthode AVANCE pour éviter les doublons)
-        encaissements_jour = EncaissementColis.objects.filter(
-            date=target_date,
-            colis__lot__destination=country
-        ).exclude(methode="AVANCE")
+        from decimal import Decimal
 
+        # --- FILTRAGE DES FLUX SELON LE MODE ---
+        if transport_filter == "BATEAU":
+            # 1. ENTRÉES DE CAISSE (Liquidités entrantes)
+            encaissements_jour = EncaissementColis.objects.filter(
+                date=target_date,
+                colis__lot__destination=country,
+                colis__lot__type_transport="BATEAU"
+            ).exclude(methode="AVANCE")
+
+            # Legacy
+            legacy_encaissements_jour = Colis.objects.filter(
+                date_encaissement=target_date,
+                lot__destination=country,
+                lot__type_transport="BATEAU",
+                encaissements__isnull=True
+            ).annotate(
+                net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
+            )
+
+            # Avoirs (pas d'avoir direct sur le bateau)
+            rechargements_avoir = AvoirMouvement.objects.none()
+            total_rechargements_avoir = Decimal("0")
+
+            # 2. SORTIES DE CAISSE
+            depenses_jour = Depense.objects.filter(
+                date=target_date,
+                pays=country,
+                is_china_indicative=False,
+                type_transport="BATEAU"
+            ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"])
+
+            transferts_jour = TransfertArgent.objects.none()
+            total_transferts = Decimal("0")
+            total_paiements_agents = Decimal("0")
+
+            # 3. VEILLE
+            recettes_reelles_avant = EncaissementColis.objects.filter(
+                date__lt=target_date,
+                colis__lot__destination=country,
+                colis__lot__type_transport="BATEAU"
+            ).exclude(methode="AVANCE")
+
+            legacy_recettes_avant = Colis.objects.filter(
+                Q(date_encaissement__lt=target_date) | Q(est_paye=True, date_encaissement__isnull=True),
+                lot__destination=country,
+                lot__type_transport="BATEAU",
+                encaissements__isnull=True
+            ).annotate(
+                net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
+            )
+
+            depôts_avant = Decimal("0")
+            depenses_avant = Depense.objects.filter(
+                date__lt=target_date,
+                pays=country,
+                is_china_indicative=False,
+                type_transport="BATEAU"
+            ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"])
+
+            transferts_avant = Decimal("0")
+            paiements_agents_avant = Decimal("0")
+
+        elif transport_filter == "AERIEN":
+            # 1. ENTRÉES DE CAISSE
+            encaissements_jour = EncaissementColis.objects.filter(
+                date=target_date,
+                colis__lot__destination=country,
+                colis__lot__type_transport__in=["CARGO", "EXPRESS"]
+            ).exclude(methode="AVANCE")
+
+            legacy_encaissements_jour = Colis.objects.filter(
+                date_encaissement=target_date,
+                lot__destination=country,
+                lot__type_transport__in=["CARGO", "EXPRESS"],
+                encaissements__isnull=True
+            ).annotate(
+                net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
+            )
+
+            # Avoirs (affectés à l'aérien par défaut)
+            rechargements_avoir = AvoirMouvement.objects.filter(
+                created_at__date=target_date,
+                client__country=country,
+                type="DEPOT"
+            )
+            total_rechargements_avoir = rechargements_avoir.aggregate(total=Sum("montant"))["total"] or 0
+
+            # 2. SORTIES DE CAISSE
+            depenses_jour = Depense.objects.filter(
+                date=target_date,
+                pays=country,
+                is_china_indicative=False
+            ).filter(
+                Q(type_transport="AVION") | Q(type_transport__isnull=True) | Q(type_transport="")
+            ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"])
+
+            transferts_jour = TransfertArgent.objects.filter(
+                date=target_date,
+                pays_expediteur=country
+            )
+            total_transferts = transferts_jour.aggregate(total=Sum("montant"))["total"] or 0
+
+            paiements_agents = PaiementAgent.objects.filter(
+                date_paiement__date=target_date,
+                agent__country=country
+            )
+            total_paiements_agents = paiements_agents.aggregate(total=Sum("montant"))["total"] or 0
+
+            # 3. VEILLE
+            recettes_reelles_avant = EncaissementColis.objects.filter(
+                date__lt=target_date,
+                colis__lot__destination=country,
+                colis__lot__type_transport__in=["CARGO", "EXPRESS"]
+            ).exclude(methode="AVANCE")
+
+            legacy_recettes_avant = Colis.objects.filter(
+                Q(date_encaissement__lt=target_date) | Q(est_paye=True, date_encaissement__isnull=True),
+                lot__destination=country,
+                lot__type_transport__in=["CARGO", "EXPRESS"],
+                encaissements__isnull=True
+            ).annotate(
+                net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
+            )
+
+            depôts_avant = AvoirMouvement.objects.filter(
+                created_at__date__lt=target_date,
+                client__country=country,
+                type="DEPOT"
+            ).aggregate(total=Sum("montant"))["total"] or 0
+
+            depenses_avant = Depense.objects.filter(
+                date__lt=target_date,
+                pays=country,
+                is_china_indicative=False
+            ).filter(
+                Q(type_transport="AVION") | Q(type_transport__isnull=True) | Q(type_transport="")
+            ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"])
+
+            transferts_avant = TransfertArgent.objects.filter(
+                date__lt=target_date,
+                pays_expediteur=country
+            ).aggregate(total=Sum("montant"))["total"] or 0
+
+            paiements_agents_avant = PaiementAgent.objects.filter(
+                date_paiement__date__lt=target_date,
+                agent__country=country
+            ).aggregate(total=Sum("montant"))["total"] or 0
+
+        else:
+            # Comportement global par défaut
+            encaissements_jour = EncaissementColis.objects.filter(
+                date=target_date,
+                colis__lot__destination=country
+            ).exclude(methode="AVANCE")
+
+            legacy_encaissements_jour = Colis.objects.filter(
+                date_encaissement=target_date,
+                lot__destination=country,
+                encaissements__isnull=True
+            ).annotate(
+                net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
+            )
+
+            rechargements_avoir = AvoirMouvement.objects.filter(
+                created_at__date=target_date,
+                client__country=country,
+                type="DEPOT"
+            )
+            total_rechargements_avoir = rechargements_avoir.aggregate(total=Sum("montant"))["total"] or 0
+
+            depenses_jour = Depense.objects.filter(
+                date=target_date,
+                pays=country,
+                is_china_indicative=False
+            ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"])
+
+            transferts_jour = TransfertArgent.objects.filter(
+                date=target_date,
+                pays_expediteur=country
+            )
+            total_transferts = transferts_jour.aggregate(total=Sum("montant"))["total"] or 0
+
+            paiements_agents = PaiementAgent.objects.filter(
+                date_paiement__date=target_date,
+                agent__country=country
+            )
+            total_paiements_agents = paiements_agents.aggregate(total=Sum("montant"))["total"] or 0
+
+            recettes_reelles_avant = EncaissementColis.objects.filter(
+                date__lt=target_date,
+                colis__lot__destination=country
+            ).exclude(methode="AVANCE")
+
+            legacy_recettes_avant = Colis.objects.filter(
+                Q(date_encaissement__lt=target_date) | Q(est_paye=True, date_encaissement__isnull=True),
+                lot__destination=country,
+                encaissements__isnull=True
+            ).annotate(
+                net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
+            )
+
+            depôts_avant = AvoirMouvement.objects.filter(
+                created_at__date__lt=target_date,
+                client__country=country,
+                type="DEPOT"
+            ).aggregate(total=Sum("montant"))["total"] or 0
+
+            depenses_avant = Depense.objects.filter(
+                date__lt=target_date,
+                pays=country,
+                is_china_indicative=False
+            ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"])
+
+            transferts_avant = TransfertArgent.objects.filter(
+                date__lt=target_date,
+                pays_expediteur=country
+            ).aggregate(total=Sum("montant"))["total"] or 0
+
+            paiements_agents_avant = PaiementAgent.objects.filter(
+                date_paiement__date__lt=target_date,
+                agent__country=country
+            ).aggregate(total=Sum("montant"))["total"] or 0
+
+        # --- CALCULS ---
         total_encaissements_colis_reels = encaissements_jour.aggregate(total=Sum("montant"))["total"] or 0
-
-        # On ajoute les encaissements "Legacy" (anciens colis sans objets EncaissementColis)
-        # Un colis est considéré legacy s'il a une date_encaissement mais AUCUN objet EncaissementColis lié.
-        legacy_encaissements_jour = Colis.objects.filter(
-            date_encaissement=target_date,
-            lot__destination=country,
-            encaissements__isnull=True
-        ).annotate(
-            net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
-        ).aggregate(total=Sum("net_val"))["total"] or 0
-
-        total_encaissements_colis = Decimal(total_encaissements_colis_reels) + Decimal(legacy_encaissements_jour)
-
-        # On compte les rechargements de portefeuille (DEPOT) du jour
-        rechargements_avoir = AvoirMouvement.objects.filter(
-            created_at__date=target_date,
-            client__country=country,
-            type="DEPOT"
-        )
-        total_rechargements_avoir = rechargements_avoir.aggregate(total=Sum("montant"))["total"] or 0
-
+        legacy_encaissements_jour_sum = legacy_encaissements_jour.aggregate(total=Sum("net_val"))["total"] or 0
+        total_encaissements_colis = Decimal(total_encaissements_colis_reels) + Decimal(legacy_encaissements_jour_sum)
         total_entrees_jour = Decimal(total_encaissements_colis) + Decimal(total_rechargements_avoir)
 
-        # 2. SORTIES DE CAISSE (Liquidités sortantes)
-        # Dépenses réelles du pays (exclut les indicatives Chine ET celles saisies par le staff Chine)
-        depenses_jour = Depense.objects.filter(
-            date=target_date,
-            pays=country,
-            is_china_indicative=False
-        ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"])
         total_depenses = depenses_jour.aggregate(total=Sum("montant"))["total"] or 0
-
-        # Transferts sortants
-        transferts_jour = TransfertArgent.objects.filter(
-            date=target_date,
-            pays_expediteur=country
-        )
-        total_transferts = transferts_jour.aggregate(total=Sum("montant"))["total"] or 0
-
-        # Paiements Agents (Salaires/Avances payés aujourd'hui)
-        paiements_agents = PaiementAgent.objects.filter(
-            date_paiement__date=target_date,
-            agent__country=country
-        )
-        total_paiements_agents = paiements_agents.aggregate(total=Sum("montant"))["total"] or 0
-
         total_sorties_jour = Decimal(total_depenses) + Decimal(total_transferts) + Decimal(total_paiements_agents)
 
-        # 3. SOLDE VEILLE (Calcul)
-        recettes_reelles_avant = EncaissementColis.objects.filter(
-            date__lt=target_date,
-            colis__lot__destination=country
-        ).exclude(methode="AVANCE").aggregate(total=Sum("montant"))["total"] or 0
-        
-        # Recettes Legacy : On prend ce qui a une date_encaissement < target_date
-        # ET les "Ghost payments" (colis payés mais sans aucune date ni objet encaissement)
-        legacy_recettes_avant = Colis.objects.filter(
-            Q(date_encaissement__lt=target_date) | Q(est_paye=True, date_encaissement__isnull=True),
-            lot__destination=country,
-            encaissements__isnull=True
-        ).annotate(
-            net_val=F("prix_final") - Coalesce(F("montant_jc"), Value(0), output_field=DecimalField())
-        ).aggregate(total=Sum("net_val"))["total"] or 0
+        recettes_reelles_avant_sum = recettes_reelles_avant.aggregate(total=Sum("montant"))["total"] or 0
+        legacy_recettes_avant_sum = legacy_recettes_avant.aggregate(total=Sum("net_val"))["total"] or 0
+        recettes_avant = Decimal(recettes_reelles_avant_sum) + Decimal(legacy_recettes_avant_sum)
 
-        recettes_avant = Decimal(recettes_reelles_avant) + Decimal(legacy_recettes_avant)
-        
-        depôts_avant = AvoirMouvement.objects.filter(
-            created_at__date__lt=target_date,
-            client__country=country,
-            type="DEPOT"
-        ).aggregate(total=Sum("montant"))["total"] or 0
-        
-        # Sorties cumulées avant aujourd'hui
-        depenses_avant = Depense.objects.filter(
-            date__lt=target_date,
-            pays=country,
-            is_china_indicative=False
-        ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"]).aggregate(total=Sum("montant"))["total"] or 0
-        
-        transferts_avant = TransfertArgent.objects.filter(
-            date__lt=target_date,
-            pays_expediteur=country
-        ).aggregate(total=Sum("montant"))["total"] or 0
-        
-        paiements_agents_avant = PaiementAgent.objects.filter(
-            date_paiement__date__lt=target_date,
-            agent__country=country
-        ).aggregate(total=Sum("montant"))["total"] or 0
+        depenses_avant_sum = depenses_avant.aggregate(total=Sum("montant"))["total"] or 0
+        transferts_avant_sum = Decimal(transferts_avant)
+        paiements_agents_avant_sum = Decimal(paiements_agents_avant)
 
         solde_veille = (Decimal(recettes_avant) + Decimal(depôts_avant)) - \
-                       (Decimal(depenses_avant) + Decimal(transferts_avant) + Decimal(paiements_agents_avant))
+                       (Decimal(depenses_avant_sum) + Decimal(transferts_avant_sum) + Decimal(paiements_agents_avant_sum))
 
         return {
             "total_recettes_jour": total_entrees_jour,

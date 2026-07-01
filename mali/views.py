@@ -307,6 +307,20 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         context["total_recettes_jour"] = fin_stats["total_recettes_jour"]
         context["total_sorties_jour"] = fin_stats["total_sorties_jour"]
         context["solde_caisse_actuel"] = fin_stats["solde_caisse_actuel"]
+
+        # Caisse Aérien (Cargo + Express)
+        fin_stats_aerien = FinanceEngine.get_daily_summary(today, mali, "AERIEN")
+        context["aerien_solde_veille"] = fin_stats_aerien["solde_veille"]
+        context["aerien_total_recettes_jour"] = fin_stats_aerien["total_recettes_jour"]
+        context["aerien_total_sorties_jour"] = fin_stats_aerien["total_sorties_jour"]
+        context["aerien_solde_caisse_actuel"] = fin_stats_aerien["solde_caisse_actuel"]
+
+        # Caisse Bateau
+        fin_stats_bateau = FinanceEngine.get_daily_summary(today, mali, "BATEAU")
+        context["bateau_solde_veille"] = fin_stats_bateau["solde_veille"]
+        context["bateau_total_recettes_jour"] = fin_stats_bateau["total_recettes_jour"]
+        context["bateau_total_sorties_jour"] = fin_stats_bateau["total_sorties_jour"]
+        context["bateau_solde_caisse_actuel"] = fin_stats_bateau["solde_caisse_actuel"]
         
         context["total_depenses_only"] = fin_stats["total_depenses"]
         context["total_transferts_only"] = fin_stats["total_transferts"]
