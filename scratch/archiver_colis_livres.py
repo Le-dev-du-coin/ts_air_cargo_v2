@@ -6,7 +6,10 @@ from django.utils import timezone
 from django.db.models import Max
 
 # Configuration de Django
-sys.path.append('/Users/sanogodev/Documents/MDS/Projets/TS Air Cargo/ts_air_cargo_v2')
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+sys.path.append(project_root)
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.base')
 django.setup()
 
