@@ -53,7 +53,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
-    "core.middleware.TenantMiddleware",  # Uncomment when middleware created
+    "core.middleware.TenantMiddleware",
+    "core.middleware.TransportMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

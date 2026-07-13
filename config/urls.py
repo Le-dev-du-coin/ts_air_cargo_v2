@@ -7,6 +7,26 @@ from django.conf.urls.static import static
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
     path("__reload__/", include("django_browser_reload.urls")),
+    
+    # Espace Aérien (Cargo / Express)
+    path("aerien/", include(([
+        path("chine/", include("chine.urls")),
+        path("mali/", include("mali.urls")),
+        path("ivoire/", include("ivoire.urls")),
+        path("clients/", include("customers.urls")),
+        path("report/", include("report.urls")),
+    ], "aerien"))),
+
+    # Espace Maritime (Bateau)
+    path("maritime/", include(([
+        path("chine/", include("chine.urls")),
+        path("mali/", include("mali.urls")),
+        path("ivoire/", include("ivoire.urls")),
+        path("clients/", include("customers.urls")),
+        path("report/", include("report.urls")),
+    ], "maritime"))),
+
+    # Fallbacks et autres routes
     path("", include("core.urls")),
     path("chine/", include("chine.urls")),
     path("mali/", include("mali.urls")),

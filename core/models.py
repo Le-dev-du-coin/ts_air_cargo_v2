@@ -51,6 +51,14 @@ class User(AbstractUser):
         default=0,
         help_text=_("Montant du salaire ou Pourcentage de commission"),
     )
+    has_aerien_access = models.BooleanField(
+        default=True,
+        help_text=_("Indique si l'utilisateur a accès à l'espace Aérien (Cargo/Express)"),
+    )
+    has_maritime_access = models.BooleanField(
+        default=True,
+        help_text=_("Indique si l'utilisateur a accès à l'espace Maritime (Bateau)"),
+    )
 
     def __str__(self):
         return f"{self.username} ({self.role})"
@@ -105,7 +113,17 @@ class LotQuerySet(models.QuerySet):
 
 class LotManager(models.Manager):
     def get_queryset(self):
-        return LotQuerySet(self.model, using=self._db)
+        qs = LotQuerySet(self.model, using=self._db)
+        
+        from core.context import get_current_transport_mode
+        mode = get_current_transport_mode()
+        
+        if mode == 'BATEAU':
+            return qs.bateau()
+        elif mode == 'AERIEN':
+            return qs.avion()
+            
+        return qs
 
     def avion(self):
         return self.get_queryset().avion()
@@ -266,7 +284,17 @@ class ColisQuerySet(models.QuerySet):
 
 class ColisManager(models.Manager):
     def get_queryset(self):
-        return ColisQuerySet(self.model, using=self._db)
+        qs = ColisQuerySet(self.model, using=self._db)
+        
+        from core.context import get_current_transport_mode
+        mode = get_current_transport_mode()
+        
+        if mode == 'BATEAU':
+            return qs.bateau()
+        elif mode == 'AERIEN':
+            return qs.avion()
+            
+        return qs
 
     def avion(self):
         return self.get_queryset().avion()
