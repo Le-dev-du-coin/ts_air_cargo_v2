@@ -46,11 +46,14 @@
         <div class="flex flex-col items-start lg:items-end gap-2">
             <label class="block text-[10px] font-black text-gray-400 uppercase mb-1.5 ml-1 tracking-widest">Générer les PDFs</label>
             <div class="flex flex-wrap gap-2">
+                {% if not request.is_maritime and not request.is_aerien %}
                 <a href="{% url 'mali:rapport_jour_pdf' %}?type=global&date={{ target_date|date:'Y-m-d' }}" target="_blank" 
                    class="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-xs font-black rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all active:scale-95 border-b-4 border-b-gray-400">
                     <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     GLOBAL
                 </a>
+                {% endif %}
+                {% if not request.is_maritime %}
                 <a href="{% url 'mali:rapport_jour_pdf' %}?type=cargo&date={{ target_date|date:'Y-m-d' }}" target="_blank" 
                    class="inline-flex items-center px-4 py-2 border border-indigo-200 shadow-sm text-xs font-black rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all active:scale-95 border-b-4 border-b-indigo-200">
                     ✈️ CARGO
@@ -59,15 +62,19 @@
                    class="inline-flex items-center px-4 py-2 border border-purple-200 shadow-sm text-xs font-black rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 transition-all active:scale-95 border-b-4 border-b-purple-200">
                     🚀 EXPRESS
                 </a>
+                {% endif %}
+                {% if request.is_maritime or not request.is_aerien %}
                 <a href="{% url 'mali:rapport_jour_pdf' %}?type=bateau&date={{ target_date|date:'Y-m-d' }}" target="_blank" 
                    class="inline-flex items-center px-4 py-2 border border-blue-200 shadow-sm text-xs font-black rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all active:scale-95 border-b-4 border-b-blue-200">
                     🚢 BATEAU
                 </a>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 <!-- Synthèse Financière Bateau -->
+{% if request.is_maritime or not request.is_aerien %}
 <div class="mb-6">
     <h3 class="text-sm font-black text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
         <span>🚢</span> Trésorerie Maritime (Bateau)
@@ -98,17 +105,19 @@
         </div>
 
         <!-- Balance Caisse Bateau -->
-        <div class="bg-blue-50 overflow-hidden shadow-sm rounded-xl border border-blue-200 border-l-4 border-l-blue-600">
+        <div class="bg-gradient-to-br from-blue-600 to-blue-800 text-white overflow-hidden shadow-lg rounded-xl border border-blue-200 border-l-4 border-l-blue-400">
             <div class="px-4 py-4 sm:p-5">
-                <dt class="text-xs font-semibold text-blue-600 uppercase">Balance Caisse Bateau</dt>
-                <dd class="mt-1 text-xl font-black text-blue-900 truncate" title="{{ bateau_solde_caisse_actuel|fcfa }}">{{ bateau_solde_caisse_actuel|fcfa }}</dd>
-                <p class="text-[10px] text-blue-500 font-bold mt-1">Disponible Maritime</p>
+                <dt class="text-xs font-semibold text-blue-100 uppercase">Balance Caisse Bateau</dt>
+                <dd class="mt-1 text-xl font-black text-white truncate" title="{{ bateau_solde_caisse_actuel|fcfa }}">{{ bateau_solde_caisse_actuel|fcfa }}</dd>
+                <p class="text-[10px] text-blue-200 font-bold mt-1">Disponible Maritime</p>
             </div>
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Synthèse Financière Aérien -->
+{% if not request.is_maritime %}
 <div class="mb-8">
     <h3 class="text-sm font-black text-indigo-800 uppercase tracking-wider mb-3 flex items-center gap-2">
         <span>✈️</span> Trésorerie Aérienne (Cargo + Express)
@@ -156,10 +165,12 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Répartition des Ventes du Jour (Aérien vs Bateau) -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+<div class="grid grid-cols-1 {% if not request.is_maritime and not request.is_aerien %}md:grid-cols-2{% endif %} gap-8 mb-8">
     <!-- Cadre Ventes Aérien -->
+    {% if not request.is_maritime %}
     <div class="bg-white rounded-xl border border-indigo-100 shadow-md overflow-hidden flex flex-col justify-between">
         <div>
             <!-- En-tête du Cadre -->
@@ -219,8 +230,10 @@
             <span class="text-lg font-black text-indigo-950">{{ recette_aerien_jour|fcfa }}</span>
         </div>
     </div>
+    {% endif %}
 
     <!-- Cadre Ventes Bateau -->
+    {% if request.is_maritime or not request.is_aerien %}
     <div class="bg-white rounded-xl border border-blue-100 shadow-md overflow-hidden flex flex-col justify-between">
         <div>
             <!-- En-tête du Cadre -->
@@ -280,12 +293,14 @@
             <span class="text-lg font-black text-blue-950">{{ recette_bateau_jour|fcfa }}</span>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <!-- Sections / Onglets (Alpine.js) -->
-<div x-data="{ activeTab: 'cargo' }" class="bg-white shadow rounded-lg border border-gray-200 min-h-[500px]">
+<div x-data="{ activeTab: '{% if request.is_maritime %}bateau{% else %}cargo{% endif %}' }" class="bg-white shadow rounded-lg border border-gray-200 min-h-[500px]">
     <div class="border-b border-gray-200">
         <nav class="-mb-px flex overflow-x-auto" aria-label="Tabs">
+            {% if not request.is_maritime %}
             <button @click="activeTab = 'cargo'"
                 :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'cargo', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'cargo' }"
                 class="min-w-[100px] flex-1 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col items-center justify-center">
@@ -298,12 +313,15 @@
                 <span>🚀 Express</span>
                 <span class="text-[10px] font-normal" :class="activeTab === 'express' ? 'text-indigo-400' : 'text-gray-400'">{{ poids_express_jour|floatformat:1 }} kg</span>
             </button>
+            {% endif %}
+            {% if request.is_maritime or not request.is_aerien %}
             <button @click="activeTab = 'bateau'"
                 :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'bateau', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'bateau' }"
                 class="min-w-[100px] flex-1 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col items-center justify-center">
                 <span>🚢 Bateau</span>
                 <span class="text-[10px] font-normal" :class="activeTab === 'bateau' ? 'text-indigo-400' : 'text-gray-400'">{{ cbm_bateau_jour|floatformat:2 }} m³</span>
             </button>
+            {% endif %}
             <button @click="activeTab = 'avoirs'"
                 :class="{ 'border-emerald-500 text-emerald-600': activeTab === 'avoirs', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'avoirs' }"
                 class="min-w-[100px] flex-1 py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm flex flex-col items-center justify-center">

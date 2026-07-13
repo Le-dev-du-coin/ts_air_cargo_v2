@@ -221,15 +221,15 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         context["lots_arrives_incomplets_bateau"] = lots_avec_stock.bateau().count()
 
         # 7b. Lots Livrés (Mois) - Lots ayant des colis livrés ce mois ci
-        context["lots_livres_mois"] = (
-            Lot.objects.filter(
-                destination=mali,
-                colis__status="LIVRE",
-                colis__updated_at__gte=first_day_of_month,
-            )
-            .distinct()
-            .count()
-        )
+        lots_livres_base = Lot.objects.filter(
+            destination=mali,
+            colis__status="LIVRE",
+            colis__updated_at__gte=first_day_of_month,
+        ).distinct()
+        
+        context["lots_livres_mois"] = lots_livres_base.count()
+        context["lots_livres_mois_avion"] = lots_livres_base.avion().count()
+        context["lots_livres_mois_bateau"] = lots_livres_base.bateau().count()
 
         # 8. Encaissements du Jour (Montant net collecté sur les livraisons du jour)
         encaissements = Colis.objects.filter(

@@ -173,7 +173,7 @@
                     </div>
                     <input type="text" name="qc" value="{{ qc|default:'' }}"
                         class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm shadow-sm transition-all"
-                        placeholder="Réf, Client ou Poids (ex: 5.0)...">
+                        placeholder="Réf, Client ou {% if lot.type_transport == 'BATEAU' %}Volume{% else %}Poids{% endif %}...">
                 </div>
                 <button type="submit" class="ml-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all">
                     Filtrer
@@ -392,7 +392,7 @@
                                 <p class="font-bold text-gray-800" x-text="colisPhone || '—'"></p>
                             </div>
                             <div class="bg-gray-50 rounded-lg p-3">
-                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Poids / Qté</p>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">{% if lot.type_transport == 'BATEAU' %}Volume{% else %}Poids / Qté{% endif %}</p>
                                 <p class="font-bold text-gray-800" x-text="colisPoids"></p>
                             </div>
                             <div class="bg-gray-50 rounded-lg p-3">

@@ -275,7 +275,7 @@
                     </div>
                     <input type="text" name="qc" value="{{ qc|default:'' }}"
                         class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm shadow-sm transition-all"
-                        placeholder="Rechercher par référence, client ou poids (ex: ML-24-001)...">
+                        placeholder="Rechercher par référence, client ou {% if lot.type_transport == 'BATEAU' %}volume{% else %}poids{% endif %}...">
                 </div>
                 <button type="submit" class="hidden">Rechercher</button>
             </form>
@@ -511,7 +511,7 @@
                             <p class="font-bold text-gray-800" x-text="colisPhone || '—'"></p>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-3">
-                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Poids / Qté</p>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">{% if lot.type_transport == 'BATEAU' %}Volume{% else %}Poids / Qté{% endif %}</p>
                             <p class="font-bold text-gray-800" x-text="colisPoids"></p>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-3">

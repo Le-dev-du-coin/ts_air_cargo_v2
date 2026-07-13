@@ -2,15 +2,16 @@
 {% load humanize %}
 {% load currency_tags %}
 
-{% block title %}Dashboard Mali - TS Air Cargo{% endblock %}
+{% block title %}Dashboard Mali - {% if request.is_maritime %}TS Maritime{% else %}TS Air Cargo{% endif %}{% endblock %}
 
 {% block header %}Tableau de bord{% endblock %}
 
 {% block mali_content %}
 <div class="space-y-8">
     <!-- Statistiques Segmentées Avion / Bateau -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 {% if not request.is_maritime and not request.is_aerien %}md:grid-cols-2{% endif %} gap-6">
         <!-- BLOC AVION -->
+        {% if not request.is_maritime %}
         <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
             <div class="absolute -right-6 -bottom-6 opacity-10">
                 <svg class="h-32 w-32" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.97 4.44c-.32.18-.71.18-1.03 0l-7.97-4.44c-.31-.17-.52-.5-.52-.88v-9c0-.38.21-.71.53-.88l7.97-4.44c.32-.18.71-.18 1.03 0l7.97 4.44c.31.17.52.5.52.88v9z"/></svg>
@@ -36,8 +37,10 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- BLOC BATEAU -->
+        {% if request.is_maritime or not request.is_aerien %}
         <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
             <div class="absolute -right-6 -bottom-6 opacity-10">
                 <svg class="h-32 w-32" fill="currentColor" viewBox="0 0 24 24"><path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.65 2.62.99 4 .99h2v-2h-2zM3.95 19H4c1.6 0 3.11-.55 4.35-1.56.64-.52 1.35-.52 1.99 0 1.24 1.01 2.75 1.56 4.35 1.56 1.6 0 3.11-.55 4.35-1.56.64-.52 1.35-.52 1.99 0 1.24 1.01 2.75 1.56 4.35 1.56h.05l1.09-6.31-1.04-.19H2.9l-1.04.19L2.95 19h1z"/></svg>
@@ -63,13 +66,14 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- Anciennes cartes pour les indicateurs restants -->
     <div class="mt-4">
         <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <!-- LIGNE 1: LOTS -->
-            <!-- 1. Lots en Transit -->
+            <!-- 1. Lots en Transit / Conteneurs en Mer -->
             <a href="{% url 'mali:lots_transit' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-orange-300 transition-colors">
                 <dt>
                     <div class="absolute bg-orange-500 rounded-md p-3">
@@ -78,18 +82,24 @@
                                 d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                     </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots en Transit</p>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">
+                        {% if request.is_maritime %}Conteneurs en Mer{% else %}Lots en Transit{% endif %}
+                    </p>
                 </dt>
                 <dd class="ml-16 flex items-baseline justify-between">
-                    <p class="text-2xl font-semibold text-orange-600">{{ lots_en_transit|intcomma }}</p>
+                    <p class="text-2xl font-semibold text-orange-600">
+                        {% if request.is_maritime %}{{ lots_en_transit_bateau|intcomma }}{% elif request.is_aerien %}{{ lots_en_transit_avion|intcomma }}{% else %}{{ lots_en_transit|intcomma }}{% endif %}
+                    </p>
+                    {% if not request.is_maritime and not request.is_aerien %}
                     <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
                         <span class="text-blue-500">✈️ {{ lots_en_transit_avion }}</span>
                         <span class="text-teal-600">🚢 {{ lots_en_transit_bateau }}</span>
                     </div>
+                    {% endif %}
                 </dd>
             </a>
 
-            <!-- 2. Lots Arrivés (Incomplets) -->
+            <!-- 2. Lots Arrivés (Incomplets) / Conteneurs au Port -->
             <a href="{% url 'mali:lots_arrives' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-teal-300 transition-colors">
                 <dt>
                     <div class="absolute bg-teal-500 rounded-md p-3">
@@ -98,18 +108,24 @@
                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots Arrivés (Incomplets)</p>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">
+                        {% if request.is_maritime %}Conteneurs au Port{% else %}Lots Arrivés (Incomplets){% endif %}
+                    </p>
                 </dt>
                 <dd class="ml-16 flex items-baseline justify-between">
-                    <p class="text-2xl font-semibold text-teal-600">{{ lots_arrives_incomplets|intcomma }}</p>
+                    <p class="text-2xl font-semibold text-teal-600">
+                        {% if request.is_maritime %}{{ lots_arrives_incomplets_bateau|intcomma }}{% elif request.is_aerien %}{{ lots_arrives_incomplets_avion|intcomma }}{% else %}{{ lots_arrives_incomplets|intcomma }}{% endif %}
+                    </p>
+                    {% if not request.is_maritime and not request.is_aerien %}
                     <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
                         <span class="text-blue-500">✈️ {{ lots_arrives_incomplets_avion }}</span>
                         <span class="text-teal-600">🚢 {{ lots_arrives_incomplets_bateau }}</span>
                     </div>
+                    {% endif %}
                 </dd>
             </a>
 
-            <!-- 3. Lots Livrés (Mois) -->
+            <!-- 3. Lots / Conteneurs Livrés (Mois) -->
             <a href="{% url 'mali:lots_livres' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-green-300 transition-colors">
                 <dt>
                     <div class="absolute bg-green-600 rounded-md p-3">
@@ -118,15 +134,19 @@
                                 d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                         </svg>
                     </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Lots Livrés (Mois)</p>
+                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">
+                        {% if request.is_maritime %}Conteneurs Livrés (Mois){% else %}Lots Livrés (Mois){% endif %}
+                    </p>
                 </dt>
                 <dd class="ml-16 flex items-baseline">
-                    <p class="text-2xl font-semibold text-green-600">{{ lots_livres_mois|intcomma }}</p>
+                    <p class="text-2xl font-semibold text-green-600">
+                        {% if request.is_maritime %}{{ lots_livres_mois_bateau|intcomma }}{% elif request.is_aerien %}{{ lots_livres_mois_avion|intcomma }}{% else %}{{ lots_livres_mois|intcomma }}{% endif %}
+                    </p>
                 </dd>
             </a>
 
             <!-- LIGNE 2: COLIS -->
-            <!-- 3. Colis à Traiter -->
+            <!-- 4. Colis à Traiter -->
             <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
                 <dt>
                     <div class="absolute bg-yellow-500 rounded-md p-3">
@@ -138,15 +158,19 @@
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis à Traiter</p>
                 </dt>
                 <dd class="ml-16 flex items-baseline justify-between">
-                    <p class="text-2xl font-semibold text-yellow-600">{{ colis_a_traiter|intcomma }}</p>
+                    <p class="text-2xl font-semibold text-yellow-600">
+                        {% if request.is_maritime %}{{ colis_a_traiter_bateau|intcomma }}{% elif request.is_aerien %}{{ colis_a_traiter_avion|intcomma }}{% else %}{{ colis_a_traiter|intcomma }}{% endif %}
+                    </p>
+                    {% if not request.is_maritime and not request.is_aerien %}
                     <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
                         <span class="text-blue-500">✈️ {{ colis_a_traiter_avion }}</span>
                         <span class="text-teal-600">🚢 {{ colis_a_traiter_bateau }}</span>
                     </div>
+                    {% endif %}
                 </dd>
             </div>
 
-            <!-- 4 Colis Attente Paiement -->
+            <!-- 5. Colis Attente Paiement -->
             <a href="{% url 'mali:colis_attente_paiement' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-amber-300 transition-colors">
                 <dt>
                     <div class="absolute bg-amber-500 rounded-md p-3">
@@ -158,11 +182,15 @@
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Attente Paiement</p>
                 </dt>
                 <dd class="ml-16 flex items-baseline justify-between">
-                    <p class="text-2xl font-semibold text-amber-600">{{ colis_attente_paiement|intcomma }}</p>
+                    <p class="text-2xl font-semibold text-amber-600">
+                        {% if request.is_maritime %}{{ colis_attente_paiement_bateau|intcomma }}{% elif request.is_aerien %}{{ colis_attente_paiement_avion|intcomma }}{% else %}{{ colis_attente_paiement|intcomma }}{% endif %}
+                    </p>
+                    {% if not request.is_maritime and not request.is_aerien %}
                     <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
                         <span class="text-blue-500">✈️ {{ colis_attente_paiement_avion }}</span>
                         <span class="text-teal-600">🚢 {{ colis_attente_paiement_bateau }}</span>
                     </div>
+                    {% endif %}
                 </dd>
             </a>
 
@@ -178,16 +206,20 @@
                     <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Perdus (Mois)</p>
                 </dt>
                 <dd class="ml-16 flex items-baseline justify-between">
-                    <p class="text-2xl font-semibold text-gray-600">{{ colis_perdus_mois|intcomma }}</p>
+                    <p class="text-2xl font-semibold text-gray-600">
+                        {% if request.is_maritime %}{{ colis_perdus_bateau|intcomma }}{% elif request.is_aerien %}{{ colis_perdus_avion|intcomma }}{% else %}{{ colis_perdus_mois|intcomma }}{% endif %}
+                    </p>
+                    {% if not request.is_maritime and not request.is_aerien %}
                     <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
                         <span class="text-blue-500">✈️ {{ colis_perdus_avion }}</span>
                         <span class="text-teal-600">🚢 {{ colis_perdus_bateau }}</span>
                     </div>
+                    {% endif %}
                 </dd>
             </div>
 
             <!-- LIGNE 3: FINANCES + CLIENTS -->
-            <!-- 8. Dépenses (Mois) -->
+            <!-- 7. Dépenses (Mois) -->
             <a href="{% url 'mali:depenses_list' %}" class="block relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100 hover:border-red-300 transition-colors">
                 <dt>
                     <div class="absolute bg-red-500 rounded-md p-3">
@@ -203,7 +235,7 @@
                 </dd>
             </a>
 
-            <!-- 9. Solde (Mois) -->
+            <!-- 8. Solde (Mois) -->
             <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
                 <dt>
                     <div class="absolute bg-blue-600 rounded-md p-3">

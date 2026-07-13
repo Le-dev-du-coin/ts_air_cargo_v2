@@ -111,7 +111,7 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colis</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poids/Vol</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% if request.is_maritime %}Volume{% else %}Poids/Vol{% endif %}</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Livraison</th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant Dû</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider font-bold bg-indigo-50">Autorisé par</th>
@@ -303,8 +303,8 @@
                                 <span class="text-sm font-bold"><span x-text="selectedCount"></span> colis</span>
                             </span>
                             <span class="hidden lg:inline-flex flex-col">
-                                <span class="text-[10px] text-indigo-200 uppercase font-black leading-tight">Poids</span>
-                                <span class="text-sm font-bold"><span x-text="selectedPoids"></span> kg</span>
+                                <span class="text-[10px] text-indigo-200 uppercase font-black leading-tight">{% if request.is_maritime %}Volume{% else %}Poids{% endif %}</span>
+                                <span class="text-sm font-bold"><span x-text="selectedPoids"></span> {% if request.is_maritime %}m³{% else %}kg{% endif %}</span>
                             </span>
                             <span class="flex flex-col">
                                 <span class="text-[10px] text-indigo-200 uppercase font-black leading-tight">À Encaisser</span>
