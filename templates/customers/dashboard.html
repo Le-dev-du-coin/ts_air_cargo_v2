@@ -110,7 +110,7 @@
                                         {{ colis.description|default:"Pas de description" }}
                                     </div>
                                     <div class="mt-1 text-sm text-gray-500">
-                                        {{ colis.poids }} kg • {{ colis.prix_final|floatformat:0 }} FCFA
+                                        {% if colis.type_colis == "TELEPHONE" %}{{ colis.nombre_pieces }} pcs{% else %}{{ colis.poids }} kg{% endif %} • {{ colis.prix_final|floatformat:0 }} FCFA
                                     </div>
                                 </div>
                             </div>
