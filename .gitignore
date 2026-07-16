@@ -52,3 +52,5 @@ _agents/
 _bmad/
 _bmad-output/
 .agents/
+scratch/
+graphify-out/

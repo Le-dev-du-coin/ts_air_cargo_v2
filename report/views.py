@@ -19,7 +19,6 @@ class DepenseListView(LoginRequiredMixin, ListView):
         qs = super().get_queryset()
         user = self.request.user
 
-        # Filtre par jour/mois/année (par défaut aujourd'hui)
         today = timezone.now().date()
         
         # On récupère les paramètres de l'URL
@@ -27,26 +26,23 @@ class DepenseListView(LoginRequiredMixin, ListView):
         month_param = self.request.GET.get("month")
         year_param = self.request.GET.get("year")
 
-        if not day_param and not month_param and not year_param:
-            # Plus de défaut à Aujourd'hui, on affiche tout par défaut
+        # Par défaut, si aucun filtre de date n'est appliqué
+        if day_param is None and month_param is None and year_param is None:
             self.day = None
-            self.month = None
-            self.year = None
+            self.month = today.month
+            self.year = today.year
+            qs = qs.filter(date__year=self.year, date__month=self.month)
         else:
-            # Filtrage selon ce qui est fourni
-            self.year = int(year_param) if year_param else today.year
-            if day_param:
-                self.day = int(day_param)
-                self.month = int(month_param) if month_param else today.month
-                qs = qs.filter(date__year=self.year, date__month=self.month, date__day=self.day)
-            elif month_param:
-                self.day = None
-                self.month = int(month_param)
-                qs = qs.filter(date__year=self.year, date__month=self.month)
-            else:
-                self.day = None
-                self.month = None
+            self.year = int(year_param) if (year_param and year_param != "all") else None
+            self.month = int(month_param) if (month_param and month_param != "all") else None
+            self.day = int(day_param) if (day_param and day_param != "all") else None
+
+            if self.year:
                 qs = qs.filter(date__year=self.year)
+            if self.month:
+                qs = qs.filter(date__month=self.month)
+            if self.day:
+                qs = qs.filter(date__day=self.day)
 
         # Filtrer par pays de l'utilisateur (si applicable)
         if hasattr(user, "country") and user.country:
@@ -55,7 +51,13 @@ class DepenseListView(LoginRequiredMixin, ListView):
             else:
                 qs = qs.filter(pays=user.country)
 
-        return qs
+        # Filtrer par type de transport (Aérien vs Maritime)
+        if getattr(self.request, "is_maritime", False):
+            qs = qs.filter(type_transport="BATEAU")
+        else:
+            qs = qs.filter(Q(type_transport="AVION") | Q(type_transport__isnull=True) | Q(type_transport=""))
+
+        return qs.order_by("-date", "-created_at")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -131,6 +133,12 @@ class DepenseCreateView(LoginRequiredMixin, CreateView):
             self.object.is_china_indicative = True
         else:
             self.object.is_china_indicative = False
+
+        # Attribution automatique du type de transport
+        if getattr(self.request, "is_maritime", False):
+            self.object.type_transport = "BATEAU"
+        else:
+            self.object.type_transport = "AVION"
 
         self.object.save()
         messages.success(self.request, "Dépense ajoutée avec succès.")
@@ -272,33 +280,31 @@ class TransfertListView(LoginRequiredMixin, ListView):
         if hasattr(self.request.user, "country") and self.request.user.country:
             qs = qs.filter(pays_expediteur=self.request.user.country)
 
-        # Filtre par jour/mois/année (par défaut aujourd'hui)
         today = timezone.now().date()
         
         day_param = self.request.GET.get("day")
         month_param = self.request.GET.get("month")
         year_param = self.request.GET.get("year")
 
-        if not day_param and not month_param and not year_param:
+        # Par défaut, si aucun paramètre de filtrage n'est fourni
+        if day_param is None and month_param is None and year_param is None:
             self.day = None
-            self.month = None
-            self.year = None
+            self.month = today.month
+            self.year = today.year
+            qs = qs.filter(date__year=self.year, date__month=self.month)
         else:
-            self.year = int(year_param) if year_param else today.year
-            if day_param:
-                self.day = int(day_param)
-                self.month = int(month_param) if month_param else today.month
-                qs = qs.filter(date__year=self.year, date__month=self.month, date__day=self.day)
-            elif month_param:
-                self.day = None
-                self.month = int(month_param)
-                qs = qs.filter(date__year=self.year, date__month=self.month)
-            else:
-                self.day = None
-                self.month = None
-                qs = qs.filter(date__year=self.year)
+            self.year = int(year_param) if (year_param and year_param != "all") else None
+            self.month = int(month_param) if (month_param and month_param != "all") else None
+            self.day = int(day_param) if (day_param and day_param != "all") else None
 
-        return qs
+            if self.year:
+                qs = qs.filter(date__year=self.year)
+            if self.month:
+                qs = qs.filter(date__month=self.month)
+            if self.day:
+                qs = qs.filter(date__day=self.day)
+
+        return qs.order_by("-date", "-created_at")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

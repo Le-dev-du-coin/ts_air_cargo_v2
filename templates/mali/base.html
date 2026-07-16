@@ -2,7 +2,70 @@
 {% load humanize %}
 
 {% block content %}
-<div class="flex h-screen overflow-hidden bg-gray-100" x-data="{ sidebarOpen: false, desktopSidebarOpen: true }">
+<style>
+  /* Thème Maritime */
+  .theme-maritime .sidebar-bg {
+      background-image: linear-gradient(to bottom, #1e293b, #0f172a) !important; /* bg-gradient-to-b from-slate-800 to-slate-900 */
+  }
+  .theme-maritime .sidebar-link-inactive {
+      color: #cbd5e1 !important; /* text-slate-300 */
+  }
+  .theme-maritime .sidebar-link-inactive:hover {
+      background-color: #334155 !important; /* hover:bg-slate-700 */
+      color: #ffffff !important;
+  }
+  .theme-maritime .sidebar-link-active {
+      background-color: #2563eb !important; /* bg-blue-600 */
+      color: #ffffff !important;
+  }
+  .theme-maritime .sidebar-icon {
+      color: #94a3b8 !important; /* text-slate-400 */
+  }
+  .theme-maritime .sidebar-heading {
+      color: #94a3b8 !important; /* text-slate-400 */
+  }
+  .theme-maritime .sidebar-profile-bg {
+      background-color: #020617 !important; /* bg-slate-950 */
+  }
+  .theme-maritime .sidebar-profile-border {
+      border-color: #1e293b !important; /* border-slate-800 */
+  }
+  .theme-maritime .sidebar-profile-circle {
+      background-color: #334155 !important; /* bg-slate-700 */
+  }
+  
+  /* Thème Aérien */
+  .theme-aerien .sidebar-bg {
+      background-image: linear-gradient(to bottom, #166534, #14532d) !important; /* bg-gradient-to-b from-green-800 to-green-900 */
+  }
+  .theme-aerien .sidebar-link-inactive {
+      color: #d1fae5 !important; /* text-green-100 */
+  }
+  .theme-aerien .sidebar-link-inactive:hover {
+      background-color: #15803d !important; /* hover:bg-green-700 */
+      color: #ffffff !important;
+  }
+  .theme-aerien .sidebar-link-active {
+      background-color: #14532d !important; /* bg-green-900 */
+      color: #ffffff !important;
+  }
+  .theme-aerien .sidebar-icon {
+      color: #4ade80 !important; /* text-green-400 */
+  }
+  .theme-aerien .sidebar-heading {
+      color: #86efac !important; /* text-green-300 */
+  }
+  .theme-aerien .sidebar-profile-bg {
+      background-color: #052e16 !important; /* bg-green-950 */
+  }
+  .theme-aerien .sidebar-profile-border {
+      border-color: #166534 !important; /* border-green-800 */
+  }
+  .theme-aerien .sidebar-profile-circle {
+      background-color: #15803d !important; /* bg-green-700 */
+  }
+</style>
+<div class="flex h-screen overflow-hidden bg-gray-100 {% if request.is_maritime %}theme-maritime{% else %}theme-aerien{% endif %}" x-data="{ sidebarOpen: false, desktopSidebarOpen: true }">
 
     <!-- Mobile sidebar -->
     <div x-show="sidebarOpen" class="relative z-40 md:hidden" x-ref="dialog" aria-modal="true" x-cloak>
@@ -23,7 +86,7 @@
                  x-transition:leave="transition ease-in-out duration-300 transform"
                  x-transition:leave-start="translate-x-0"
                  x-transition:leave-end="-translate-x-full"
-                  class="relative flex w-full max-w-xs flex-1 flex-col {% if request.is_maritime %}bg-gradient-to-b from-slate-800 to-slate-900{% else %}bg-gradient-to-b from-green-800 to-green-900{% endif %} pt-5 pb-4">
+                  class="relative flex w-full max-w-xs flex-1 flex-col sidebar-bg pt-5 pb-4">
                 
                 <div class="absolute top-0 right-0 -mr-12 pt-2">
                     <button type="button" class="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" @click="sidebarOpen = false">
@@ -36,88 +99,99 @@
 
                 <div class="flex items-center flex-shrink-0 px-4 gap-2">
                     <span class="text-2xl font-extrabold text-white tracking-tighter">{% if request.is_maritime %}TS Maritime{% else %}TS Air Cargo{% endif %}</span>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {% if request.is_maritime %}bg-slate-700 text-slate-100{% else %}bg-green-700 text-green-100{% endif %} uppercase">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-black {% if request.is_maritime %}bg-blue-600 text-white{% else %}bg-green-700 text-green-100{% endif %} uppercase shadow-sm border {% if request.is_maritime %}border-blue-500{% else %}border-green-600{% endif %}">
                         {{ APP_VERSION }}
                     </span>
                 </div>
                 
                 <div class="mt-5 h-0 flex-1 overflow-y-auto">
+                    
                     <nav class="px-2 space-y-1">
-                        <a href="{% url 'mali:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'mali:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Tableau de bord
                         </a>
                         
-                        <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold {% if request.is_maritime %}text-slate-300{% else %}text-green-300{% endif %} uppercase tracking-wider">Gestion</h3></div>
-                        <a href="{% url 'mali:aujourdhui' %}" class="{% if request.resolver_match.url_name == 'aujourdhui' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Aujourd'hui</a>
-                        
-                        <a href="{% url 'mali:lots_transit' %}" class="{% if 'lots_transit' in request.resolver_match.url_name %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                            {% if request.is_maritime %}Conteneurs en Mer{% else %}Lots en Transit{% endif %}
-                        </a>
-                        
-                        <a href="{% url 'mali:lots_arrives' %}" class="{% if 'lots_arrives' in request.resolver_match.url_name %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
-                            {% if request.is_maritime %}Conteneurs au Port{% else %}Lots Arrivés{% endif %}
-                        </a>
+                        <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold sidebar-heading uppercase tracking-wider">Gestion</h3></div>
+                        <a href="{{ transport_prefix }}{% url 'mali:aujourdhui' %}" class="{% if request.resolver_match.url_name == 'aujourdhui' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Aujourd'hui</a>
 
                         {% if request.is_maritime %}
-                        <a href="{% url 'mali:lot_bateau_create' %}" class="{% if request.resolver_match.url_name == 'lot_bateau_create' %}bg-slate-700 text-white shadow-lg{% else %}text-green-100 hover:bg-slate-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'mali:lot_bateau_create' %}" class="{% if request.resolver_match.url_name == 'lot_bateau_create' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             🚢 Créer Conteneur
                         </a>
                         {% endif %}
 
-                        <a href="{% url 'mali:lots_livres' %}" class="{% if 'lots_livres' in request.resolver_match.url_name %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'mali:lots_transit' %}" class="{% if 'lots_transit' in request.resolver_match.url_name %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                            {% if request.is_maritime %}Conteneurs en Mer{% else %}Lots en Transit{% endif %}
+                        </a>
+                        
+                        <a href="{{ transport_prefix }}{% url 'mali:lots_arrives' %}" class="{% if 'lots_arrives' in request.resolver_match.url_name %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                            {% if request.is_maritime %}Conteneurs au Port{% else %}Lots Arrivés{% endif %}
+                        </a>
+
+                        <a href="{{ transport_prefix }}{% url 'mali:lots_livres' %}" class="{% if 'lots_livres' in request.resolver_match.url_name %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             {% if request.is_maritime %}Conteneurs Livrés{% else %}Lots Livrés{% endif %}
                         </a>
                         
-                        <a href="{% url 'mali:prets_retrait' %}" class="{% if 'prets_retrait' in request.resolver_match.url_name %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'mali:prets_retrait' %}" class="{% if 'prets_retrait' in request.resolver_match.url_name %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             {% if request.is_maritime %}🎁 Colis Prêts pour Livraison{% else %}🎁 Prêts pour Retrait{% endif %}
                         </a>
                         
-                        <a href="{% url 'mali:colis_attente_paiement' %}" class="{% if request.resolver_match.url_name == 'colis_attente_paiement' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Paiements</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:colis_attente_paiement' %}" class="{% if request.resolver_match.url_name == 'colis_attente_paiement' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Paiements</a>
                         
-                        <a href="{% url 'mali:colis_sortie_garantie' %}" class="{% if request.resolver_match.url_name == 'colis_sortie_garantie' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'mali:colis_sortie_garantie' %}" class="{% if request.resolver_match.url_name == 'colis_sortie_garantie' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             {% if request.is_maritime %}Sorties{% else %}Sorties Garantie{% endif %}
                         </a>
 
+                        <a href="{{ transport_prefix }}{% url 'mali:client_list' %}" class="{% if 'clients' in request.path %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">👥 Clients</a>
+
+                        <a href="{{ transport_prefix }}{% url 'mali:stock' %}" class="{% if request.resolver_match.url_name == 'stock' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Stock Entrepôt</a>
+
+                        <a href="{{ transport_prefix }}{% url 'mali:jetons_cedes' %}" class="{% if request.resolver_match.url_name == 'jetons_cedes' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Jetons Cédés</a>
+
                         {% if not request.is_maritime %}
-                        <a href="{% url 'mali:notification_list' %}" class="{% if request.resolver_match.url_name == 'notification_list' %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Historique WhatsApp</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:notification_list' %}" class="{% if request.resolver_match.url_name == 'notification_list' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Historique WhatsApp</a>
                         {% endif %}
 
-                        <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold {% if request.is_maritime %}text-slate-300{% else %}text-green-300{% endif %} uppercase tracking-wider">Finance</h3></div>
-                        <a href="{% url 'mali:depenses_list' %}" class="{% if 'depenses' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dépenses</a>
-                        <a href="{% url 'mali:transferts_list' %}" class="{% if 'transferts' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Transferts</a>
-                        <a href="{% url 'mali:rapport_financier' %}" class="{% if request.resolver_match.url_name == 'rapport_financier' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rapport Avancé</a>
+                        <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold sidebar-heading uppercase tracking-wider">Finance</h3></div>
+                        {% if not request.is_maritime %}
+                        <a href="{{ transport_prefix }}{% url 'mali:depenses_list' %}" class="{% if 'depenses' in request.path %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dépenses</a>
+                        {% endif %}
+                        {% if not request.is_maritime %}
+                        <a href="{{ transport_prefix }}{% url 'mali:transferts_list' %}" class="{% if 'transferts' in request.path %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Transferts</a>
+                        {% endif %}
+                        <a href="{{ transport_prefix }}{% url 'mali:rapport_financier' %}" class="{% if request.resolver_match.url_name == 'rapport_financier' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rapport Avancé</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:historique_paiements' %}" class="{% if request.resolver_match.url_name == 'historique_paiements' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Historique Paiements</a>
                         
                         {% if not request.is_maritime %}
-                        <a href="{% url 'mali:client_avoir' %}" class="{% if request.resolver_match.url_name == 'client_avoir' %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Portefeuille Client</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:client_avoir' %}" class="{% if request.resolver_match.url_name == 'client_avoir' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Portefeuille Client</a>
                         {% endif %}
 
                         {% if user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' %}
-                        <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold {% if request.is_maritime %}text-slate-300{% else %}text-green-300{% endif %} uppercase tracking-wider">Administration</h3></div>
-                        <a href="{% url 'mali:admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dashboard Admin</a>
-                        <a href="{% url 'mali:admin_agents' %}" class="{% if 'agents' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Gestion Agents</a>
-                        <a href="{% url 'mali:admin_remunerations' %}" class="{% if 'remuneration' in request.path or 'avances' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rémunérations</a>
-                        <a href="{% url 'mali:admin_correction_lot_list' %}" class="{% if 'correction' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Outils Correction</a>
-                        <a href="{% url 'mali:admin_douane_gestion' %}" class="{% if request.resolver_match.url_name == 'admin_douane_gestion' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white shadow-lg{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Gestion Douane</a>
+                        <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold sidebar-heading uppercase tracking-wider">Administration</h3></div>
+                        <a href="{{ transport_prefix }}{% url 'mali:admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dashboard Admin</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:admin_agents' %}" class="{% if 'agents' in request.path %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Gestion Agents</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:admin_remunerations' %}" class="{% if 'remuneration' in request.path or 'avances' in request.path %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rémunérations</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:admin_correction_lot_list' %}" class="{% if 'correction' in request.path %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Outils Correction</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:admin_douane_gestion' %}" class="{% if request.resolver_match.url_name == 'admin_douane_gestion' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Gestion Douane</a>
                         
                         {% if not request.is_maritime %}
-                        <a href="{% url 'mali:notifications_config' %}" class="{% if request.resolver_match.url_name == 'notifications_config' %}bg-green-900 text-white shadow-lg{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Config Notifications</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:notifications_config' %}" class="{% if request.resolver_match.url_name == 'notifications_config' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Config Notifications</a>
                         {% endif %}
-                        
                         {% endif %}
                     </nav>
                 </div>
 
                 <!-- User Profile Mobile -->
-                <div class="flex-shrink-0 flex {% if request.is_maritime %}bg-slate-950{% else %}bg-green-950{% endif %} p-4 border-t {% if request.is_maritime %}border-slate-800{% else %}border-green-800{% endif %}">
+                <div class="flex-shrink-0 flex sidebar-profile-bg p-4 border-t sidebar-profile-border">
                     <div class="flex items-center w-full">
                         <div class="flex-shrink-0">
-                            <div class="h-9 w-9 rounded-full {% if request.is_maritime %}bg-slate-700{% else %}bg-green-700{% endif %} flex items-center justify-center text-white font-bold text-sm">
+                            <div class="h-9 w-9 rounded-full sidebar-profile-circle flex items-center justify-center text-white font-bold text-sm">
                                 {{ user.username.0|upper }}
                             </div>
                         </div>
                         <div class="ml-3 min-w-0 flex-1">
                             <p class="text-sm font-medium text-white truncate">{{ user.get_full_name|default:user.username }}</p>
-                            <p class="text-xs {% if request.is_maritime %}text-slate-300{% else %}text-green-300{% endif %} truncate">{{ user.get_role_display }}</p>
+                            <p class="text-xs sidebar-heading truncate">{{ user.get_role_display }}</p>
                         </div>
                         <a href="{% url 'core:logout' %}" class="ml-2 {% if request.is_maritime %}text-slate-300 hover:text-white{% else %}text-green-300 hover:text-white{% endif %} transition-colors" title="Déconnexion">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -134,24 +208,25 @@
     <!-- Desktop Sidebar (Existante) -->
     <div class="hidden md:flex md:flex-shrink-0" x-show="desktopSidebarOpen" x-transition.opacity.duration.300ms>
         <div class="flex flex-col w-64">
-            <div class="flex flex-col h-0 flex-1 {% if request.is_maritime %}bg-gradient-to-b from-slate-800 to-slate-900{% else %}bg-gradient-to-b from-green-800 to-green-900{% endif %}">
+            <div class="flex flex-col h-0 flex-1 sidebar-bg">
                 <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
                     <div class="flex items-center flex-shrink-0 px-4">
                         <span class="text-2xl font-extrabold text-white tracking-tighter">{% if request.is_maritime %}TS Maritime{% else %}TS Air Cargo{% endif %}</span>
-                        <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium {% if request.is_maritime %}bg-slate-700 text-slate-100{% else %}bg-green-700 text-green-100{% endif %}">
+                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-black {% if request.is_maritime %}bg-blue-600 text-white{% else %}bg-green-700 text-green-100{% endif %} uppercase shadow-sm border {% if request.is_maritime %}border-blue-500{% else %}border-green-600{% endif %}">
                             {{ APP_VERSION }}
                         </span>
                     </div>
                     <div class="mt-2 px-4">
-                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium {% if request.is_maritime %}bg-slate-700 text-white{% else %}bg-green-700 text-white{% endif %}">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium {% if request.is_maritime %}bg-slate-950 text-slate-200 border border-slate-700{% else %}bg-green-700 text-white{% endif %}">
                             <img src="https://flagcdn.com/w20/ml.png" srcset="https://flagcdn.com/w40/ml.png 2x" width="16" alt="Mali">
                             Mali
                         </span>
                     </div>
                     <nav class="mt-5 flex-1 px-2 space-y-1">
-                        <a href="{% url 'mali:dashboard' %}"
-                            class="{% if request.resolver_match.url_name == 'dashboard' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                            <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        
+                        <a href="{{ transport_prefix }}{% url 'mali:dashboard' %}"
+                            class="{% if request.resolver_match.url_name == 'dashboard' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                            <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                             </svg>
@@ -160,98 +235,98 @@
 
                         <!-- Section Gestion -->
                         <div class="mt-8">
-                            <h3 class="px-3 text-xs font-semibold {% if request.is_maritime %}text-slate-300{% else %}text-green-300{% endif %} uppercase tracking-wider">
+                            <h3 class="px-3 text-xs font-semibold sidebar-heading uppercase tracking-wider">
                                 Gestion
                             </h3>
                             <div class="mt-2 space-y-1">
-                                <a href="{% url 'mali:aujourdhui' %}"
-                                    class="{% if request.resolver_match.url_name == 'aujourdhui' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:aujourdhui' %}"
+                                    class="{% if request.resolver_match.url_name == 'aujourdhui' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Aujourd'hui
                                 </a>
-                                <a href="{% url 'mali:lots_transit' %}"
-                                    class="{% if request.resolver_match.url_name == 'lots_transit' or request.resolver_match.url_name == 'lot_transit_detail' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                    </svg>
-                                    {% if request.is_maritime %}Conteneurs en Mer{% else %}Lots en Transit{% endif %}
-                                </a>
-                                <a href="{% url 'mali:lots_arrives' %}"
-                                    class="{% if request.resolver_match.url_name == 'lots_arrives' or request.resolver_match.url_name == 'lot_arrived_detail' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    {% if request.is_maritime %}Conteneurs au Port{% else %}Lots Arrivés{% endif %}
-                                </a>
                                 {% if request.is_maritime %}
-                                <a href="{% url 'mali:lot_bateau_create' %}"
-                                    class="{% if request.resolver_match.url_name == 'lot_bateau_create' %}bg-slate-700 text-white{% else %}text-green-100 hover:bg-slate-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:lot_bateau_create' %}"
+                                    class="{% if request.resolver_match.url_name == 'lot_bateau_create' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     🚢 Créer Conteneur
                                 </a>
                                 {% endif %}
-                                <a href="{% url 'mali:lots_livres' %}"
-                                    class="{% if request.resolver_match.url_name == 'lots_livres' or request.resolver_match.url_name == 'lot_livre_detail' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:lots_transit' %}"
+                                    class="{% if request.resolver_match.url_name == 'lots_transit' or request.resolver_match.url_name == 'lot_transit_detail' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                    {% if request.is_maritime %}Conteneurs en Mer{% else %}Lots en Transit{% endif %}
+                                </a>
+                                <a href="{{ transport_prefix }}{% url 'mali:lots_arrives' %}"
+                                    class="{% if request.resolver_match.url_name == 'lots_arrives' or request.resolver_match.url_name == 'lot_arrived_detail' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    {% if request.is_maritime %}Conteneurs au Port{% else %}Lots Arrivés{% endif %}
+                                </a>
+                                <a href="{{ transport_prefix }}{% url 'mali:lots_livres' %}"
+                                    class="{% if request.resolver_match.url_name == 'lots_livres' or request.resolver_match.url_name == 'lot_livre_detail' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                                     </svg>
                                     {% if request.is_maritime %}Conteneurs Livrés{% else %}Lots Livrés{% endif %}
                                 </a>
-                                <a href="{% url 'mali:prets_retrait' %}"
-                                    class="{% if request.resolver_match.url_name == 'prets_retrait' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:prets_retrait' %}"
+                                    class="{% if request.resolver_match.url_name == 'prets_retrait' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                     </svg>
-                                    {% if request.is_maritime %}🎁 Colis Prêts pour Livraison{% else %}🎁 Prêts pour Retrait{% endif %}
+                                    {% if request.is_maritime %}🎁 Prêts pour Livraison{% else %}🎁 Prêts pour Retrait{% endif %}
                                 </a>
-                                <a href="{% url 'mali:client_list' %}"
-                                    class="{% if 'clients' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:client_list' %}"
+                                    class="{% if 'clients' in request.path %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                     </svg>
                                     👥 Clients
                                 </a>
-                                <a href="{% url 'mali:stock' %}"
-                                    class="{% if request.resolver_match.url_name == 'stock' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:stock' %}"
+                                    class="{% if request.resolver_match.url_name == 'stock' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                                     </svg>
                                     Stock Entrepôt
                                 </a>
-                                <a href="{% url 'mali:colis_attente_paiement' %}"
-                                    class="{% if request.resolver_match.url_name == 'colis_attente_paiement' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:colis_attente_paiement' %}"
+                                    class="{% if request.resolver_match.url_name == 'colis_attente_paiement' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Paiements en attente
                                 </a>
-                                <a href="{% url 'mali:colis_sortie_garantie' %}"
-                                    class="{% if request.resolver_match.url_name == 'colis_sortie_garantie' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:colis_sortie_garantie' %}"
+                                    class="{% if request.resolver_match.url_name == 'colis_sortie_garantie' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                     </svg>
                                     Sorties
                                 </a>
-                                <a href="{% url 'mali:jetons_cedes' %}"
-                                    class="{% if request.resolver_match.url_name == 'jetons_cedes' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:jetons_cedes' %}"
+                                    class="{% if request.resolver_match.url_name == 'jetons_cedes' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                                     </svg>
                                     Jetons Cédés
                                 </a>
                                 {% if not request.is_maritime %}
-                                <a href="{% url 'mali:notification_list' %}"
-                                    class="{% if request.resolver_match.url_name == 'notification_list' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:notification_list' %}"
+                                    class="{% if request.resolver_match.url_name == 'notification_list' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
                                     </svg>
                                     Historique WhatsApp
@@ -262,53 +337,57 @@
 
                         <!-- Section Finance -->
                         <div class="mt-8">
-                            <h3 class="px-3 text-xs font-semibold {% if request.is_maritime %}text-slate-300{% else %}text-green-300{% endif %} uppercase tracking-wider">
+                            <h3 class="px-3 text-xs font-semibold sidebar-heading uppercase tracking-wider">
                                 Finance
                             </h3>
                             <div class="mt-2 space-y-1">
-                                <a href="{% url 'mali:depenses_list' %}"
-                                    class="{% if 'depenses' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                {% if not request.is_maritime %}
+                                <a href="{{ transport_prefix }}{% url 'mali:depenses_list' %}"
+                                    class="{% if 'depenses' in request.path %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                                     </svg>
                                     Dépenses
                                 </a>
-                                <a href="{% url 'mali:transferts_list' %}"
-                                    class="{% if 'transferts' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                {% endif %}
+                                {% if not request.is_maritime %}
+                                <a href="{{ transport_prefix }}{% url 'mali:transferts_list' %}"
+                                    class="{% if 'transferts' in request.path %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                     </svg>
                                     Transferts
                                 </a>
-                                <a href="{% url 'mali:rapport_financier' %}"
-                                    class="{% if request.resolver_match.url_name == 'rapport_financier' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                {% endif %}
+                                <a href="{{ transport_prefix }}{% url 'mali:rapport_financier' %}"
+                                    class="{% if request.resolver_match.url_name == 'rapport_financier' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                     </svg>
                                     Rapport Avancé
                                 </a>
+                                {% if not request.is_maritime %}
                                 <a href="{% url 'report:quarterly_report' %}"
-                                    class="{% if 'quarterly' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    class="{% if 'quarterly' in request.path %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     Rapport Trimestriel
                                 </a>
-                                {% if not request.is_maritime %}
-                                <a href="{% url 'mali:client_avoir' %}"
-                                    class="{% if request.resolver_match.url_name == 'client_avoir' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:client_avoir' %}"
+                                    class="{% if request.resolver_match.url_name == 'client_avoir' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                                     </svg>
                                     Portefeuille Client
                                 </a>
                                 {% endif %}
-                                <a href="{% url 'mali:historique_paiements' %}"
-                                    class="{% if request.resolver_match.url_name == 'historique_paiements' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md border-l-2 {% if request.is_maritime %}border-slate-400{% else %}border-green-400{% endif %} ml-1">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:historique_paiements' %}"
+                                    class="{% if request.resolver_match.url_name == 'historique_paiements' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md border-l-2 {% if request.is_maritime %}border-slate-400{% else %}border-green-400{% endif %} ml-1">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                                     </svg>
                                     Historique Paiements
@@ -319,50 +398,50 @@
                         {% if user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' %}
                         <!-- Section Admin -->
                         <div class="mt-8">
-                            <h3 class="px-3 text-xs font-semibold {% if request.is_maritime %}text-slate-300{% else %}text-green-300{% endif %} uppercase tracking-wider">
+                            <h3 class="px-3 text-xs font-semibold sidebar-heading uppercase tracking-wider">
                                 Administration
                             </h3>
                             <div class="mt-2 space-y-1">
-                                <a href="{% url 'mali:admin_dashboard' %}"
-                                    class="{% if request.resolver_match.url_name == 'admin_dashboard' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:admin_dashboard' %}"
+                                    class="{% if request.resolver_match.url_name == 'admin_dashboard' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                     Dashboard Admin
                                 </a>
-                                <a href="{% url 'mali:admin_agents' %}"
-                                    class="{% if 'agents' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:admin_agents' %}"
+                                    class="{% if 'agents' in request.path %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                     </svg>
                                     Gestion Agents
                                 </a>
-                                <a href="{% url 'mali:admin_remunerations' %}"
-                                    class="{% if 'remuneration' in request.path or 'avances' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:admin_remunerations' %}"
+                                    class="{% if 'remuneration' in request.path or 'avances' in request.path %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Rémunérations
                                 </a>
-                                <a href="{% url 'mali:admin_correction_lot_list' %}"
-                                    class="{% if 'correction' in request.path %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:admin_correction_lot_list' %}"
+                                    class="{% if 'correction' in request.path %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                     Outils Correction
                                 </a>
-                                <a href="{% url 'mali:admin_douane_gestion' %}"
-                                    class="{% if request.resolver_match.url_name == 'admin_douane_gestion' %}{% if request.is_maritime %}bg-slate-700{% else %}bg-green-900{% endif %} text-white{% else %}text-green-100 {% if request.is_maritime %}hover:bg-slate-700{% else %}hover:bg-green-700{% endif %} hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:admin_douane_gestion' %}"
+                                    class="{% if request.resolver_match.url_name == 'admin_douane_gestion' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                     </svg>
                                     Gestion Douane
                                 </a>
                                 {% if not request.is_maritime %}
-                                <a href="{% url 'mali:notifications_config' %}"
-                                    class="{% if request.resolver_match.url_name == 'notifications_config' %}bg-green-900 text-white{% else %}text-green-100 hover:bg-green-700 hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ transport_prefix }}{% url 'mali:notifications_config' %}"
+                                    class="{% if request.resolver_match.url_name == 'notifications_config' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     </svg>
@@ -375,18 +454,18 @@
                     </nav>
                 </div>
                 <!-- User Profile -->
-                <div class="flex-shrink-0 flex {% if request.is_maritime %}bg-slate-950{% else %}bg-green-950{% endif %} p-4">
+                <div class="flex-shrink-0 flex sidebar-profile-bg p-4">
                     <div class="flex-shrink-0 w-full group block">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0">
-                                    <div class="h-10 w-10 rounded-full {% if request.is_maritime %}bg-slate-700{% else %}bg-green-700{% endif %} flex items-center justify-center">
+                                    <div class="h-10 w-10 rounded-full sidebar-profile-circle flex items-center justify-center">
                                         <span class="text-white font-bold text-lg">{{ user.username.0|upper }}</span>
                                     </div>
                                 </div>
                                 <div class="ml-3">
                                     <p class="text-sm font-medium text-white">{{ user.get_full_name|default:user.username }}</p>
-                                    <p class="text-xs {% if request.is_maritime %}text-slate-300{% else %}text-green-300{% endif %}">{{ user.get_role_display }}</p>
+                                    <p class="text-xs sidebar-heading">{{ user.get_role_display }}</p>
                                 </div>
                             </div>
                             <a href="{% url 'core:logout' %}"
@@ -409,7 +488,7 @@
         <!-- Top bar Mobile & Desktop Toggle -->
         <div class="bg-white flex items-center justify-between border-b border-gray-200 px-4 py-2 sm:px-6">
             <div class="flex items-center space-x-3">
-                 <button type="button" class="-ml-2 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500" 
+                 <button type="button" class="-ml-2 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset {% if request.is_maritime %}focus:ring-slate-500{% else %}focus:ring-green-500{% endif %}" 
                  @click="if(window.innerWidth < 768){ sidebarOpen = true } else { desktopSidebarOpen = !desktopSidebarOpen }">
                     <span class="sr-only">Ouvrir le menu</span>
                     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -442,7 +521,7 @@
                     {% endif %}
                 </div>
             </div>
-             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {% if request.is_maritime %}bg-slate-700 text-slate-100{% else %}bg-green-700 text-green-100{% endif %} uppercase">
+             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {% if request.is_maritime %}bg-blue-600 text-white{% else %}bg-green-700 text-green-100{% endif %} uppercase">
                   {{ APP_VERSION }}
              </span>
         </div>

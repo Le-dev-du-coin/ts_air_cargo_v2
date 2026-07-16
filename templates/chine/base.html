@@ -37,45 +37,56 @@
                     </button>
                 </div>
 
-                <!-- Logo Mobile -->
                 <div class="flex flex-shrink-0 items-center px-4 gap-2">
-                    <span class="text-2xl font-extrabold text-white tracking-tighter">TS Air Cargo</span>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500 text-white uppercase">
+                    <span class="text-2xl font-extrabold text-white tracking-tighter">{% if request.is_maritime %}TS Maritime{% else %}TS Air Cargo{% endif %}</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {% if request.is_maritime %}bg-blue-600{% else %}bg-indigo-500{% endif %} text-white uppercase">
                         {{ APP_VERSION }}
                     </span>
+                </div>
+                <!-- Bouton de bascule Mobile -->
+                <div class="px-4 mt-2">
+                    {% if request.is_maritime %}
+                    <a href="/aerien{{ request.path|slice:"9:" }}" class="w-full text-center inline-flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all">
+                        ✈️ Passer à l'Aérien
+                    </a>
+                    {% else %}
+                    <a href="/maritime{{ request.path|slice:"7:" }}" class="w-full text-center inline-flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-all">
+                        🚢 Passer au Maritime
+                    </a>
+                    {% endif %}
                 </div>
                 
                 <div class="mt-5 h-0 flex-1 overflow-y-auto">
                     <!-- Navigation Mobile copiée du Desktop -->
                     <nav class="px-2 space-y-1">
-                        <a href="{% url 'chine:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Tableau de bord
                         </a>
                         
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gestion</h3></div>
-                        <a href="{% url 'chine:client_list' %}" class="{% if 'client' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:client_list' %}" class="{% if 'client' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Clients
                         </a>
-                        <a href="{% url 'chine:lot_list' %}" class="{% if 'lot' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:lot_list' %}" class="{% if 'lot' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Lots & Expéditions
                         </a>
 
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Finances</h3></div>
                         {% if user.role == 'AGENT_CHINE' or user.role == 'ADMIN_CHINE' %}
-                        <a href="{% url 'chine:depenses_list' %}" class="{% if 'finance' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:depenses_list' %}" class="{% if 'finance' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Dépenses
                         </a>
                         {% endif %}
                         {% if user.role == 'ADMIN_CHINE' %}
-                        <a href="{% url 'chine:reception_transferts' %}" class="{% if 'reception_transferts' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:reception_transferts' %}" class="{% if 'reception_transferts' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Réception Transferts
                         </a>
 
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rapports & Archives</h3></div>
-                        <a href="{% url 'chine:monthly_archives' %}" class="{% if 'archives' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:monthly_archives' %}" class="{% if 'archives' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Archives Mensuelles
                         </a>
-                    <a href="{% url 'chine:transport_stats' %}" class="{% if 'transport_stats' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                    <a href="{{ transport_prefix }}{% url 'chine:transport_stats' %}" class="{% if 'transport_stats' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             ✈️ Stats Transport
                         </a>
                         <a href="{% url 'report:quarterly_report' %}" class="{% if 'quarterly_report' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
@@ -83,23 +94,23 @@
                         </a>
                         
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Communication</h3></div>
-                        <a href="{% url 'chine:notification_list' %}" class="{% if 'notification_list' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:notification_list' %}" class="{% if 'notification_list' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             💬 Historique WhatsApp
                         </a>
 
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gestion Personnel</h3></div>
-                        <a href="{% url 'chine:agent_list' %}" class="{% if 'agent' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:agent_list' %}" class="{% if 'agent' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Gestion des Agents
                         </a>
-                        <a href="{% url 'chine:remuneration_list' %}" class="{% if 'remuneration' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:remuneration_list' %}" class="{% if 'remuneration' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Rémunérations
                         </a>
 
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Configuration</h3></div>
-                        <a href="{% url 'chine:tarif_list' %}" class="{% if 'tarif' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:tarif_list' %}" class="{% if 'tarif' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Tarifs
                         </a>
-                        <a href="{% url 'chine:country_add' %}" class="{% if 'country' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
+                        <a href="{{ transport_prefix }}{% url 'chine:country_add' %}" class="{% if 'country' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             Ajouter un Pays
                         </a>
                         <a href="{% url 'admin_app:notification_config' %}" class="{% if 'notification_config' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
@@ -138,18 +149,28 @@
     <div class="hidden md:flex md:flex-shrink-0" x-show="desktopSidebarOpen" x-transition.opacity.duration.300ms>
         <div class="flex flex-col w-64 bg-slate-900 border-r border-gray-800">
             <!-- Header/Logo -->
-            <div class="px-6 py-8 border-b border-white/5">
+            <div class="px-6 py-6 border-b border-white/5">
                 <div class="flex items-center gap-2">
-                    <span class="text-2xl font-extrabold text-white tracking-tighter">TS Air Cargo</span>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500 text-white uppercase">
+                    <span class="text-2xl font-extrabold text-white tracking-tighter">{% if request.is_maritime %}TS Maritime{% else %}TS Air Cargo{% endif %}</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {% if request.is_maritime %}bg-blue-600{% else %}bg-indigo-500{% endif %} text-white uppercase">
                         {{ APP_VERSION }}
                     </span>
                 </div>
-                <div class="mt-2 text-center md:text-left">
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-indigo-300 border border-indigo-500/20">
+                <div class="mt-2 flex flex-col gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-indigo-300 border border-indigo-500/20 w-fit">
                         <img src="https://flagcdn.com/w20/cn.png" srcset="https://flagcdn.com/w40/cn.png 2x" width="16" alt="Chine">
                         Chine
                     </span>
+                    <!-- Bouton de bascule Desktop -->
+                    {% if request.is_maritime %}
+                    <a href="/aerien{{ request.path|slice:"9:" }}" class="w-full text-center inline-flex justify-center items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold bg-indigo-600 hover:bg-indigo-750 text-white shadow transition-all">
+                        ✈️ Passer à l'Aérien
+                    </a>
+                    {% else %}
+                    <a href="/maritime{{ request.path|slice:"7:" }}" class="w-full text-center inline-flex justify-center items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow transition-all">
+                        🚢 Passer au Maritime
+                    </a>
+                    {% endif %}
                 </div>
             </div>
 
@@ -157,7 +178,7 @@
             <div class="flex-1 flex flex-col overflow-y-auto">
                 <nav class="flex-1 px-4 py-6 space-y-2">
                     <!-- Dashboard -->
-                    <a href="{% url 'chine:dashboard' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:dashboard' %}"
                         class="{% if request.resolver_match.url_name == 'dashboard' %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if request.resolver_match.url_name == 'dashboard' %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -172,7 +193,7 @@
                     </div>
 
                     <!-- Clients -->
-                    <a href="{% url 'chine:client_list' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:client_list' %}"
                         class="{% if 'client' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'client' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -183,7 +204,7 @@
                     </a>
 
                     <!-- Lots -->
-                    <a href="{% url 'chine:lot_list' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:lot_list' %}"
                         class="{% if 'lot' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'lot' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -198,7 +219,7 @@
                     </div>
 
                     {% if user.role == 'AGENT_CHINE' or user.role == 'ADMIN_CHINE' %}
-                    <a href="{% url 'chine:depenses_list' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:depenses_list' %}"
                         class="{% if 'finance' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'finance' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -209,7 +230,7 @@
                     {% endif %}
 
                     {% if user.role == 'ADMIN_CHINE' %}
-                    <a href="{% url 'chine:reception_transferts' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:reception_transferts' %}"
                         class="{% if 'reception_transferts' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'reception_transferts' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -223,7 +244,7 @@
                     <div class="px-3 mt-6 mb-2">
                         <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rapports & Archives</h3>
                     </div>
-                    <a href="{% url 'chine:monthly_archives' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:monthly_archives' %}"
                         class="{% if 'archives' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'archives' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -231,7 +252,7 @@
                         </svg>
                         Archives Mensuelles
                     </a>
-                    <a href="{% url 'chine:transport_stats' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:transport_stats' %}"
                         class="{% if 'transport_stats' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'transport_stats' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -248,7 +269,7 @@
                         </svg>
                         Rapport Trimestriel
 
-                    <a href="{% url 'chine:monthly_detail_stats' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:monthly_detail_stats' %}"
                         class="{% if 'monthly_detail_stats' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'monthly_detail_stats' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -261,7 +282,7 @@
                     <div class="px-3 mt-6 mb-2">
                         <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Communication</h3>
                     </div>
-                    <a href="{% url 'chine:notification_list' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:notification_list' %}"
                         class="{% if 'notification_list' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'notification_list' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -276,7 +297,7 @@
                     <div class="px-3 mt-6 mb-2">
                         <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gestion Personnel</h3>
                     </div>
-                    <a href="{% url 'chine:agent_list' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:agent_list' %}"
                         class="{% if 'agent' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'agent' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -285,7 +306,7 @@
                         Gestion des Agents
                     </a>
 
-                    <a href="{% url 'chine:remuneration_list' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:remuneration_list' %}"
                         class="{% if 'remuneration' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'remuneration' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -298,7 +319,7 @@
                     <div class="px-3 mt-6 mb-2">
                         <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Configuration</h3>
                     </div>
-                    <a href="{% url 'chine:tarif_list' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:tarif_list' %}"
                         class="{% if 'tarif' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'tarif' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -307,7 +328,7 @@
                         </svg>
                         Tarifs
                     </a>
-                    <a href="{% url 'chine:country_add' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:country_add' %}"
                         class="{% if 'country' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'country' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -325,7 +346,7 @@
                         </svg>
                         Config Notifications
                         </a>
-                        <a href="{% url 'chine:database_backup' %}"
+                        <a href="{{ transport_prefix }}{% url 'chine:database_backup' %}"
                         class="{% if 'database_backup' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'database_backup' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -340,7 +361,7 @@
                     <div class="px-3 mt-6 mb-2">
                         <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tâches</h3>
                     </div>
-                    <a href="{% url 'chine:task_list' %}"
+                    <a href="{{ transport_prefix }}{% url 'chine:task_list' %}"
                         class="{% if 'task' in request.resolver_match.url_name %}bg-indigo-600 text-white shadow-lg shadow-indigo-900/50{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200">
                         <svg class="mr-3 flex-shrink-0 h-5 w-5 {% if 'task' in request.resolver_match.url_name %}text-white{% else %}text-slate-400 group-hover:text-white transition-colors{% endif %}"
                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -391,7 +412,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
-                <span class="font-bold text-gray-900 ml-2 md:hidden">TS Air Cargo</span>
+                <span class="font-bold text-gray-900 ml-2 md:hidden">{% if request.is_maritime %}TS Maritime{% else %}TS Air Cargo{% endif %}</span>
             </div>
              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500 text-white uppercase md:hidden">
                  {{ APP_VERSION }}

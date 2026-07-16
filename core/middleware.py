@@ -21,6 +21,7 @@ class TenantMiddleware:
 
 
 from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
 from core.context import set_current_transport_mode, clear_current_transport_mode
 
 class TransportMiddleware:
@@ -30,12 +31,18 @@ class TransportMiddleware:
     def __call__(self, request):
         path = request.path_info
         
+        # Redirection automatique pour les anciennes URLs non préfixées
+        for prefix in ['chine', 'mali', 'ivoire', 'clients', 'report']:
+            if path.startswith(f'/{prefix}/') or path == f'/{prefix}':
+                return redirect(f'/aerien{path}')
+        
         # Détermination du mode de transport
         if path.startswith('/maritime/'):
             mode = 'BATEAU'
             request.transport_mode = 'BATEAU'
             request.is_maritime = True
             request.is_aerien = False
+            request.current_app = 'maritime'
             
             # Vérification des droits d'accès
             if request.user.is_authenticated and not request.user.is_superuser:
@@ -48,6 +55,7 @@ class TransportMiddleware:
             request.transport_mode = 'AERIEN'
             request.is_maritime = False
             request.is_aerien = True
+            request.current_app = 'aerien'
             
             # Vérification des droits d'accès si on est explicitement sous /aerien/
             if path.startswith('/aerien/'):
@@ -61,5 +69,20 @@ class TransportMiddleware:
             response = self.get_response(request)
         finally:
             clear_current_transport_mode(token)
+            
+        # Correction automatique des redirections pour préserver le mode de transport
+        if response.status_code in [301, 302, 307, 308] and 'Location' in response:
+            redirect_url = response['Location']
+            # On ne corrige que les chemins relatifs locaux (commençant par /)
+            # et qui ne sont pas déjà préfixés par /aerien/ ou /maritime/
+            if redirect_url.startswith('/') and not (redirect_url.startswith('/aerien/') or redirect_url.startswith('/maritime/')):
+                # Pour les préfixes d'application connus
+                for prefix in ['chine', 'mali', 'ivoire', 'clients', 'report']:
+                    if redirect_url.startswith(f'/{prefix}/') or redirect_url == f'/{prefix}':
+                        if request.is_maritime:
+                            response['Location'] = f'/maritime{redirect_url}'
+                        else:
+                            response['Location'] = f'/aerien{redirect_url}'
+                        break
             
         return response

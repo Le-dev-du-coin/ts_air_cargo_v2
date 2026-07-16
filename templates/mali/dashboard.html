@@ -12,7 +12,7 @@
     <div class="grid grid-cols-1 {% if not request.is_maritime and not request.is_aerien %}md:grid-cols-2{% endif %} gap-6">
         <!-- BLOC AVION -->
         {% if not request.is_maritime %}
-        <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
+        <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
             <div class="absolute -right-6 -bottom-6 opacity-10">
                 <svg class="h-32 w-32" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.97 4.44c-.32.18-.71.18-1.03 0l-7.97-4.44c-.31-.17-.52-.5-.52-.88v-9c0-.38.21-.71.53-.88l7.97-4.44c.32-.18.71-.18 1.03 0l7.97 4.44c.31.17.52.5.52.88v9z"/></svg>
             </div>
@@ -24,15 +24,15 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Colis Livrés</p>
+                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Colis Livrés</p>
                     <p class="text-2xl font-black mt-1">{{ colis_livres_avion|intcomma }}</p>
                 </div>
                 <div>
-                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Poids Total</p>
+                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Poids Total</p>
                     <p class="text-2xl font-black mt-1">{{ total_poids_mois|floatformat:1 }} <span class="text-xs font-normal">kg</span></p>
                 </div>
                 <div class="col-span-2 mt-2 pt-4 border-t border-white/10">
-                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Recettes</p>
+                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Recettes</p>
                     <p class="text-3xl font-black mt-1">{{ recettes_avion|fcfa }}</p>
                 </div>
             </div>
@@ -41,7 +41,7 @@
 
         <!-- BLOC BATEAU -->
         {% if request.is_maritime or not request.is_aerien %}
-        <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
+        <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
             <div class="absolute -right-6 -bottom-6 opacity-10">
                 <svg class="h-32 w-32" fill="currentColor" viewBox="0 0 24 24"><path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.65 2.62.99 4 .99h2v-2h-2zM3.95 19H4c1.6 0 3.11-.55 4.35-1.56.64-.52 1.35-.52 1.99 0 1.24 1.01 2.75 1.56 4.35 1.56 1.6 0 3.11-.55 4.35-1.56.64-.52 1.35-.52 1.99 0 1.24 1.01 2.75 1.56 4.35 1.56h.05l1.09-6.31-1.04-.19H2.9l-1.04.19L2.95 19h1z"/></svg>
             </div>
@@ -53,15 +53,15 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Colis Livrés</p>
+                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Colis Livrés</p>
                     <p class="text-2xl font-black mt-1">{{ colis_livres_bateau|intcomma }}</p>
                 </div>
                 <div>
-                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Volume Total</p>
+                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Volume Total</p>
                     <p class="text-2xl font-black mt-1">{{ total_cbm_mois|floatformat:3 }} <span class="text-xs font-normal">m³</span></p>
                 </div>
                 <div class="col-span-2 mt-2 pt-4 border-t border-white/10">
-                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Recettes</p>
+                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Recettes</p>
                     <p class="text-3xl font-black mt-1">{{ recettes_bateau|fcfa }}</p>
                 </div>
             </div>

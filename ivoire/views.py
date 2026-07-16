@@ -191,20 +191,27 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             or 0
         )
 
-        depenses_globales = (
-            Depense.objects.filter(pays=mali, date__lt=today).aggregate(
-                total=Sum("montant")
-            )["total"]
-            or 0
-        )
-
-        # Les transferts sont considérés comme des dépenses (sorties de caisse)
-        transferts_globaux = (
-            TransfertArgent.objects.filter(
-                pays_expediteur=mali, date__lt=today
-            ).aggregate(total=Sum("montant"))["total"]
-            or 0
-        )
+        if getattr(self.request, "is_maritime", False):
+            depenses_globales = (
+                Depense.objects.filter(pays=mali, date__lt=today, type_transport="BATEAU").aggregate(
+                    total=Sum("montant")
+                )["total"]
+                or 0
+            )
+            transferts_globaux = 0
+        else:
+            depenses_globales = (
+                Depense.objects.filter(pays=mali, date__lt=today)
+                .filter(Q(type_transport="AVION") | Q(type_transport__isnull=True) | Q(type_transport=""))
+                .aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
+            transferts_globaux = (
+                TransfertArgent.objects.filter(
+                    pays_expediteur=mali, date__lt=today
+                ).aggregate(total=Sum("montant"))["total"]
+                or 0
+            )
 
         context["solde_veille"] = recettes_globales - (
             depenses_globales + transferts_globaux
@@ -265,21 +272,27 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
             colis_livres_jour.aggregate(total=Sum("montant_jc"))["total"] or 0
         )
 
-        # --- 3. DÉPENSES & TRANSFERTS DU JOUR ---
         # Dépenses
-        depenses_jour_qs = Depense.objects.filter(pays=mali, date=today).order_by(
-            "-created_at"
-        )
+        if getattr(self.request, "is_maritime", False):
+            depenses_jour_qs = Depense.objects.filter(pays=mali, date=today, type_transport="BATEAU").order_by(
+                "-created_at"
+            )
+            transferts_jour_qs = TransfertArgent.objects.none()
+            total_transferts = 0
+        else:
+            depenses_jour_qs = (
+                Depense.objects.filter(pays=mali, date=today)
+                .filter(Q(type_transport="AVION") | Q(type_transport__isnull=True) | Q(type_transport=""))
+                .order_by("-created_at")
+            )
+            transferts_jour_qs = TransfertArgent.objects.filter(
+                pays_expediteur=mali, date=today
+            ).order_by("-created_at")
+            total_transferts = (
+                transferts_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
+            )
+
         total_depenses = depenses_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
-
-        # Transferts (considérés comme dépenses jour)
-
-        transferts_jour_qs = TransfertArgent.objects.filter(
-            pays_expediteur=mali, date=today
-        ).order_by("-created_at")
-        total_transferts = (
-            transferts_jour_qs.aggregate(total=Sum("montant"))["total"] or 0
-        )
 
         context["depenses_jour_list"] = depenses_jour_qs
         context["transferts_jour_list"] = transferts_jour_qs

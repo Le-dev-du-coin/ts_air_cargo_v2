@@ -23,7 +23,7 @@
                     <tr>
                         {% for client in top_clients %}
                         <td class="px-4 py-3">
-                            <a href="{% url 'mali:client_detail' client.pk %}" class="flex items-center gap-3 hover:bg-yellow-50 rounded-lg p-2 transition-colors">
+                            <a href="{{ transport_prefix }}{% url 'mali:client_detail' client.pk %}" class="flex items-center gap-3 hover:bg-yellow-50 rounded-lg p-2 transition-colors">
                                 <div class="flex-shrink-0 h-9 w-9 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold text-sm">
                                     {{ forloop.counter }}
                                 </div>
@@ -57,7 +57,7 @@
                 Rechercher
             </button>
             {% if q %}
-            <a href="{% url 'mali:client_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            <a href="{{ transport_prefix }}{% url 'mali:client_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                 Réinitialiser
             </a>
             {% endif %}
@@ -108,7 +108,7 @@
                             {% else %}<span class="text-green-600 text-xs">Soldé</span>{% endif %}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-center">
-                            <a href="{% url 'mali:client_detail' client.pk %}" class="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm">
+                            <a href="{{ transport_prefix }}{% url 'mali:client_detail' client.pk %}" class="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm">
                                 Voir détails
                             </a>
                         </td>

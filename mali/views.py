@@ -3426,6 +3426,12 @@ class PaiementsHistoriqueView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         mali = self.get_current_country()
         qs = EncaissementColis.objects.filter(colis__lot__destination=mali).select_related("colis", "colis__client", "enregistre_par")
         
+        # Filtre par type de transport (Maritime vs Aérien)
+        if getattr(self.request, "is_maritime", False):
+            qs = qs.filter(colis__lot__type_transport="BATEAU")
+        else:
+            qs = qs.filter(colis__lot__type_transport__in=["CARGO", "EXPRESS"])
+
         # Recherche par texte
         q = self.request.GET.get("q")
         if q:
@@ -3584,8 +3590,13 @@ class ClientDetailMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, De
         mali = self.get_current_country()
         client = self.object
 
-        # 4 querysets de colis filtrés par client et destination
+        # 4 querysets de colis filtrés par client, destination et type de transport
         base_qs = Colis.objects.filter(client=client, lot__destination=mali).select_related("lot")
+
+        if getattr(self.request, "is_maritime", False):
+            base_qs = base_qs.filter(lot__type_transport="BATEAU")
+        else:
+            base_qs = base_qs.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
 
         en_chine = base_qs.filter(status="RECU")
         en_expedition = base_qs.filter(status="EXPEDIE")
@@ -3616,9 +3627,14 @@ class ClientDetailMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, De
         )
 
         # Historique paiements récents
+        paiements_qs = EncaissementColis.objects.filter(colis__client=client, colis__lot__destination=mali)
+        if getattr(self.request, "is_maritime", False):
+            paiements_qs = paiements_qs.filter(colis__lot__type_transport="BATEAU")
+        else:
+            paiements_qs = paiements_qs.filter(colis__lot__type_transport__in=["CARGO", "EXPRESS"])
+            
         context["paiements_recents"] = (
-            EncaissementColis.objects.filter(colis__client=client, colis__lot__destination=mali)
-            .select_related("colis")
+            paiements_qs.select_related("colis")
             .order_by("-date", "-created_at")[:10]
         )
 
