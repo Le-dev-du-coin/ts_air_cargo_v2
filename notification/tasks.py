@@ -560,17 +560,7 @@ def perform_avoir_imputation_colis(colis, user):
                 client.solde_avoir -= montant_impute
                 client.save()
                 
-                # 2. Mise à jour du colis
-                colis.reste_a_payer -= montant_impute
-                if colis.reste_a_payer <= 0:
-                    colis.est_paye = True
-                    colis.reste_a_payer = 0
-                
-                colis.mode_paiement = "AVANCE"
-                colis.paye_par_avance = True
-                colis.save()
-                
-                # 3. Tracer l'encaissement
+                # 2. Tracer l'encaissement d'abord en BDD pour que recalculate_prices en tienne compte
                 EncaissementColis.objects.create(
                     colis=colis,
                     montant=montant_impute,
@@ -579,7 +569,21 @@ def perform_avoir_imputation_colis(colis, user):
                     date=timezone.now().date()
                 )
                 
-                # 4. Tracer le mouvement d'avoir
+                # 3. Mise à jour des drapeaux du colis et sauvegarde (déclenche recalculate_prices)
+                colis.mode_paiement = "AVANCE"
+                colis.paye_par_avance = True
+                colis.save()
+                
+                # 4. Ajuster le statut selon le paiement
+                if colis.est_paye:
+                    # Entièrement payé -> Prêt pour retrait (Arrivé au Pays et payé)
+                    colis.status = "ARRIVE"
+                else:
+                    # Non entièrement payé -> En attente de paiement (LIVRE et non payé)
+                    colis.status = "LIVRE"
+                colis.save()
+                
+                # 5. Tracer le mouvement d'avoir
                 AvoirMouvement.objects.create(
                     client=client,
                     montant=montant_impute,
