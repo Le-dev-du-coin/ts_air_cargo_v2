@@ -6,7 +6,7 @@
 {% block header %}{% if request.is_maritime %}Conteneurs en Transit{% else %}Lots en Transit{% endif %}{% endblock %}
 
 {% block actions %}
-<form method="GET" action="{% url 'mali:lots_transit' %}" class="flex w-full max-w-md">
+<form method="GET" action="{{ transport_prefix }}{% url 'mali:lots_transit' %}" class="flex w-full max-w-md">
     <div class="relative w-full">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

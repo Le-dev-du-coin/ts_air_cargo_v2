@@ -31,14 +31,31 @@ class TransportMiddleware:
     def __call__(self, request):
         path = request.path_info
         
-        # Redirection automatique pour les anciennes URLs non préfixées
-        for prefix in ['chine', 'mali', 'ivoire', 'clients', 'report']:
-            if path.startswith(f'/{prefix}/') or path == f'/{prefix}':
-                return redirect(f'/aerien{path}')
+        # Redirection automatique pour les anciennes URLs non préfixées (GET uniquement)
+        if request.method == 'GET':
+            for prefix in ['chine', 'mali', 'ivoire', 'clients', 'report']:
+                if path.startswith(f'/{prefix}/') or path == f'/{prefix}':
+                    return redirect(f'/aerien{path}')
         
         # Détermination du mode de transport
+        mode = None
         if path.startswith('/maritime/'):
             mode = 'BATEAU'
+        elif path.startswith('/aerien/'):
+            mode = 'AERIEN'
+        else:
+            # Pour les anciennes URLs non préfixées qui sont soumises en POST (non redirigées),
+            # ou pour les requêtes HTMX, on détecte le mode via le referer (la page d'origine)
+            referer = request.META.get('HTTP_REFERER', '')
+            if '/maritime/' in referer:
+                mode = 'BATEAU'
+            elif '/aerien/' in referer:
+                mode = 'AERIEN'
+            else:
+                # Espace client global, admin global, etc. -> pas de filtrage par défaut
+                mode = None
+            
+        if mode == 'BATEAU':
             request.transport_mode = 'BATEAU'
             request.is_maritime = True
             request.is_aerien = False
@@ -49,19 +66,21 @@ class TransportMiddleware:
                 if request.user.role != 'GLOBAL_ADMIN' and not getattr(request.user, 'has_maritime_access', True):
                     raise PermissionDenied("Vous n'avez pas accès à l'espace Maritime.")
                     
-        else:
-            # Tout autre chemin (y compris /aerien/ ou racine) est traité en AERIEN
-            mode = 'AERIEN'
+        elif mode == 'AERIEN':
             request.transport_mode = 'AERIEN'
             request.is_maritime = False
             request.is_aerien = True
             request.current_app = 'aerien'
             
             # Vérification des droits d'accès si on est explicitement sous /aerien/
-            if path.startswith('/aerien/'):
-                if request.user.is_authenticated and not request.user.is_superuser:
-                    if request.user.role != 'GLOBAL_ADMIN' and not getattr(request.user, 'has_aerien_access', True):
-                        raise PermissionDenied("Vous n'avez pas accès à l'espace Aérien.")
+            if request.user.is_authenticated and not request.user.is_superuser:
+                if request.user.role != 'GLOBAL_ADMIN' and not getattr(request.user, 'has_aerien_access', True):
+                    raise PermissionDenied("Vous n'avez pas accès à l'espace Aérien.")
+        else:
+            request.transport_mode = None
+            request.is_maritime = False
+            request.is_aerien = False
+            request.current_app = None
             
         # Enregistrement dans le contexte global de thread
         token = set_current_transport_mode(mode)
@@ -73,10 +92,7 @@ class TransportMiddleware:
         # Correction automatique des redirections pour préserver le mode de transport
         if response.status_code in [301, 302, 307, 308] and 'Location' in response:
             redirect_url = response['Location']
-            # On ne corrige que les chemins relatifs locaux (commençant par /)
-            # et qui ne sont pas déjà préfixés par /aerien/ ou /maritime/
             if redirect_url.startswith('/') and not (redirect_url.startswith('/aerien/') or redirect_url.startswith('/maritime/')):
-                # Pour les préfixes d'application connus
                 for prefix in ['chine', 'mali', 'ivoire', 'clients', 'report']:
                     if redirect_url.startswith(f'/{prefix}/') or redirect_url == f'/{prefix}':
                         if request.is_maritime:

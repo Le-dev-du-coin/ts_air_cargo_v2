@@ -54,3 +54,4 @@ _bmad-output/
 .agents/
 scratch/
 graphify-out/
+deploy.sh
