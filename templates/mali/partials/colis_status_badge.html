@@ -38,7 +38,7 @@
         
         <div class="flex space-x-1.5">
             {% if user.role == 'ADMIN_MALI' or user.role == 'AGENT_MALI' or user.role == 'GLOBAL_ADMIN' %}
-            <a href="{% url 'mali:colis_update' colis.pk %}"
+            <a href="{{ transport_prefix }}{% url 'mali:colis_update' colis.pk %}"
                class="inline-flex items-center px-2 py-1.5 border border-indigo-200 shadow-sm text-[10px] font-black rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors justify-center uppercase">
                 <svg class="h-3.5 w-3.5 sm:mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -49,7 +49,7 @@
 
             <!-- Bouton Perdu -> SweetAlert -->
             <form id="perdu-form-{{ colis.pk }}"
-                  hx-post="{% url 'mali:colis_perdu' colis.pk %}" 
+                  hx-post="{{ transport_prefix }}{% url 'mali:colis_perdu' colis.pk %}" 
                   hx-target="#colis-status-{{ colis.pk }}"
                   hx-swap="innerHTML"
                   class="flex-1">

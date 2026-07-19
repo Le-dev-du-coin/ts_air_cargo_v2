@@ -281,9 +281,8 @@
             </form>
         </div>
         
-        <!-- Formulaire de pointage en masse (Arrivé / Livraison) -->
         <form id="bulk-livraison-form" 
-              hx-post="{% url 'mali:colis_livre_bulk' lot.pk %}"
+              hx-post="{{ transport_prefix }}{% url 'mali:colis_livre_bulk' lot.pk %}"
               hx-target="#bulk-messages"
               hx-swap="innerHTML"
               @change="updateSelection()">
