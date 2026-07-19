@@ -400,165 +400,217 @@
         </div>
 
         {% else %}
-        <!-- AGENT CHINE STATS (8 cards réorganisées) -->
+        <!-- AGENT CHINE STATS (8 cards réorganisées et thématisées) -->
         
-        <!-- Lots en Transit (déplacé en premier) -->
-        <div class="block bg-white overflow-hidden shadow rounded-lg bg-blue-50/30 border border-blue-100 hover:border-blue-300 transition-colors">
+        <!-- Lots en Transit -->
+        <div class="block bg-white overflow-hidden shadow rounded-xl border-l-4 {% if request.is_maritime %}border-teal-500 bg-teal-50/10 hover:bg-teal-50/20{% else %}border-blue-500 bg-blue-50/10 hover:bg-blue-50/20{% endif %} hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5">
             <div class="p-5">
                 <div class="flex items-center mb-3">
-                    <div class="flex-shrink-0 bg-blue-600 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="flex-shrink-0 {% if request.is_maritime %}bg-teal-600{% else %}bg-blue-600{% endif %} rounded-lg p-3 text-white">
+                        {% if request.is_maritime %}
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        {% else %}
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
+                        {% endif %}
                     </div>
                     <div class="ml-5 w-0 flex-1">
-                        <dt class="text-sm font-medium text-blue-700 truncate"><a href="{% url 'chine:lot_list' %}?status=EN_TRANSIT" class="hover:underline">Lots en Transit</a></dt>
-                        <dd class="text-2xl font-semibold text-gray-900">{{ lots_transit_count|default:"0" }}</dd>
+                        <dt class="text-sm font-bold {% if request.is_maritime %}text-teal-800{% else %}text-blue-800{% endif %} truncate">
+                            <a href="{% url 'chine:lot_list' %}?status=EN_TRANSIT" class="hover:underline">
+                                {% if request.is_maritime %}Conteneurs en Transit{% else %}Lots en Transit{% endif %}
+                            </a>
+                        </dt>
+                        <dd class="text-2xl font-black text-gray-900">
+                            {% if request.is_maritime %}{{ lots_transit_bateau|default:"0" }}{% else %}{{ lots_transit_avion|default:"0" }}{% endif %}
+                        </dd>
                     </div>
                 </div>
-                <div class="flex gap-4 mt-2 pt-2 border-t border-blue-100/50">
-                    <div class="flex-1"><span class="text-xs text-gray-500">✈️ Avion:</span> <span class="font-bold text-sm text-blue-900">{{ lots_transit_avion|default:"0" }}</span></div>
-                    <div class="flex-1"><span class="text-xs text-gray-500">🚢 Bateau:</span> <span class="font-bold text-sm text-blue-900">{{ lots_transit_bateau|default:"0" }}</span></div>
+                <div class="pt-2 border-t {% if request.is_maritime %}border-teal-100{% else %}border-blue-100{% endif %} flex justify-between items-center text-xs text-gray-500 font-medium">
+                    <span>Mode actif :</span>
+                    <span class="font-bold {% if request.is_maritime %}text-teal-700{% else %}text-blue-700{% endif %}">
+                        {% if request.is_maritime %}🚢 Maritime (Bateau){% else %}✈️ Aérien (Avion){% endif %}
+                    </span>
                 </div>
             </div>
         </div>
 
-        <!-- Lots Arrivés au Mali (déplacé en deuxième) -->
-        <div class="block bg-white overflow-hidden shadow rounded-lg bg-green-50/30 border border-green-100 hover:border-green-300 transition-colors">
+        <!-- Lots Arrivés au Mali -->
+        <div class="block bg-white overflow-hidden shadow rounded-xl border-l-4 {% if request.is_maritime %}border-emerald-500 bg-emerald-50/10 hover:bg-emerald-50/20{% else %}border-green-500 bg-green-50/10 hover:bg-green-50/20{% endif %} hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5">
             <div class="p-5">
                 <div class="flex items-center mb-3">
-                    <div class="flex-shrink-0 bg-green-600 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="flex-shrink-0 {% if request.is_maritime %}bg-emerald-600{% else %}bg-green-600{% endif %} rounded-lg p-3 text-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
-                        <dt class="text-sm font-medium text-green-700 truncate"><a href="{% url 'chine:lot_list' %}?status=ARRIVE" class="hover:underline">Lots Arrivés au Mali</a></dt>
-                        <dd class="text-2xl font-semibold text-gray-900">{{ lots_arrives_mali_count|default:"0" }}</dd>
+                        <dt class="text-sm font-bold {% if request.is_maritime %}text-emerald-800{% else %}text-green-800{% endif %} truncate">
+                            <a href="{% url 'chine:lot_list' %}?status=ARRIVE" class="hover:underline">
+                                {% if request.is_maritime %}Conteneurs Arrivés Mali{% else %}Lots Arrivés Mali{% endif %}
+                            </a>
+                        </dt>
+                        <dd class="text-2xl font-black text-gray-900">
+                            {% if request.is_maritime %}{{ lots_arrives_mali_bateau|default:"0" }}{% else %}{{ lots_arrives_mali_avion|default:"0" }}{% endif %}
+                        </dd>
                     </div>
                 </div>
-                <div class="flex gap-4 mt-2 pt-2 border-t border-green-100/50">
-                    <div class="flex-1"><span class="text-xs text-gray-500">✈️ Avion:</span> <span class="font-bold text-sm text-green-900">{{ lots_arrives_mali_avion|default:"0" }}</span></div>
-                    <div class="flex-1"><span class="text-xs text-gray-500">🚢 Bateau:</span> <span class="font-bold text-sm text-green-900">{{ lots_arrives_mali_bateau|default:"0" }}</span></div>
+                <div class="pt-2 border-t {% if request.is_maritime %}border-emerald-100{% else %}border-green-100{% endif %} flex justify-between items-center text-xs text-gray-500 font-medium">
+                    <span>En transit final :</span>
+                    <span class="font-bold {% if request.is_maritime %}text-emerald-700{% else %}text-green-700{% endif %}">
+                        {% if request.is_maritime %}🚢 Bateau{% else %}✈️ Avion{% endif %}
+                    </span>
                 </div>
             </div>
         </div>
         
         <!-- Lots Ouverts -->
-        <a href="{% url 'chine:lot_list' %}?status=OUVERT" class="block bg-white overflow-hidden shadow rounded-lg relative hover:border-gray-300 border border-transparent transition-colors">
+        <a href="{% url 'chine:lot_list' %}?status=OUVERT" class="block bg-white overflow-hidden shadow rounded-xl border-l-4 {% if request.is_maritime %}border-teal-400 hover:bg-teal-50/10{% else %}border-indigo-400 hover:bg-indigo-50/10{% endif %} hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5 border border-transparent">
             <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="flex items-center mb-3">
+                    <div class="flex-shrink-0 {% if request.is_maritime %}bg-teal-500{% else %}bg-indigo-500{% endif %} rounded-lg p-3 text-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dt class="text-sm font-medium text-gray-500 truncate">Lots Ouverts</dt>
-                        <dd class="text-2xl font-semibold text-gray-900">{{ lots_ouverts_count|default:"0" }}</dd>
+                        <dd class="text-2xl font-black text-gray-900">{{ lots_ouverts_count|default:"0" }}</dd>
                     </div>
+                </div>
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400 font-medium">
+                    <span>Statut :</span>
+                    <span class="font-bold text-gray-600">En cours de réception</span>
                 </div>
             </div>
         </a>
 
         <!-- Lots Fermés -->
-        <a href="{% url 'chine:lot_list' %}?status=FERME" class="block bg-white overflow-hidden shadow rounded-lg relative hover:border-gray-300 border border-transparent transition-colors">
+        <a href="{% url 'chine:lot_list' %}?status=FERME" class="block bg-white overflow-hidden shadow rounded-xl border-l-4 {% if request.is_maritime %}border-amber-400 hover:bg-amber-50/10{% else %}border-yellow-400 hover:bg-yellow-50/10{% endif %} hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5 border border-transparent">
             <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-amber-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="flex items-center mb-3">
+                    <div class="flex-shrink-0 {% if request.is_maritime %}bg-amber-500{% else %}bg-yellow-500{% endif %} rounded-lg p-3 text-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dt class="text-sm font-medium text-gray-500 truncate">Lots Fermés</dt>
-                        <dd class="text-2xl font-semibold text-gray-900">{{ lots_fermes_count|default:"0" }}</dd>
+                        <dd class="text-2xl font-black text-gray-900">{{ lots_fermes_count|default:"0" }}</dd>
                     </div>
+                </div>
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400 font-medium">
+                    <span>Statut :</span>
+                    <span class="font-bold text-gray-600">Prêt à l'expédition</span>
                 </div>
             </div>
         </a>
 
-        <!-- Montant Total Colis (nouveau) -->
-        <div class="bg-white overflow-hidden shadow rounded-lg bg-emerald-50/30 border border-emerald-100">
+        <!-- Montant Total Colis -->
+        <div class="bg-white overflow-hidden shadow rounded-xl border-l-4 {% if request.is_maritime %}border-emerald-500 bg-emerald-50/10{% else %}border-emerald-600 bg-emerald-50/20{% endif %} hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5">
             <div class="p-5">
                 <div class="flex items-center mb-3">
-                    <div class="flex-shrink-0 bg-emerald-600 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="flex-shrink-0 bg-emerald-600 rounded-lg p-3 text-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
-                        <dt class="text-sm font-medium text-emerald-700 truncate">Montant Total Cartons</dt>
-                        <dd class="text-xl lg:text-lg xl:text-xl font-semibold text-gray-900 truncate" title="{{ montant_total_colis_agent|default:'0'|floatformat:0|intcomma }} FCFA">
-                            {{ montant_total_colis_agent|default:"0"|floatformat:0|intcomma }} FCFA
+                        <dt class="text-sm font-bold text-emerald-800 truncate">Montant Total Cartons</dt>
+                        <dd class="text-xl font-black text-gray-900 truncate">
+                            {% if request.is_maritime %}
+                                {{ montant_total_colis_bateau|default:"0"|floatformat:0|intcomma }} FCFA
+                            {% else %}
+                                {{ montant_total_colis_avion|default:"0"|floatformat:0|intcomma }} FCFA
+                            {% endif %}
                         </dd>
                     </div>
                 </div>
-                <div class="flex gap-4 mt-2 pt-2 border-t border-emerald-100/50">
-                    <div class="flex-1"><span class="text-[10px] text-gray-500">✈️</span> <span class="font-bold text-xs text-emerald-900">{{ montant_total_colis_avion|default:"0"|floatformat:0|intcomma }}</span></div>
-                    <div class="flex-1"><span class="text-[10px] text-gray-500">🚢</span> <span class="font-bold text-xs text-emerald-900">{{ montant_total_colis_bateau|default:"0"|floatformat:0|intcomma }}</span></div>
+                <div class="pt-2 border-t {% if request.is_maritime %}border-emerald-100{% else %}border-emerald-100/50{% endif %} flex justify-between items-center text-xs text-gray-500 font-medium">
+                    <span>Type :</span>
+                    <span class="font-bold {% if request.is_maritime %}text-emerald-700{% else %}text-emerald-800{% endif %}">
+                        {% if request.is_maritime %}🚢 Maritime{% else %}✈️ Aérien{% endif %}
+                    </span>
                 </div>
             </div>
         </div>
 
-        <!-- Montant Total Transport (nouveau) -->
-        <div class="bg-white overflow-hidden shadow rounded-lg bg-purple-50/30 border border-purple-100">
+        <!-- Montant Total Transport -->
+        <div class="bg-white overflow-hidden shadow rounded-xl border-l-4 {% if request.is_maritime %}border-purple-500 bg-purple-50/10{% else %}border-purple-600 bg-purple-50/20{% endif %} hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5">
             <div class="p-5">
                 <div class="flex items-center mb-3">
-                    <div class="flex-shrink-0 bg-purple-600 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    <div class="flex-shrink-0 bg-purple-600 rounded-lg p-3 text-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h3.5a1 1 0 001-1v-1"/>
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
-                        <dt class="text-sm font-medium text-purple-700 truncate">Montant Total Transport</dt>
-                        <dd class="text-xl lg:text-lg xl:text-xl font-semibold text-gray-900 truncate" title="{{ montant_total_transport_agent|default:'0'|floatformat:0|intcomma }} FCFA">
-                            {{ montant_total_transport_agent|default:"0"|floatformat:0|intcomma }} FCFA
+                        <dt class="text-sm font-bold text-purple-800 truncate">Frais de Transport Lot</dt>
+                        <dd class="text-xl font-black text-gray-900 truncate">
+                            {% if request.is_maritime %}
+                                {{ montant_total_transport_bateau|default:"0"|floatformat:0|intcomma }} FCFA
+                            {% else %}
+                                {{ montant_total_transport_avion|default:"0"|floatformat:0|intcomma }} FCFA
+                            {% endif %}
                         </dd>
                     </div>
                 </div>
-                <div class="flex gap-4 mt-2 pt-2 border-t border-purple-100/50">
-                    <div class="flex-1"><span class="text-[10px] text-gray-500">✈️</span> <span class="font-bold text-xs text-purple-900">{{ montant_total_transport_avion|default:"0"|floatformat:0|intcomma }}</span></div>
-                    <div class="flex-1"><span class="text-[10px] text-gray-500">🚢</span> <span class="font-bold text-xs text-purple-900">{{ montant_total_transport_bateau|default:"0"|floatformat:0|intcomma }}</span></div>
+                <div class="pt-2 border-t {% if request.is_maritime %}border-purple-100{% else %}border-purple-100/50{% endif %} flex justify-between items-center text-xs text-gray-500 font-medium">
+                    <span>Frais cumulés :</span>
+                    <span class="font-bold {% if request.is_maritime %}text-purple-700{% else %}text-purple-800{% endif %}">
+                        {% if request.is_maritime %}🚢 Bateau{% else %}✈️ Avion{% endif %}
+                    </span>
                 </div>
             </div>
         </div>
 
         <!-- Total Colis (déplacé vers la fin) -->
-        <div class="block bg-white overflow-hidden shadow rounded-lg hover:border-gray-300 border border-transparent transition-colors">
+        <div class="block bg-white overflow-hidden shadow rounded-xl border-l-4 {% if request.is_maritime %}border-teal-500 bg-teal-50/10{% else %}border-indigo-500 bg-indigo-50/10{% endif %} hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5">
             <div class="p-5">
                 <div class="flex items-center mb-3">
-                    <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="flex-shrink-0 {% if request.is_maritime %}bg-teal-600{% else %}bg-indigo-600{% endif %} rounded-lg p-3 text-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
-                        <dt class="text-sm font-medium text-gray-500 truncate"><a href="{% url 'chine:lot_list' %}" class="hover:underline">Total Cartons Reçus</a></dt>
-                        <dd class="text-2xl font-semibold text-gray-900">{{ colis_total_count|default:"0"|intcomma }}</dd>
+                        <dt class="text-sm font-medium text-gray-500 truncate">
+                            <a href="{% url 'chine:lot_list' %}" class="hover:underline">Total Cartons Reçus</a>
+                        </dt>
+                        <dd class="text-2xl font-black text-gray-900">
+                            {% if request.is_maritime %}{{ colis_total_bateau|default:"0" }}{% else %}{{ colis_total_avion|default:"0" }}{% endif %}
+                        </dd>
                     </div>
                 </div>
-                <div class="flex gap-4 mt-2 pt-2 border-t border-gray-100">
-                    <div class="flex-1"><span class="text-xs text-gray-500">✈️ Avion:</span> <span class="font-bold text-sm text-gray-900">{{ colis_total_avion|default:"0" }}</span></div>
-                    <div class="flex-1"><span class="text-xs text-gray-500">🚢 Bateau:</span> <span class="font-bold text-sm text-gray-900">{{ colis_total_bateau|default:"0" }}</span></div>
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400 font-medium">
+                    <span>Logistique :</span>
+                    <span class="font-bold text-gray-600">
+                        {% if request.is_maritime %}🚢 Bateau{% else %}✈️ Avion{% endif %}
+                    </span>
                 </div>
             </div>
         </div>
 
-        <!-- Total Clients (déplacé vers la fin) -->
-        <a href="{% url 'chine:client_list' %}" class="block bg-white overflow-hidden shadow rounded-lg hover:border-gray-300 border border-transparent transition-colors">
+        <!-- Total Clients -->
+        <a href="{% url 'chine:client_list' %}" class="block bg-white overflow-hidden shadow rounded-xl border-l-4 {% if request.is_maritime %}border-blue-400 hover:bg-blue-50/10{% else %}border-indigo-400 hover:bg-indigo-50/10{% endif %} hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5 border border-transparent">
             <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="flex items-center mb-3">
+                    <div class="flex-shrink-0 bg-blue-500 rounded-lg p-3 text-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354l1.108 3.41H16.1l-2.074 1.503.791 2.433L12 10.23l-2.817 1.47.791-2.433-2.074-1.503h2.992L12 4.354zm0 5.4a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6zM12 11c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dt class="text-sm font-medium text-gray-500 truncate">Total Clients</dt>
-                        <dd class="text-2xl font-semibold text-gray-900">{{ total_clients_count|default:"0"|intcomma }}</dd>
+                        <dd class="text-2xl font-black text-gray-900">{{ total_clients_count|default:"0"|intcomma }}</dd>
                     </div>
+                </div>
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400 font-medium">
+                    <span>Fichier :</span>
+                    <span class="font-bold text-gray-600">Base active</span>
                 </div>
             </div>
         </a>

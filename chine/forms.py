@@ -197,6 +197,17 @@ class LotForm(forms.ModelForm):
         if mali:
             self.fields["destination"].initial = mali
 
+        # Filtrage des types de transport autorisés selon le contexte Aérien/Maritime
+        from core.context import get_current_transport_mode
+        mode = get_current_transport_mode()
+        choices = Lot.TypeTransport.choices
+        if mode == 'BATEAU':
+            self.fields["type_transport"].choices = [c for c in choices if c[0] == 'BATEAU']
+            self.fields["type_transport"].initial = 'BATEAU'
+        elif mode == 'AERIEN':
+            self.fields["type_transport"].choices = [c for c in choices if c[0] in ['CARGO', 'EXPRESS']]
+            self.fields["type_transport"].initial = 'CARGO'
+
 
 class LotNoteForm(forms.ModelForm):
     class Meta:

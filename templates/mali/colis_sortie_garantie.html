@@ -1,7 +1,7 @@
 {% extends 'mali/base.html' %}
 {% load humanize %}
-{% block title %}Sorties Sous Garantie - Mali - TS Air Cargo{% endblock %}
-{% block header %}Sorties sous Garantie{% endblock %}
+{% block title %}{% if request.is_maritime %}Sorties sous Garantie (Bateau){% else %}Sorties sous Garantie (Avion){% endif %} - Mali - TS Air Cargo{% endblock %}
+{% block header %}{% if request.is_maritime %}Sorties sous Garantie 🚢{% else %}Sorties sous Garantie ✈️{% endif %}{% endblock %}
 
 {% block mali_content %}
 <div class="space-y-6">
@@ -24,7 +24,7 @@
                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
             </div>
             <div>
-                <button type="submit" class="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                <button type="submit" class="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-md text-white {% if request.is_maritime %}bg-teal-600 hover:bg-teal-700{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
                     Filtrer
                 </button>
             </div>
@@ -42,8 +42,11 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom du Garant</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Colis sortis</th>
+                        {% if not request.is_maritime %}
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Poids Total (kg)</th>
+                        {% else %}
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Volume Total (m³)</th>
+                        {% endif %}
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
                 </thead>
@@ -52,17 +55,20 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ p.nom }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">{{ p.nb_colis }}</td>
+                        {% if not request.is_maritime %}
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">{{ p.total_poids|floatformat:2 }}</td>
+                        {% else %}
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">{{ p.total_cbm|floatformat:3 }}</td>
+                        {% endif %}
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                            <a href="{% url 'mali:colis_sortie_garantie_detail' p.nom %}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200">
+                            <a href="{% url 'mali:colis_sortie_garantie_detail' p.nom %}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded {% if request.is_maritime %}text-teal-700 bg-teal-100 hover:bg-teal-200{% else %}text-indigo-700 bg-indigo-100 hover:bg-indigo-200{% endif %}">
                                 Voir les colis
                             </a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Aucun colis sorti sous garantie.</td>
+                        <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">Aucun colis sorti sous garantie.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

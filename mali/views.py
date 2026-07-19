@@ -3876,6 +3876,12 @@ class ColisSortieGarantieView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         if mali:
             qs = qs.filter(lot__destination=mali)
             
+        # Isolation Aérien / Maritime
+        if getattr(self.request, "is_maritime", False):
+            qs = qs.filter(lot__type_transport="BATEAU")
+        else:
+            qs = qs.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
+            
         q = self.request.GET.get('q')
         date_debut = self.request.GET.get('date_debut')
         date_fin = self.request.GET.get('date_fin')
@@ -3927,6 +3933,12 @@ class ColisSortieGarantieDetailView(LoginRequiredMixin, DestinationAgentRequired
         nom_personne = self.kwargs.get('nom')
         qs = Colis.objects.filter(status="LIVRE", sortie_sous_garantie=True, sortie_autorisee_par=nom_personne)
         
+        # Isolation Aérien / Maritime
+        if getattr(self.request, "is_maritime", False):
+            qs = qs.filter(lot__type_transport="BATEAU")
+        else:
+            qs = qs.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
+            
         q = self.request.GET.get('q')
         date_debut = self.request.GET.get('date_debut')
         date_fin = self.request.GET.get('date_fin')
