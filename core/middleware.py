@@ -33,13 +33,32 @@ class TransportMiddleware:
         
         # Redirection automatique pour les anciennes URLs non préfixées (GET uniquement)
         if request.method == 'GET':
-            for prefix in ['chine', 'mali', 'ivoire', 'clients', 'report']:
+            # 1. Analyse pour la redirection intelligente de Lot
+            # Format attendu : /chine/lots/<id>/ ou /mali/lots/<id>/ ou /ivoire/lots/<id>/
+            import re
+            match = re.match(r'^/(chine|mali|ivoire)/lots/(\d+)/?$', path)
+            if match:
+                prefix = match.group(1)
+                lot_id = match.group(2)
+                from core.models import Lot
+                # On utilise _base_manager pour éviter tout filtrage automatique
+                lot = Lot._base_manager.filter(pk=lot_id).first()
+                if lot:
+                    target_mode = 'maritime' if lot.type_transport == 'BATEAU' else 'aerien'
+                    return redirect(f'/{target_mode}/{prefix}/lots/{lot_id}/')
+
+            # Redirection pour les autres préfixes (on exclut 'clients' pour l'unification)
+            for prefix in ['chine', 'mali', 'ivoire', 'report']:
                 if path.startswith(f'/{prefix}/') or path == f'/{prefix}':
                     return redirect(f'/aerien{path}')
         
         # Détermination du mode de transport
         mode = None
-        if path.startswith('/maritime/'):
+        
+        # Bypass du filtrage pour l'espace client, l'admin et admin-app
+        if '/clients/' in path or '/admin/' in path or '/admin-app/' in path:
+            mode = None
+        elif path.startswith('/maritime/'):
             mode = 'BATEAU'
         elif path.startswith('/aerien/'):
             mode = 'AERIEN'
@@ -93,7 +112,7 @@ class TransportMiddleware:
         if response.status_code in [301, 302, 307, 308] and 'Location' in response:
             redirect_url = response['Location']
             if redirect_url.startswith('/') and not (redirect_url.startswith('/aerien/') or redirect_url.startswith('/maritime/')):
-                for prefix in ['chine', 'mali', 'ivoire', 'clients', 'report']:
+                for prefix in ['chine', 'mali', 'ivoire', 'report']:
                     if redirect_url.startswith(f'/{prefix}/') or redirect_url == f'/{prefix}':
                         if request.is_maritime:
                             response['Location'] = f'/maritime{redirect_url}'
