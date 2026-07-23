@@ -19,7 +19,7 @@
     </div>
     <button type="submit" class="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-green-600 hover:bg-green-700 shadow-sm transition-all">Rechercher</button>
     {% if q %}
-    <a href="{% url 'mali:lots_arrives' %}" class="ml-2 inline-flex items-center px-2 py-2 border border-gray-300 text-sm rounded-lg text-gray-700 bg-white hover:bg-gray-50 shadow-sm" title="Effacer">
+    <a href="{{ transport_prefix }}{% url 'mali:lots_arrives' %}" class="ml-2 inline-flex items-center px-2 py-2 border border-gray-300 text-sm rounded-lg text-gray-700 bg-white hover:bg-gray-50 shadow-sm" title="Effacer">
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </a>
     {% endif %}
@@ -146,9 +146,9 @@
 
             <!-- Section Droite : Action -->
             <div class="md:pl-4">
-                <a href="{% url 'mali:lot_arrived_detail' colis.lot.pk %}?qc={{ colis.reference }}" 
-                   class="group w-full md:w-auto inline-flex items-center justify-center px-5 py-3 border border-transparent text-sm font-black rounded-2xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all">
-                    <span>Voir dans le lot</span>
+                <a href="{{ transport_prefix }}{% url 'mali:lot_arrived_detail' colis.lot.pk %}?qc={{ colis.reference }}#colis-{{ colis.reference }}" 
+                   class="group w-full md:w-auto inline-flex items-center justify-center px-5 py-3 border border-transparent text-sm font-black rounded-2xl text-white {% if request.is_maritime %}bg-teal-600 hover:bg-teal-700{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %} shadow-sm transition-all">
+                    <span>Voir le Colis</span>
                     <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                 </a>
             </div>
@@ -229,7 +229,7 @@
             </div>
             <!-- Footer -->
             <div class="px-5 py-4 border-t border-gray-100 bg-gray-50/30">
-                <a href="{% url 'mali:lot_arrived_detail' lot.pk %}" class="w-full inline-flex justify-center items-center px-4 py-2.5 text-sm font-bold rounded-xl text-white bg-green-600 hover:bg-green-700 transition-all shadow-sm">
+                <a href="{{ transport_prefix }}{% url 'mali:lot_arrived_detail' lot.pk %}" class="w-full inline-flex justify-center items-center px-4 py-2.5 text-sm font-bold rounded-xl text-white {% if request.is_maritime %}bg-teal-600 hover:bg-teal-700{% else %}bg-green-600 hover:bg-green-700{% endif %} transition-all shadow-sm">
                     Voir Détails →
                 </a>
             </div>

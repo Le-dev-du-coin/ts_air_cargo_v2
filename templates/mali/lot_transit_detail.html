@@ -230,7 +230,7 @@
 
         <ul class="divide-y divide-gray-200">
             {% for colis in colis_list %}
-            <li id="colis-item-{{ colis.pk }}" class="px-6 py-5 hover:bg-green-50/30 transition-colors">
+            <li id="colis-item-{{ colis.pk }}" id="colis-{{ colis.reference }}" class="px-6 py-5 transition-colors {% if qc and qc == colis.reference %}bg-amber-100/80 border-l-4 border-amber-500 font-medium{% else %}hover:bg-green-50/30{% endif %}">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center min-w-0 flex-1">
                         <!-- Checkbox -->

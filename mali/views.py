@@ -550,6 +550,13 @@ class LotsEnTransitView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListV
                 "prenom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
+
+            # Isolation Aérien / Maritime
+            if getattr(self.request, "is_maritime", False):
+                queryset = queryset.filter(lot__type_transport="BATEAU")
+            else:
+                queryset = queryset.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
+
             transport = self.request.GET.get("transport")
             if transport in ["CARGO", "EXPRESS", "BATEAU"]:
                 queryset = queryset.filter(lot__type_transport=transport)
@@ -638,6 +645,13 @@ class LotsArrivesView(LotsEnTransitView):
                 "prenom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
+
+            # Isolation Aérien / Maritime
+            if getattr(self.request, "is_maritime", False):
+                queryset = queryset.filter(lot__type_transport="BATEAU")
+            else:
+                queryset = queryset.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
+
             transport = self.request.GET.get("transport")
             if transport in ["CARGO", "EXPRESS", "BATEAU"]:
                 queryset = queryset.filter(lot__type_transport=transport)
@@ -3784,6 +3798,13 @@ class LotsLivresView(LotsEnTransitView):
                 "prenom_complet",
             ]
             queryset = apply_flexible_search(queryset, query, search_fields)
+
+            # Isolation Aérien / Maritime
+            if getattr(self.request, "is_maritime", False):
+                queryset = queryset.filter(lot__type_transport="BATEAU")
+            else:
+                queryset = queryset.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
+
             transport = self.request.GET.get("transport")
             if transport in ["CARGO", "EXPRESS", "BATEAU"]:
                 queryset = queryset.filter(lot__type_transport=transport)

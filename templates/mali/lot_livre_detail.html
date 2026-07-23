@@ -131,7 +131,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 bg-white">
                     {% for colis in colis_list %}
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    <tr id="colis-{{ colis.reference }}" class="transition-colors {% if qc and qc == colis.reference %}bg-amber-100/80 border-l-4 border-amber-500 font-medium{% else %}hover:bg-gray-50{% endif %}">
                         <!-- Photo -->
                         <td class="px-4 py-3">
                             {% if colis.photo %}
