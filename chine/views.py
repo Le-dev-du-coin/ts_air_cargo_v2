@@ -1629,16 +1629,26 @@ class ColisDeleteView(LoginRequiredMixin, AgentChineRequiredMixin, DeleteView):
         return reverse_lazy("chine:lot_detail", kwargs={"pk": self.object.lot.pk})
 
     def form_valid(self, form):
-        if self.object.lot.status != "OUVERT":
+        user = self.request.user
+        is_admin = getattr(user, "role", "") in ["ADMIN_CHINE", "GLOBAL_ADMIN", "ADMIN_MALI"] or user.is_superuser
+        
+        # Un admin peut supprimer des colis du lot même en transit
+        if not is_admin and self.object.lot.status != "OUVERT":
             messages.error(
                 self.request,
-                "Impossible de supprimer un colis d'un lot fermé ou expédié.",
+                "Impossible de supprimer un colis d'un lot fermé ou expédié. Seul un Administrateur peut effectuer cette action.",
             )
             return redirect(self.get_success_url())
 
+        lot = self.object.lot
+        response = super().form_valid(form)
+        
+        # Recalculer les totaux du lot
+        if hasattr(lot, "recalculer_totaux"):
+            lot.recalculer_totaux()
+            
         messages.success(self.request, "Le colis a été retiré du lot avec succès.")
-        messages.success(self.request, "Le colis a été retiré du lot avec succès.")
-        return super().form_valid(form)
+        return response
 
 
 class TaskMixin(AgentChineRequiredMixin):

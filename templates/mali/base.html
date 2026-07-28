@@ -157,7 +157,8 @@
                         <a href="{{ transport_prefix }}{% url 'mali:depenses_list' %}" class="{% if 'depenses' in request.path %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dépenses</a>
                         {% endif %}
                         {% if not request.is_maritime %}
-                        <a href="{{ transport_prefix }}{% url 'mali:transferts_list' %}" class="{% if 'transferts' in request.path %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Transferts</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:transferts_list' %}" class="{% if request.resolver_match.url_name == 'transferts_list' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Transferts</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:douane_transferts_list' %}" class="{% if request.resolver_match.url_name == 'douane_transferts_list' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Douane</a>
                         {% endif %}
                         <a href="{{ transport_prefix }}{% url 'mali:rapport_financier' %}" class="{% if request.resolver_match.url_name == 'rapport_financier' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rapport Avancé</a>
                         <a href="{{ transport_prefix }}{% url 'mali:historique_paiements' %}" class="{% if request.resolver_match.url_name == 'historique_paiements' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Historique Paiements</a>
@@ -359,6 +360,14 @@
                                             d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                     </svg>
                                     Transferts
+                                </a>
+                                <a href="{{ transport_prefix }}{% url 'mali:douane_transferts_list' %}"
+                                    class="{% if request.resolver_match.url_name == 'douane_transferts_list' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Douane
                                 </a>
                                 {% endif %}
                                 <a href="{{ transport_prefix }}{% url 'mali:rapport_financier' %}"

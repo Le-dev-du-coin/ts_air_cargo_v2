@@ -1,0 +1,212 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+
+{% block header %}Frais de douane{% endblock %}
+
+{% block actions %}
+<div class="flex flex-col md:flex-row md:items-center gap-4">
+    <!-- Filtre Mois/Année -->
+    <form method="get" class="flex items-center bg-white rounded-lg border border-gray-300 shadow-sm overflow-hidden">
+        <select name="day" class="pl-3 pr-8 py-2 text-sm border-0 focus:ring-0 bg-transparent">
+            <option value="all">Jour (Tous)</option>
+            {% for i in "12345678910111213141516171819202122232425262728293031"|make_list %}
+                <option value="{{ forloop.counter }}" {% if current_day == forloop.counter %}selected{% endif %}>{{ forloop.counter }}</option>
+            {% endfor %}
+        </select>
+        <div class="w-px h-6 bg-gray-200"></div>
+        <select name="month" class="pl-3 pr-8 py-2 text-sm border-0 focus:ring-0 bg-transparent">
+            <option value="all" {% if current_month == None %}selected{% endif %}>Mois (Tous)</option>
+            {% for m_num, m_name in months %}
+                <option value="{{ m_num }}" {% if current_month == m_num %}selected{% endif %}>{{ m_name }}</option>
+            {% endfor %}
+        </select>
+        <div class="w-px h-6 bg-gray-200"></div>
+        <select name="year" class="pl-3 pr-8 py-2 text-sm border-0 focus:ring-0 bg-transparent">
+            <option value="all" {% if current_year == None %}selected{% endif %}>Année (Toutes)</option>
+            {% for y in years %}
+                <option value="{{ y }}" {% if current_year == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 border-l border-gray-200 transition-colors uppercase tracking-wider">
+            Filtrer
+        </button>
+    </form>
+
+    <div class="hidden md:block h-8 w-px bg-gray-200 mx-2"></div>
+
+    <button onclick="document.getElementById('add-transfert-modal').classList.remove('hidden')" 
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">
+        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Nouveau Transfert
+    </button>
+</div>
+{% endblock %}
+
+{% block mali_content %}
+<!-- Indicateurs Douane (Gaoussou & Guissé) -->
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
+    <div class="bg-white overflow-hidden shadow rounded-xl border-l-4 border-indigo-600 p-5">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-indigo-100 p-3 rounded-lg text-indigo-600">
+                🏛️
+            </div>
+            <div class="ml-5 w-0 flex-1">
+                <dl>
+                    <dt class="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Total Frais Douane</dt>
+                    <dd class="text-2xl font-black text-indigo-900 mt-1">{{ total_douane|intcomma }} FCFA</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-xl border-l-4 border-purple-500 p-5">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-purple-100 p-3 rounded-lg text-purple-600">
+                👤
+            </div>
+            <div class="ml-5 w-0 flex-1">
+                <dl>
+                    <dt class="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Total vers GAOUSSOU</dt>
+                    <dd class="text-2xl font-black text-purple-900 mt-1">{{ total_gaoussou|intcomma }} FCFA</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-xl border-l-4 border-cyan-500 p-5">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-cyan-100 p-3 rounded-lg text-cyan-600">
+                👤
+            </div>
+            <div class="ml-5 w-0 flex-1">
+                <dl>
+                    <dt class="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Total vers GUISSÉ</dt>
+                    <dd class="text-2xl font-black text-cyan-900 mt-1">{{ total_guisse|intcomma }} FCFA</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Liste des Transferts Douane -->
+<div class="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+    <div class="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200 bg-gray-50">
+        <div>
+            <h3 class="text-base font-bold text-gray-900">Historique des Frais de Douane Transférés</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Transferts enregistrés vers Gaoussou et Guissé</p>
+        </div>
+        <span class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
+            {{ transferts.count }} opération(s)
+        </span>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Destinataire</th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Montant</th>
+                    <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Statut</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Description</th>
+                    <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Preuve</th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for t in transferts %}
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                        {{ t.date|date:"d/m/Y" }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold">
+                        {% if t.destinataire == 'GAOUSSOU' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                👤 GAOUSSOU
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-100 text-cyan-800 border border-cyan-200">
+                                👤 GUISSÉ
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-black text-right text-indigo-900">
+                        {{ t.montant|intcomma }} FCFA
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        {% if t.statut == 'RECU' %}
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">✅ Reçu</span>
+                        {% elif t.statut == 'ANNULE' %}
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800">❌ Annulé</span>
+                        {% else %}
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800">⏳ En attente</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        {{ t.description|default:"-" }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                        {% if t.preuve_image %}
+                            <a href="{{ t.preuve_image.url }}" target="_blank" class="text-indigo-600 font-bold hover:underline">📷 Voir preuve</a>
+                        {% else %}
+                            <span class="text-gray-400 text-xs">Aucune</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <a href="{% url 'mali:transfert_edit' t.pk %}" class="text-indigo-600 hover:text-indigo-900 font-bold">Modifier</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                        Aucun transfert de frais de douane trouvé pour cette période.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Ajout Transfert Douane -->
+<div id="add-transfert-modal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+            <h3 class="text-lg font-bold text-gray-900">Enregistrer un Transfert Douane</h3>
+            <button onclick="document.getElementById('add-transfert-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✖</button>
+        </div>
+        <form action="{% url 'mali:transfert_add' %}" method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Destinataire Douane</label>
+                <select name="destinataire" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="GAOUSSOU">Gaoussou</option>
+                    <option value="GUISSE">Guissé</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Montant (FCFA)</label>
+                <input type="number" name="montant" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Ex: 500000">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Date</label>
+                <input type="date" name="date" required value="{{ today|date:'Y-m-d' }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Description / Observations</label>
+                <textarea name="description" rows="2" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Ex: Frais douane conteneur X"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Preuve / Reçu (Optionnel)</label>
+                <input type="file" name="preuve_image" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+            </div>
+            <div class="flex justify-end space-x-3 pt-3 border-t border-gray-100">
+                <button type="button" onclick="document.getElementById('add-transfert-modal').classList.add('hidden')" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800">Annuler</button>
+                <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 shadow-sm">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

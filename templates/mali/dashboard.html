@@ -226,29 +226,7 @@
                 </dd>
             </a>
 
-            <!-- 6. Colis Perdus (Mois) -->
-            <div class="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden border border-gray-100">
-                <dt>
-                    <div class="absolute bg-gray-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </div>
-                    <p class="ml-16 text-sm font-medium text-gray-500 truncate">Colis Perdus (Mois)</p>
-                </dt>
-                <dd class="ml-16 flex items-baseline justify-between">
-                    <p class="text-2xl font-semibold text-gray-600">
-                        {% if request.is_maritime %}{{ colis_perdus_bateau|intcomma }}{% elif request.is_aerien %}{{ colis_perdus_avion|intcomma }}{% else %}{{ colis_perdus_mois|intcomma }}{% endif %}
-                    </p>
-                    {% if not request.is_maritime and not request.is_aerien %}
-                    <div class="flex flex-col text-[10px] text-gray-400 font-bold uppercase text-right leading-tight">
-                        <span class="text-blue-500">✈️ {{ colis_perdus_avion }}</span>
-                        <span class="text-teal-600">🚢 {{ colis_perdus_bateau }}</span>
-                    </div>
-                    {% endif %}
-                </dd>
-            </div>
+
 
             <!-- LIGNE 3: FINANCES + CLIENTS -->
             <!-- 7. Dépenses (Mois) -->

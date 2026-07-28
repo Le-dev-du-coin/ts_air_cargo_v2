@@ -280,13 +280,14 @@ class TransfertListView(LoginRequiredMixin, ListView):
         if hasattr(self.request.user, "country") and self.request.user.country:
             qs = qs.filter(pays_expediteur=self.request.user.country)
 
+        # Filtrer exclusivement sur les transferts vers la Chine
+        qs = qs.filter(destinataire="CHINE")
+
         today = timezone.now().date()
-        
         day_param = self.request.GET.get("day")
         month_param = self.request.GET.get("month")
         year_param = self.request.GET.get("year")
 
-        # Par défaut, si aucun paramètre de filtrage n'est fourni
         if day_param is None and month_param is None and year_param is None:
             self.day = None
             self.month = today.month
@@ -312,47 +313,82 @@ class TransfertListView(LoginRequiredMixin, ListView):
         context["current_month"] = self.month
         context["current_day"] = getattr(self, "day", None)
 
-        # Totaux basés sur le queryset filtré
         qs_all = self.get_queryset()
-        context["total_transferts"] = (
-            qs_all.aggregate(Sum("montant"))["montant__sum"] or 0
-        )
+        context["total_chine"] = qs_all.aggregate(Sum("montant"))["montant__sum"] or 0
+        context["total_transferts"] = context["total_chine"]
 
-        # Séparation des transferts
-        context["transferts_chine"] = qs_all.filter(destinataire="CHINE")
-        context["transferts_gaoussou"] = qs_all.filter(destinataire="GAOUSSOU")
-        context["transferts_guisse"] = qs_all.filter(destinataire="GUISSE")
-
-        context["total_chine"] = (
-            context["transferts_chine"].aggregate(Sum("montant"))["montant__sum"] or 0
-        )
-        context["total_gaoussou"] = (
-            context["transferts_gaoussou"].aggregate(Sum("montant"))["montant__sum"]
-            or 0
-        )
-        context["total_guisse"] = (
-            context["transferts_guisse"].aggregate(Sum("montant"))["montant__sum"]
-            or 0
-        )
-
-        # Années pour le filtre (3 dernières années)
         today = timezone.now()
         context["years"] = range(today.year, today.year - 4, -1)
         context["months"] = [
-            (1, "Janvier"),
-            (2, "Février"),
-            (3, "Mars"),
-            (4, "Avril"),
-            (5, "Mai"),
-            (6, "Juin"),
-            (7, "Juillet"),
-            (8, "Août"),
-            (9, "Septembre"),
-            (10, "Octobre"),
-            (11, "Novembre"),
-            (12, "Décembre"),
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre")
         ]
+        return context
 
+
+class DouaneTransfertListView(LoginRequiredMixin, ListView):
+    model = TransfertArgent
+    context_object_name = "transferts"
+    paginate_by = 20
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if hasattr(self.request.user, "country") and self.request.user.country:
+            qs = qs.filter(pays_expediteur=self.request.user.country)
+
+        # Filtrer exclusivement sur les transferts de douane (Gaoussou et Guissé)
+        qs = qs.filter(destinataire__in=["GAOUSSOU", "GUISSE"])
+
+        today = timezone.now().date()
+        day_param = self.request.GET.get("day")
+        month_param = self.request.GET.get("month")
+        year_param = self.request.GET.get("year")
+
+        if day_param is None and month_param is None and year_param is None:
+            self.day = None
+            self.month = today.month
+            self.year = today.year
+            qs = qs.filter(date__year=self.year, date__month=self.month)
+        else:
+            self.year = int(year_param) if (year_param and year_param != "all") else None
+            self.month = int(month_param) if (month_param and month_param != "all") else None
+            self.day = int(day_param) if (day_param and day_param != "all") else None
+
+            if self.year:
+                qs = qs.filter(date__year=self.year)
+            if self.month:
+                qs = qs.filter(date__month=self.month)
+            if self.day:
+                qs = qs.filter(date__day=self.day)
+
+        return qs.order_by("-date", "-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["current_year"] = self.year
+        context["current_month"] = self.month
+        context["current_day"] = getattr(self, "day", None)
+
+        qs_all = self.get_queryset()
+        context["transferts_gaoussou"] = qs_all.filter(destinataire="GAOUSSOU")
+        context["transferts_guisse"] = qs_all.filter(destinataire="GUISSE")
+
+        context["total_gaoussou"] = (
+            context["transferts_gaoussou"].aggregate(Sum("montant"))["montant__sum"] or 0
+        )
+        context["total_guisse"] = (
+            context["transferts_guisse"].aggregate(Sum("montant"))["montant__sum"] or 0
+        )
+        context["total_douane"] = context["total_gaoussou"] + context["total_guisse"]
+
+        today = timezone.now()
+        context["years"] = range(today.year, today.year - 4, -1)
+        context["months"] = [
+            (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+            (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+            (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre")
+        ]
         return context
 
 

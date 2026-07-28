@@ -64,6 +64,7 @@ from report.views import (
     DepenseDeleteView,
     RapportFinancierView,
     TransfertListView,
+    DouaneTransfertListView,
     TransfertCreateView,
     TransfertUpdateView,
     RapportExportView,
@@ -196,6 +197,11 @@ urlpatterns = [
         "finance/transferts/",
         TransfertListView.as_view(template_name="mali/finance/transferts.html"),
         name="transferts_list",
+    ),
+    path(
+        "finance/douane-transferts/",
+        DouaneTransfertListView.as_view(template_name="mali/finance/douane_transferts.html"),
+        name="douane_transferts_list",
     ),
     path(
         "finance/transferts/add/",
