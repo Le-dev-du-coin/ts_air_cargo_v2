@@ -453,7 +453,13 @@
                             </a>
                         </dt>
                         <dd class="text-2xl font-black text-gray-900">
-                            {% if request.is_maritime %}{{ lots_arrives_mali_bateau|default:"0" }}{% else %}{{ lots_arrives_mali_avion|default:"0" }}{% endif %}
+                            {% if request.is_maritime %}
+                                {{ lots_arrives_mali_bateau|default:"0" }}
+                            {% elif request.is_aerien %}
+                                {{ lots_arrives_mali_avion|default:"0" }}
+                            {% else %}
+                                {{ lots_arrives_mali_count|default:"0" }}
+                            {% endif %}
                         </dd>
                     </div>
                 </div>

@@ -246,8 +246,78 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         )
         context["encaissements_jour"] = encaissements["total"] or 0
 
-        # 9. Total Clients Mali
-        context["total_clients_mali"] = Client.objects.filter(country=mali).count()
+        # Détermination du trimestre en cours pour l'Aérien (Trimestre logistique)
+        now_date = timezone.now()
+        cur_month = now_date.month
+        cur_year = now_date.year
+        if 3 <= cur_month <= 5:
+            quarter_num = 1
+            months_q = [3, 4, 5]
+        elif 6 <= cur_month <= 8:
+            quarter_num = 2
+            months_q = [6, 7, 8]
+        elif 9 <= cur_month <= 11:
+            quarter_num = 3
+            months_q = [9, 10, 11]
+        else:
+            quarter_num = 4
+            months_q = [12, 1, 2]
+
+        context["aerien_quarter_label"] = f"Trimestre T{quarter_num} {cur_year}"
+
+        colis_mali_qs = Colis.objects.filter(lot__destination=mali)
+        
+        # 1. LOGISTIQUE AVION & BATEAU : GLOBAUX (TOUS LES TEMPS)
+        colis_avion_global_qs = colis_mali_qs.avion()
+        colis_bateau_global_qs = colis_mali_qs.bateau()
+
+        context["colis_transit_avion"] = colis_avion_global_qs.filter(status="EXPEDIE").count()
+        context["colis_stock_avion"] = colis_avion_global_qs.filter(status="ARRIVE").count()
+        context["colis_livres_avion_count"] = colis_avion_global_qs.filter(status="LIVRE").count()
+
+        context["colis_transit_bateau"] = colis_bateau_global_qs.filter(status="EXPEDIE").count()
+        context["colis_stock_bateau"] = colis_bateau_global_qs.filter(status="ARRIVE").count()
+        context["colis_livres_bateau_count"] = colis_bateau_global_qs.filter(status="LIVRE").count()
+
+        # 2. FINANCIER AVION (Carte Verte - Trimestriel)
+        colis_avion_quarter_qs = colis_avion_global_qs.filter(
+            Q(lot__date_expedition__month__in=months_q) | Q(created_at__month__in=months_q)
+        )
+        ca_brut_avion = colis_avion_quarter_qs.aggregate(total=Sum("prix_final"))["total"] or 0
+        lots_avion_q = Lot.objects.filter(destination=mali).avion().filter(
+            Q(date_expedition__month__in=months_q) | Q(created_at__month__in=months_q)
+        )
+        fret_avion = lots_avion_q.aggregate(total=Sum("frais_transport"))["total"] or 0
+        douane_avion = lots_avion_q.aggregate(total=Sum("frais_douane"))["total"] or 0
+        depenses_bureau_avion = Depense.objects.filter(pays=mali, type_transport="AERIEN", date__month__in=months_q).aggregate(total=Sum("montant"))["total"] or 0
+
+        # 3. FINANCIER BATEAU (Carte Bleue - Global / All Time)
+        ca_brut_bateau = colis_bateau_global_qs.aggregate(total=Sum("prix_final"))["total"] or 0
+        lots_bateau_qs = Lot.objects.filter(destination=mali).bateau()
+        fret_bateau = lots_bateau_qs.aggregate(total=Sum("frais_transport"))["total"] or 0
+        douane_bateau = lots_bateau_qs.aggregate(total=Sum("frais_douane"))["total"] or 0
+        depenses_bureau_bateau = Depense.objects.filter(pays=mali, type_transport="BATEAU").aggregate(total=Sum("montant"))["total"] or 0
+
+        from core.models import AvanceSalaire
+        total_avances_mali = AvanceSalaire.objects.filter(agent__country=mali).aggregate(total=Sum("montant"))["total"] or 0
+
+        # Ligne 2 : Bénéfice après dépenses (du bureau & frais)
+        benefice_apres_depenses_avion = ca_brut_avion - (fret_avion + douane_avion + depenses_bureau_avion)
+        benefice_apres_depenses_bateau = ca_brut_bateau - (fret_bateau + douane_bateau + depenses_bureau_bateau)
+
+        # Ligne 3 : Bénéfice après avance salaire ou salaire
+        benefice_apres_avances_avion = benefice_apres_depenses_avion - (total_avances_mali / 2)
+        benefice_apres_avances_bateau = benefice_apres_depenses_bateau - (total_avances_mali / 2)
+
+        context["ca_brut_avion"] = ca_brut_avion
+        context["benefice_apres_depenses_avion"] = benefice_apres_depenses_avion
+        context["benefice_apres_avances_avion"] = benefice_apres_avances_avion
+
+        context["ca_brut_bateau"] = ca_brut_bateau
+        context["benefice_apres_depenses_bateau"] = benefice_apres_depenses_bateau
+        context["benefice_apres_avances_bateau"] = benefice_apres_avances_bateau
+
+        context["total_avances_mali"] = total_avances_mali
 
         # Activité récente (derniers colis pointés/livrés aujourd'hui)
         # Activité récente (derniers colis pointés/livrés aujourd'hui)

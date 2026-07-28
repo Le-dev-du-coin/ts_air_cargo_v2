@@ -10,59 +10,91 @@
 <div class="space-y-8">
     <!-- Statistiques Segmentées Avion / Bateau -->
     <div class="grid grid-cols-1 {% if not request.is_maritime and not request.is_aerien %}md:grid-cols-2{% endif %} gap-6">
-        <!-- BLOC AVION -->
+        <!-- BLOC AVION (Carte Verte - Haute Lisibilité) -->
         {% if not request.is_maritime %}
-        <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
-            <div class="absolute -right-6 -bottom-6 opacity-10">
-                <svg class="h-32 w-32" fill="currentColor" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.97 4.44c-.32.18-.71.18-1.03 0l-7.97-4.44c-.31-.17-.52-.5-.52-.88v-9c0-.38.21-.71.53-.88l7.97-4.44c.32-.18.71-.18 1.03 0l7.97 4.44c.31.17.52.5.52.88v9z"/></svg>
-            </div>
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold flex items-center">
-                    <span class="bg-white/20 p-2 rounded-lg mr-3">✈️</span> FRET AÉRIEN
+        <div class="bg-white rounded-3xl shadow-xl border-2 border-emerald-500 p-6 relative overflow-hidden flex flex-col justify-between space-y-5">
+            <!-- En-tête -->
+            <div class="flex items-center justify-between border-b border-emerald-100 pb-3 bg-emerald-50 -mx-6 -mt-6 p-6">
+                <h3 class="text-xl font-black text-emerald-900 flex items-center tracking-tight">
+                    <span class="bg-emerald-600 text-white p-2 rounded-xl mr-3 text-xl shadow-sm">✈️</span> FRET AÉRIEN
                 </h3>
-                <span class="text-xs bg-white/20 px-2 py-1 rounded-full font-semibold uppercase tracking-wider">Ce mois-ci</span>
+                <span class="text-xs bg-emerald-700 text-white px-3 py-1 rounded-full font-bold uppercase tracking-wider">{{ aerien_quarter_label|default:"Aérien Trimestre" }}</span>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+
+            <!-- Détail Logistique (Transit, Stock, Livrés) -->
+            <div class="grid grid-cols-3 gap-2 bg-gray-50 rounded-2xl p-3 text-center border border-gray-200">
                 <div>
-                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Colis Livrés</p>
-                    <p class="text-2xl font-black mt-1">{{ colis_livres_avion|intcomma }}</p>
+                    <p class="text-gray-500 text-[11px] font-extrabold uppercase">🚀 Transit</p>
+                    <p class="text-xl font-black text-indigo-700 mt-0.5">{{ colis_transit_avion|intcomma }}</p>
                 </div>
                 <div>
-                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Poids Total</p>
-                    <p class="text-2xl font-black mt-1">{{ total_poids_mois|floatformat:1 }} <span class="text-xs font-normal">kg</span></p>
+                    <p class="text-gray-500 text-[11px] font-extrabold uppercase">📦 Stock</p>
+                    <p class="text-xl font-black text-amber-700 mt-0.5">{{ colis_stock_avion|intcomma }}</p>
                 </div>
-                <div class="col-span-2 mt-2 pt-4 border-t border-white/10">
-                    <p class="text-teal-100 text-xs font-bold uppercase tracking-tighter">Recettes</p>
-                    <p class="text-3xl font-black mt-1">{{ recettes_avion|fcfa }}</p>
+                <div>
+                    <p class="text-gray-500 text-[11px] font-extrabold uppercase">✅ Livrés</p>
+                    <p class="text-xl font-black text-emerald-700 mt-0.5">{{ colis_livres_avion_count|intcomma }}</p>
+                </div>
+            </div>
+
+            <!-- Détail Financier à haute lisibilité -->
+            <div class="space-y-3 pt-1 text-gray-900">
+                <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                    <span class="font-extrabold text-gray-700">1. Bénéfice Brut :</span>
+                    <span class="font-black text-lg text-gray-900">{{ ca_brut_avion|fcfa }}</span>
+                </div>
+                <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                    <span class="font-extrabold text-emerald-800">2. Bénéfice après dépenses (bureau) :</span>
+                    <span class="font-black text-lg text-emerald-700">{{ benefice_apres_depenses_avion|fcfa }}</span>
+                </div>
+                <div class="flex justify-between items-center text-sm pt-1 bg-emerald-50 p-3 rounded-2xl border border-emerald-200">
+                    <span class="font-black text-emerald-950">3. Bénéfice après avances sur salaire :</span>
+                    <span class="font-black text-xl text-emerald-800">{{ benefice_apres_avances_avion|fcfa }}</span>
                 </div>
             </div>
         </div>
         {% endif %}
 
-        <!-- BLOC BATEAU -->
+        <!-- BLOC BATEAU (Carte Bleue - Haute Lisibilité) -->
         {% if request.is_maritime or not request.is_aerien %}
-        <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
-            <div class="absolute -right-6 -bottom-6 opacity-10">
-                <svg class="h-32 w-32" fill="currentColor" viewBox="0 0 24 24"><path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.65 2.62.99 4 .99h2v-2h-2zM3.95 19H4c1.6 0 3.11-.55 4.35-1.56.64-.52 1.35-.52 1.99 0 1.24 1.01 2.75 1.56 4.35 1.56 1.6 0 3.11-.55 4.35-1.56.64-.52 1.35-.52 1.99 0 1.24 1.01 2.75 1.56 4.35 1.56h.05l1.09-6.31-1.04-.19H2.9l-1.04.19L2.95 19h1z"/></svg>
-            </div>
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold flex items-center">
-                    <span class="bg-white/20 p-2 rounded-lg mr-3">🚢</span> FRET MARITIME
+        <div class="bg-white rounded-3xl shadow-xl border-2 border-blue-500 p-6 relative overflow-hidden flex flex-col justify-between space-y-5">
+            <!-- En-tête -->
+            <div class="flex items-center justify-between border-b border-blue-100 pb-3 bg-blue-50 -mx-6 -mt-6 p-6">
+                <h3 class="text-xl font-black text-blue-900 flex items-center tracking-tight">
+                    <span class="bg-blue-600 text-white p-2 rounded-xl mr-3 text-xl shadow-sm">🚢</span> FRET MARITIME
                 </h3>
-                <span class="text-xs bg-white/20 px-2 py-1 rounded-full font-semibold uppercase tracking-wider">Ce mois-ci</span>
+                <span class="text-xs bg-blue-700 text-white px-3 py-1 rounded-full font-bold uppercase tracking-wider">Global</span>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+
+            <!-- Détail Logistique (Transit, Stock, Livrés) -->
+            <div class="grid grid-cols-3 gap-2 bg-gray-50 rounded-2xl p-3 text-center border border-gray-200">
                 <div>
-                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Colis Livrés</p>
-                    <p class="text-2xl font-black mt-1">{{ colis_livres_bateau|intcomma }}</p>
+                    <p class="text-gray-500 text-[11px] font-extrabold uppercase">🚀 Transit</p>
+                    <p class="text-xl font-black text-indigo-700 mt-0.5">{{ colis_transit_bateau|intcomma }}</p>
                 </div>
                 <div>
-                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Volume Total</p>
-                    <p class="text-2xl font-black mt-1">{{ total_cbm_mois|floatformat:3 }} <span class="text-xs font-normal">m³</span></p>
+                    <p class="text-gray-500 text-[11px] font-extrabold uppercase">📦 Stock</p>
+                    <p class="text-xl font-black text-amber-700 mt-0.5">{{ colis_stock_bateau|intcomma }}</p>
                 </div>
-                <div class="col-span-2 mt-2 pt-4 border-t border-white/10">
-                    <p class="text-blue-100 text-xs font-bold uppercase tracking-tighter">Recettes</p>
-                    <p class="text-3xl font-black mt-1">{{ recettes_bateau|fcfa }}</p>
+                <div>
+                    <p class="text-gray-500 text-[11px] font-extrabold uppercase">✅ Livrés</p>
+                    <p class="text-xl font-black text-emerald-700 mt-0.5">{{ colis_livres_bateau_count|intcomma }}</p>
+                </div>
+            </div>
+
+            <!-- Détail Financier à haute lisibilité -->
+            <div class="space-y-3 pt-1 text-gray-900">
+                <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                    <span class="font-extrabold text-gray-700">1. Bénéfice Brut :</span>
+                    <span class="font-black text-lg text-gray-900">{{ ca_brut_bateau|fcfa }}</span>
+                </div>
+                <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                    <span class="font-extrabold text-blue-800">2. Bénéfice après dépenses (bureau) :</span>
+                    <span class="font-black text-lg text-blue-700">{{ benefice_apres_depenses_bateau|fcfa }}</span>
+                </div>
+                <div class="flex justify-between items-center text-sm pt-1 bg-blue-50 p-3 rounded-2xl border border-blue-200">
+                    <span class="font-black text-blue-950">3. Bénéfice après avances sur salaire :</span>
+                    <span class="font-black text-xl text-blue-800">{{ benefice_apres_avances_bateau|fcfa }}</span>
                 </div>
             </div>
         </div>

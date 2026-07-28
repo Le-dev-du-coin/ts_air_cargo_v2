@@ -266,17 +266,40 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         context["colis_total_bateau"] = Colis.objects.bateau().count()
         context["total_clients_count"] = Client.objects.count()
 
+        # Détail Logistique par statut
+        context["colis_transit_count"] = Colis.objects.filter(status="EXPEDIE").count()
+        context["colis_stock_count"] = Colis.objects.filter(status="ARRIVE").count()
+        context["colis_livres_count"] = Colis.objects.filter(status="LIVRE").count()
+
+        # Calculs Financiers pour la 1ère Carte
+        ca_brut = Colis.objects.aggregate(total=Sum("prix_final"))["total"] or 0
+        fret_total = Lot.objects.filter(country__code="CN").aggregate(total=Sum("frais_transport"))["total"] or 0
+        douane_total = Lot.objects.filter(country__code="CN").aggregate(total=Sum("frais_douane"))["total"] or 0
+        depenses_totales = Depense.objects.aggregate(total=Sum("montant"))["total"] or 0
+        
+        from core.models import AvanceSalaire
+        total_avances = AvanceSalaire.objects.aggregate(total=Sum("montant"))["total"] or 0
+
+        context["benefice_brut"] = ca_brut
+        context["benefice_net_depenses"] = ca_brut - (fret_total + douane_total + depenses_totales)
+        context["total_avances_salaire"] = total_avances
+        context["benefice_net_apres_avances"] = context["benefice_net_depenses"] - total_avances
+
         # Stats spécifiques Agent Chine
         if self.request.user.role == "AGENT_CHINE":
-            lots_transit_qs = Lot.objects.filter(country__code="CN", status="EN_TRANSIT")
+            lots_transit_qs = Lot.objects.filter(
+                Q(destination__code="ML") | Q(country__code="CN"),
+                status="EN_TRANSIT"
+            ).distinct()
             context["lots_transit_count"] = lots_transit_qs.count()
             context["lots_transit_avion"] = lots_transit_qs.avion().count()
             context["lots_transit_bateau"] = lots_transit_qs.bateau().count()
 
             lots_arrives_qs = Lot.objects.filter(
-                country__code="CN",
-                status__in=[Lot.Status.ARRIVE, Lot.Status.DOUANE, Lot.Status.DISPONIBLE]
-            )
+                Q(destination__code="ML") | Q(country__code="CN"),
+                Q(status__in=[Lot.Status.ARRIVE, Lot.Status.DOUANE, Lot.Status.DISPONIBLE]) |
+                Q(colis__status__in=["ARRIVE", "LIVRE"])
+            ).distinct()
             context["lots_arrives_mali_count"] = lots_arrives_qs.count()
             context["lots_arrives_mali_avion"] = lots_arrives_qs.avion().count()
             context["lots_arrives_mali_bateau"] = lots_arrives_qs.bateau().count()
