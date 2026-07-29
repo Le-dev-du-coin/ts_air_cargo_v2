@@ -1,0 +1,128 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block header %}Cadrage de Caisse & Date Pivot (Réservé Administration){% endblock %}
+
+{% block mali_content %}
+<!-- Avertissement de sécurité très sévère -->
+<div class="bg-red-950 border-2 border-red-600 text-white rounded-xl shadow-2xl p-6 mb-8 relative overflow-hidden">
+    <div class="absolute -right-6 -bottom-6 text-red-900/30 text-9xl font-black pointer-events-none">
+        ⚠️
+    </div>
+    <div class="flex items-start space-x-4 relative z-10">
+        <div class="bg-red-600 text-white p-3 rounded-xl text-3xl font-black shadow-lg">
+            🚨
+        </div>
+        <div class="flex-1">
+            <div class="flex items-center space-x-2">
+                <span class="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-wider">Zone Critique / Action Irréversible</span>
+                <h3 class="text-lg font-black text-white uppercase tracking-wide">AVERTISSEMENT DE SÉCURITÉ COMPTABLE</h3>
+            </div>
+            <p class="text-xs text-red-200 mt-2 leading-relaxed">
+                <strong class="text-white font-bold">ATTENTION :</strong> La fixation d'une Date Pivot réinitialise le point de départ du calcul de la caisse courante à partir du montant physique réel certifié.
+                Toutes les anciennes entrées et sorties de caisse antérieures à cette date seront <strong class="text-white font-bold">exclues du solde courant</strong> (archivées pour mémoire).
+            </p>
+            <p class="text-xs text-red-300 mt-1 font-semibold">
+                Ne modifiez cette valeur qu'après un décompte physique exact en caisse (en présence du responsable). Toute modification non contrôlée faussera la trésorerie.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Formulaire d'enregistrement avec confirmation -->
+    <div class="bg-white rounded-xl shadow border-2 border-red-200 p-6 h-fit">
+        <h3 class="text-sm font-black text-red-900 mb-4 pb-2 border-b border-gray-100 flex items-center">
+            <span class="mr-2">🔐</span> Définir le Solde Initial (Admin)
+        </h3>
+        <form id="form-solde-pivot" method="post" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-extrabold text-gray-700 uppercase mb-1">Date Pivot (Date du Décompte)</label>
+                <input type="date" name="date_pivot" value="{% now 'Y-m-d' %}" required class="w-full border-gray-300 rounded-lg text-xs font-bold focus:ring-red-500 focus:border-red-500">
+                <span class="text-[10px] text-gray-500 mt-0.5 block">Date exacte à partir de laquelle démarrer le solde</span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-extrabold text-gray-700 uppercase mb-1">Montant Réel Physiquement en Caisse (FCFA)</label>
+                <input type="number" step="0.01" name="montant_initial" placeholder="Ex: 1500000" required class="w-full border-gray-300 rounded-lg text-xs font-black text-red-900 focus:ring-red-500 focus:border-red-500">
+                <span class="text-[10px] text-gray-500 mt-0.5 block">Comptage physique réel de la caisse</span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-extrabold text-gray-700 uppercase mb-1">Périmètre / Transport</label>
+                <select name="type_transport" class="w-full border-gray-300 rounded-lg text-xs font-bold focus:ring-red-500 focus:border-red-500">
+                    <option value="GLOBAL" selected>GLOBAL (Caisse Générale Mali)</option>
+                    <option value="AERIEN">Aérien uniquement</option>
+                    <option value="BATEAU">Maritime uniquement</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-extrabold text-gray-700 uppercase mb-1">Note / Observation d'Audit</label>
+                <input type="text" name="note" placeholder="Ex: Reprise de solde certifiée par l'Admin" required class="w-full border-gray-300 rounded-lg text-xs focus:ring-red-500 focus:border-red-500">
+            </div>
+
+            <button type="button" 
+                    onclick="confirmAction('Cadrer le Solde Initial ?', 'ATTENTION : Cette action redéfinit le point de départ de la caisse. Assurez-vous d\'avoir physiquement compté l\'argent en caisse !', 'form-solde-pivot', 'Valider le Solde', '#DC2626')"
+                    class="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-lg shadow-lg transition-all uppercase tracking-wider flex items-center justify-center space-x-2">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Certifier & Fixer la Date Pivot</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Historique des soldes initiaux -->
+    <div class="lg:col-span-2 bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <h3 class="text-sm font-bold text-gray-900">Historique des Reprises de Solde (Dates Pivot)</h3>
+            {% if solde_actuel_pivot %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Active: {{ solde_actuel_pivot.date_pivot|date:"d/m/Y" }} &rarr; {{ solde_actuel_pivot.montant_initial|fcfa }}
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date Pivot</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Mode</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Solde Initial Certifié</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Note / Auteur</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    {% for item in soldes_initiaux %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                            🗓️ {{ item.date_pivot|date:"d/m/Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs font-extrabold text-indigo-700">
+                            {{ item.get_type_transport_display }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-black text-right text-emerald-700">
+                            {{ item.montant_initial|fcfa }}
+                        </td>
+                        <td class="px-6 py-4 text-xs text-gray-600">
+                            {{ item.note|default:"—" }}
+                            <span class="block text-[10px] text-gray-400">Enregistré par {{ item.created_by.get_full_name|default:item.created_by.username|default:"Admin" }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-8 text-center text-xs text-gray-500">
+                            Aucun solde initial certifié enregistré pour le moment. Le calcul remonte à l'origine du système.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

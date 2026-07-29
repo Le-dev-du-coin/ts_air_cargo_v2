@@ -2831,6 +2831,50 @@ class MaliAgentAvanceListView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         return super().form_valid(form)
 
 
+class MaliSoldeInitialView(LoginRequiredMixin, AdminMaliRequiredMixin, TemplateView):
+    """
+    Interface d'enregistrement et de consultation du Solde Initial / Date Pivot de la Caisse.
+    """
+    template_name = "mali/finance/solde_initial.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.get_current_country()
+        context["soldes_initiaux"] = SoldeInitialCaisse.objects.filter(country=mali).order_by("-date_pivot", "-created_at")
+        context["solde_actuel_pivot"] = SoldeInitialCaisse.objects.filter(country=mali).order_by("-date_pivot").first()
+        return context
+
+    def post(self, request, *args, **kwargs):
+        mali = self.get_current_country()
+        date_pivot_str = request.POST.get("date_pivot")
+        montant_str = request.POST.get("montant_initial")
+        note = request.POST.get("note", "")
+        type_transport = request.POST.get("type_transport", "GLOBAL")
+
+        if date_pivot_str and montant_str:
+            try:
+                from datetime import datetime
+                date_pivot = datetime.strptime(date_pivot_str, "%Y-%m-%d").date()
+                montant = Decimal(montant_str)
+
+                SoldeInitialCaisse.objects.create(
+                    country=mali,
+                    date_pivot=date_pivot,
+                    montant_initial=montant,
+                    type_transport=type_transport,
+                    note=note,
+                    created_by=request.user
+                )
+                messages.success(
+                    request,
+                    f"✅ Reprise de solde certifiée à {montant} FCFA au {date_pivot.strftime('%d/%m/%Y')} enregistrée avec succès."
+                )
+            except Exception as e:
+                messages.error(request, f"Erreur lors de l'enregistrement du solde initial : {e}")
+
+        return redirect("mali:solde_initial")
+
+
 class MaliAgentAvanceCreateView(AdminMaliRequiredMixin, CreateView):
     model = AvanceSalaire
     form_class = AvanceSalaireForm

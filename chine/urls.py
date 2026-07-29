@@ -49,14 +49,12 @@ from .views import (
     ColisEtiquettePDFView,
     DatabaseBackupView,
     DatabaseImportView,
-    ChineSoldeInitialView,
 )
 
 app_name = "chine"
 
 urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
-    path("finance/solde-initial/", ChineSoldeInitialView.as_view(), name="solde_initial"),
     path("database/backups/", DatabaseBackupView.as_view(), name="database_backup"),
     path("database/import/", DatabaseImportView.as_view(), name="database_import"),
     path("archives/", MonthlyArchivesView.as_view(), name="monthly_archives"),
