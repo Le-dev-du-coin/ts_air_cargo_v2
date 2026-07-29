@@ -400,8 +400,36 @@ class FinanceEngine:
                     date_filter_colis = {"lot__date_arrivee__year": year}
                     date_filter_lots = {"date_arrivee__year": year}
 
+        # Prise en compte de la Date Pivot étanche par Mode de Transport
+        from core.models import SoldeInitialCaisse
+        pivot_aerien = SoldeInitialCaisse.objects.filter(
+            country__code=country_code, type_transport__in=["AERIEN", "GLOBAL"]
+        ).order_by("-date_pivot").first()
+
+        pivot_bateau = SoldeInitialCaisse.objects.filter(
+            country__code=country_code, type_transport__in=["BATEAU", "GLOBAL"]
+        ).order_by("-date_pivot").first()
+
         colis_periode = Colis.objects.filter(lot__destination__code=country_code).filter(**date_filter_colis)
         lots_periode = Lot.objects.filter(destination__code=country_code).filter(**date_filter_lots)
+
+        # Filtrage strict de la branche Aérienne si un Pivot Aérien existe
+        if pivot_aerien:
+            if country_code == "CN":
+                colis_periode = colis_periode.exclude(lot__type_transport__in=["CARGO", "EXPRESS"], lot__date_expedition__lt=pivot_aerien.date_pivot)
+                lots_periode = lots_periode.exclude(type_transport__in=["CARGO", "EXPRESS"], date_expedition__lt=pivot_aerien.date_pivot)
+            else:
+                colis_periode = colis_periode.exclude(lot__type_transport__in=["CARGO", "EXPRESS"], lot__date_arrivee__lt=pivot_aerien.date_pivot)
+                lots_periode = lots_periode.exclude(type_transport__in=["CARGO", "EXPRESS"], date_arrivee__lt=pivot_aerien.date_pivot)
+
+        # Filtrage strict de la branche Maritime si un Pivot Bateau existe
+        if pivot_bateau:
+            if country_code == "CN":
+                colis_periode = colis_periode.exclude(lot__type_transport="BATEAU", lot__date_expedition__lt=pivot_bateau.date_pivot)
+                lots_periode = lots_periode.exclude(type_transport="BATEAU", date_expedition__lt=pivot_bateau.date_pivot)
+            else:
+                colis_periode = colis_periode.exclude(lot__type_transport="BATEAU", lot__date_arrivee__lt=pivot_bateau.date_pivot)
+                lots_periode = lots_periode.exclude(type_transport="BATEAU", date_arrivee__lt=pivot_bateau.date_pivot)
 
         ca_brut = colis_periode.aggregate(total=Sum("prix_final"))["total"] or 0
         total_jc = colis_periode.aggregate(total=Sum("montant_jc"))["total"] or 0
@@ -419,6 +447,11 @@ class FinanceEngine:
         avances_rh_qs = AvanceSalaire.objects.filter(agent__country__code=country_code)
         salaires_rh_qs = PaiementAgent.objects.filter(agent__country__code=country_code)
 
+        if pivot_aerien:
+            depenses_exploit_qs = depenses_exploit_qs.exclude(type_transport="AVION", date__lt=pivot_aerien.date_pivot)
+        if pivot_bateau:
+            depenses_exploit_qs = depenses_exploit_qs.exclude(type_transport="BATEAU", date__lt=pivot_bateau.date_pivot)
+
         if year and str(year) != "all":
             depenses_exploit_qs = depenses_exploit_qs.filter(date__year=year)
             avances_rh_qs = avances_rh_qs.filter(date__year=year)
@@ -435,8 +468,6 @@ class FinanceEngine:
         depenses_bureau_reelles = depenses_exploit_qs.aggregate(total=Sum("montant"))["total"] or 0
         avances_rh = avances_rh_qs.aggregate(total=Sum("montant"))["total"] or 0
         salaires_rh = salaires_rh_qs.aggregate(total=Sum("montant"))["total"] or 0
-
-        # Décomposition explicite du Bénéfice
         benefice_brut_apres_depenses = benefice_brut - Decimal(depenses_bureau_reelles)
         total_charges = Decimal(depenses_bureau_reelles) + Decimal(avances_rh) + Decimal(salaires_rh)
         benefice_net = benefice_brut - total_charges
