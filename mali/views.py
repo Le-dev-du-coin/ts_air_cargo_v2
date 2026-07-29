@@ -2831,7 +2831,7 @@ class MaliAgentAvanceListView(LoginRequiredMixin, DestinationAgentRequiredMixin,
         return super().form_valid(form)
 
 
-class MaliSoldeInitialView(LoginRequiredMixin, AdminMaliRequiredMixin, TemplateView):
+class MaliSoldeInitialView(LoginRequiredMixin, AdminMaliRequiredMixin, DestinationAgentRequiredMixin, TemplateView):
     """
     Interface d'enregistrement et de consultation du Solde Initial / Date Pivot de la Caisse.
     """
