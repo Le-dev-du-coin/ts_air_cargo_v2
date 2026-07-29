@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.db.models import Sum, Q, F, Case, When, Value, DecimalField, Subquery, OuterRef
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from core.models import Colis, Lot, AvoirMouvement, EncaissementColis, AvanceSalaire
+from core.models import Colis, Lot, AvoirMouvement, EncaissementColis, AvanceSalaire, SoldeInitialCaisse
 from report.models import Depense, TransfertArgent, PaiementAgent
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,19 @@ class FinanceEngine:
         avec filtrage optionnel par type de transport (AERIEN ou BATEAU).
         """
         from decimal import Decimal
+
+        # --- RECHERCHE DE LA DATE PIVOT / SOLDE INITIAL ---
+        solde_init_qs = SoldeInitialCaisse.objects.filter(
+            country=country,
+            date_pivot__lte=target_date
+        )
+        if transport_filter:
+            solde_init_obj = solde_init_qs.filter(type_transport__in=[transport_filter, "GLOBAL"]).order_by("-date_pivot").first()
+        else:
+            solde_init_obj = solde_init_qs.filter(type_transport="GLOBAL").order_by("-date_pivot").first()
+
+        pivot_date = solde_init_obj.date_pivot if solde_init_obj else None
+        base_montant_initial = Decimal(str(solde_init_obj.montant_initial)) if solde_init_obj else Decimal("0")
 
         # --- FILTRAGE DES FLUX SELON LE MODE ---
         if transport_filter == "BATEAU":
@@ -83,6 +96,11 @@ class FinanceEngine:
 
             transferts_avant = Decimal("0")
             paiements_agents_avant = Decimal("0")
+
+            if pivot_date:
+                recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
+                legacy_recettes_avant = legacy_recettes_avant.filter(date_encaissement__gte=pivot_date)
+                depenses_avant = depenses_avant.filter(date__gte=pivot_date)
 
         elif transport_filter == "AERIEN":
             # 1. ENTRÉES DE CAISSE
@@ -170,6 +188,17 @@ class FinanceEngine:
                 agent__country=country
             ).aggregate(total=Sum("montant"))["total"] or 0
 
+            if pivot_date:
+                recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
+                legacy_recettes_avant = legacy_recettes_avant.filter(date_encaissement__gte=pivot_date)
+                depenses_avant = depenses_avant.filter(date__gte=pivot_date)
+                transferts_avant = TransfertArgent.objects.filter(
+                    date__lt=target_date, date__gte=pivot_date, pays_expediteur=country
+                ).aggregate(total=Sum("montant"))["total"] or 0
+                paiements_agents_avant = PaiementAgent.objects.filter(
+                    date_paiement__date__lt=target_date, date_paiement__date__gte=pivot_date, agent__country=country
+                ).aggregate(total=Sum("montant"))["total"] or 0
+
         else:
             # Comportement global par défaut
             encaissements_jour = EncaissementColis.objects.filter(
@@ -245,6 +274,17 @@ class FinanceEngine:
                 agent__country=country
             ).aggregate(total=Sum("montant"))["total"] or 0
 
+            if pivot_date:
+                recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
+                legacy_recettes_avant = legacy_recettes_avant.filter(date_encaissement__gte=pivot_date)
+                depenses_avant = depenses_avant.filter(date__gte=pivot_date)
+                transferts_avant = TransfertArgent.objects.filter(
+                    date__lt=target_date, date__gte=pivot_date, pays_expediteur=country
+                ).aggregate(total=Sum("montant"))["total"] or 0
+                paiements_agents_avant = PaiementAgent.objects.filter(
+                    date_paiement__date__lt=target_date, date_paiement__date__gte=pivot_date, agent__country=country
+                ).aggregate(total=Sum("montant"))["total"] or 0
+
         # --- CALCULS ---
         total_encaissements_colis_reels = encaissements_jour.aggregate(total=Sum("montant"))["total"] or 0
         legacy_encaissements_jour_sum = legacy_encaissements_jour.aggregate(total=Sum("net_val"))["total"] or 0
@@ -262,7 +302,7 @@ class FinanceEngine:
         transferts_avant_sum = Decimal(transferts_avant)
         paiements_agents_avant_sum = Decimal(paiements_agents_avant)
 
-        solde_veille = (Decimal(recettes_avant) + Decimal(depôts_avant)) - \
+        solde_veille = base_montant_initial + (Decimal(recettes_avant) + Decimal(depôts_avant)) - \
                        (Decimal(depenses_avant_sum) + Decimal(transferts_avant_sum) + Decimal(paiements_agents_avant_sum))
 
         return {

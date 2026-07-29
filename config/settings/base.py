@@ -14,6 +14,9 @@ DEBUG = env.bool("DJANGO_DEBUG", default=True)
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
 
+# Version automatique globale de l'ERP
+ERP_VERSION = "v2.5.0"
+
 # Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",

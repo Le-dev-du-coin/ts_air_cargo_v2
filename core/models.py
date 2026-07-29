@@ -765,3 +765,28 @@ class PersonneSortie(TenantAwareModel):
             return f"{self.nom} ({self.telephone})"
         return self.nom
 
+
+class SoldeInitialCaisse(TenantAwareModel):
+    """
+    Reprise de solde / Date Pivot pour la réconciliation de la caisse.
+    """
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name="soldes_initiaux")
+    date_pivot = models.DateField(default=timezone.now)
+    montant_initial = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    type_transport = models.CharField(
+        max_length=20,
+        choices=[("GLOBAL", "Global"), ("AERIEN", "Aérien"), ("BATEAU", "Maritime")],
+        default="GLOBAL"
+    )
+    note = models.CharField(max_length=255, blank=True, help_text="Ex: Reprise de solde certifiée après décompte physique")
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ["-date_pivot", "-created_at"]
+        verbose_name = _("Solde Initial Caisse (Date Pivot)")
+        verbose_name_plural = _("Soldes Initiaux Caisse (Dates Pivot)")
+
+    def __str__(self):
+        return f"Solde Initial {self.country.name} - {self.montant_initial} FCFA ({self.date_pivot})"
+

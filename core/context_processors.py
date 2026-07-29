@@ -1,12 +1,16 @@
+from django.conf import settings
 from notification.models import ConfigurationNotification
 
 
 def app_config(request):
+    # Version automatique centralisée de l'ERP
+    version = getattr(settings, "ERP_VERSION", "v2.5.0")
     try:
         config = ConfigurationNotification.get_solo()
-        version = config.app_version
+        if config and config.app_version:
+            version = config.app_version
     except Exception:
-        version = "V2.0.1"
+        pass
 
     # Préfixe de transport pour les URLs dans les templates
     # Évite de recourir à des templatetags personnalisés
