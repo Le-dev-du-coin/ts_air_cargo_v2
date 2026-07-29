@@ -116,9 +116,10 @@ class FinanceEngineTests(TestCase):
             enregistre_par=self.admin
         )
         
-        # Transfert 4000
+        # Transfert Douane 4000 (Sortie réelle de caisse)
         TransfertArgent.objects.create(
             pays_expediteur=self.mali,
+            destinataire="GAOUSSOU",
             montant=4000,
             date=today,
             enregistre_par=self.admin
