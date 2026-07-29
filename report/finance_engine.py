@@ -192,7 +192,7 @@ class FinanceEngine:
             if pivot_date:
                 if target_date <= pivot_date:
                     recettes_reelles_avant = EncaissementColis.objects.none()
-                    legacy_recettes_avant = Colis.objects.none()
+                    legacy_recettes_avant = legacy_recettes_avant.none()
                     depenses_avant = Depense.objects.none()
                     depôts_avant = Decimal("0")
                     transferts_avant = Decimal("0")
@@ -292,7 +292,7 @@ class FinanceEngine:
             if pivot_date:
                 if target_date <= pivot_date:
                     recettes_reelles_avant = EncaissementColis.objects.none()
-                    legacy_recettes_avant = Colis.objects.none()
+                    legacy_recettes_avant = legacy_recettes_avant.none()
                     depenses_avant = Depense.objects.none()
                     depôts_avant = Decimal("0")
                     transferts_avant = Decimal("0")
