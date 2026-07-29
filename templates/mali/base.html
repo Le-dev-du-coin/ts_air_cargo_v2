@@ -168,7 +168,7 @@
                         <a href="{{ transport_prefix }}{% url 'mali:client_avoir' %}" class="{% if request.resolver_match.url_name == 'client_avoir' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Portefeuille Client</a>
                         {% endif %}
 
-                        {% if user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' %}
+                        {% if user.role == 'ADMIN_MALI' or user.role == 'GLOBAL_ADMIN' or user.is_superuser or user.is_staff %}
                         <div class="px-3 mt-6 mb-2"><h3 class="text-xs font-semibold sidebar-heading uppercase tracking-wider">Administration</h3></div>
                         <a href="{{ transport_prefix }}{% url 'mali:admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Dashboard Admin</a>
                         <a href="{{ transport_prefix }}{% url 'mali:admin_agents' %}" class="{% if 'agents' in request.path %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Gestion Agents</a>
@@ -212,7 +212,7 @@
     <div class="hidden md:flex md:flex-shrink-0" x-show="desktopSidebarOpen" x-transition.opacity.duration.300ms>
         <div class="flex flex-col w-64">
             <div class="flex flex-col h-0 flex-1 sidebar-bg">
-                <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+                <div id="mali-sidebar-scroll" class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
                     <div class="flex items-center flex-shrink-0 px-4">
                         <span class="text-2xl font-extrabold text-white tracking-tighter">{% if request.is_maritime %}TS Maritime{% else %}TS Air Cargo{% endif %}</span>
                         <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-black {% if request.is_maritime %}bg-blue-600 text-white{% else %}bg-green-700 text-green-100{% endif %} uppercase shadow-sm border {% if request.is_maritime %}border-blue-500{% else %}border-green-600{% endif %}">
@@ -588,18 +588,28 @@
         if (e.key === 'Escape') closeImgZoom();
     });
 
-    // Mémorisation de la position du défilement de la sidebar
+    // Mémorisation exacte de la position du défilement de la sidebar
     document.addEventListener("DOMContentLoaded", function () {
-        var sidebarNav = document.querySelector("aside .overflow-y-auto") || document.querySelector("aside") || document.querySelector(".sidebar");
+        var sidebarNav = document.getElementById("mali-sidebar-scroll") || document.querySelector(".overflow-y-auto");
         if (sidebarNav) {
-            var key = "sidebar_scroll_" + (window.location.pathname.split("/")[1] || "default");
+            var key = "mali_sidebar_scroll_position";
             var savedPos = sessionStorage.getItem(key);
             if (savedPos !== null) {
                 sidebarNav.scrollTop = parseInt(savedPos, 10);
             }
+
+            // Enregistrer le scroll lors d'un clic sur n'importe quel lien de la nav
+            var links = sidebarNav.querySelectorAll("a");
+            links.forEach(function(link) {
+                link.addEventListener("click", function() {
+                    sessionStorage.setItem(key, sidebarNav.scrollTop);
+                });
+            });
+
             window.addEventListener("beforeunload", function () {
                 sessionStorage.setItem(key, sidebarNav.scrollTop);
             });
+
             var activeItem = sidebarNav.querySelector(".sidebar-link-active");
             if (activeItem && savedPos === null) {
                 activeItem.scrollIntoView({ block: "nearest" });
