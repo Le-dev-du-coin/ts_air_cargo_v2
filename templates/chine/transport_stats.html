@@ -73,10 +73,9 @@
                             <dt class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Chiffre d'Affaires</dt>
                             <dd class="mt-1 text-sm font-black text-gray-800">{{ stats.ca_avion|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
                         </div>
-                        <div class="bg-green-50 rounded-lg p-3 shadow-sm text-center border border-green-100">
-                            <dt class="text-[10px] font-bold {% if stats.benefice_brut_avion >= 0 %}text-green-600{% else %}text-red-600{% endif %} uppercase tracking-widest mb-1">Bénéfice Brut</dt>
-                            <dd class="mt-1 text-sm font-black {% if stats.benefice_brut_avion >= 0 %}text-green-800{% else %}text-red-800{% endif %}">{{ stats.benefice_brut_avion|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
-
+                        <div class="bg-emerald-50 rounded-lg p-3 shadow-sm text-center border border-emerald-100">
+                            <dt class="text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">Bénéfice Net</dt>
+                            <dd class="mt-1 text-sm font-black text-emerald-950">{{ stats.benefice_net_avion|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
                         </div>
                     </dl>
                 </div>
@@ -99,12 +98,23 @@
                             <dt class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Chiffre d'Affaires</dt>
                             <dd class="mt-1 text-sm font-black text-gray-800">{{ stats.ca_bateau|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
                         </div>
-                        <div class="bg-green-50 rounded-lg p-3 shadow-sm text-center border border-green-100">
-                            <dt class="text-[10px] font-bold {% if stats.benefice_brut_bateau >= 0 %}text-green-600{% else %}text-red-600{% endif %} uppercase tracking-widest mb-1">Bénéfice Brut</dt>
-                            <dd class="mt-1 text-sm font-black {% if stats.benefice_brut_bateau >= 0 %}text-green-800{% else %}text-red-800{% endif %}">{{ stats.benefice_brut_bateau|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
-
+                        <div class="bg-emerald-50 rounded-lg p-3 shadow-sm text-center border border-emerald-100">
+                            <dt class="text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">Bénéfice Net</dt>
+                            <dd class="mt-1 text-sm font-black text-emerald-950">{{ stats.benefice_net_bateau|default:"0"|floatformat:0|intcomma }} <span class="text-[10px] font-normal">FCFA</span></dd>
                         </div>
                     </dl>
+                </div>
+
+                <!-- 📊 Récapitulatif Décomposé -->
+                <div class="border-t border-gray-100 pt-3 grid grid-cols-2 gap-3">
+                    <div class="p-2.5 bg-amber-50 rounded-lg border border-amber-100">
+                        <span class="text-[10px] font-bold text-amber-800 uppercase block">🏢 Dépenses Bureau</span>
+                        <span class="text-sm font-black text-amber-950 block">- {{ stats.depenses_bureau_reelles|default:"0"|floatformat:0|intcomma }} FCFA</span>
+                    </div>
+                    <div class="p-2.5 bg-orange-50 rounded-lg border border-orange-100">
+                        <span class="text-[10px] font-bold text-orange-800 uppercase block">🤝 Avances Salaire</span>
+                        <span class="text-sm font-black text-orange-950 block">- {{ stats.avances_salaires|default:"0"|floatformat:0|intcomma }} FCFA</span>
+                    </div>
                 </div>
 
                 <!-- Comparaison Rapide -->

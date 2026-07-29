@@ -149,22 +149,32 @@
                 </span>
             </div>
             
-            <div class="p-6 grid grid-cols-2 gap-4">
-                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Chiffre d'Affaires</p>
-                    <p class="text-xl font-black text-gray-800">{{ stats_ml.montant_colis|default:"0"|floatformat:0|intcomma }} <span class="text-sm text-gray-500 font-medium">FCFA</span></p>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Chiffre d'Affaires</p>
+                        <p class="text-lg font-black text-gray-800">{{ stats_ml.montant_colis|default:"0"|floatformat:0|intcomma }} <span class="text-xs text-gray-500 font-normal">FCFA</span></p>
+                    </div>
+                    <div class="p-3 bg-blue-50/80 rounded-xl border border-blue-100">
+                        <p class="text-[10px] font-bold text-blue-700 uppercase tracking-widest mb-0.5">📈 Bénéfice Brut</p>
+                        <p class="text-lg font-black text-blue-950">{{ stats_ml.benefice_brut_commercial|default:"0"|floatformat:0|intcomma }} <span class="text-xs text-blue-700 font-normal">FCFA</span></p>
+                    </div>
+                    <div class="p-3 bg-amber-50/80 rounded-xl border border-amber-100">
+                        <p class="text-[10px] font-bold text-amber-800 uppercase tracking-widest mb-0.5">🏢 Dépenses Bureau</p>
+                        <p class="text-lg font-black text-amber-950">- {{ stats_ml.depenses_bureau_reelles|default:"0"|floatformat:0|intcomma }} <span class="text-xs text-amber-700 font-normal">FCFA</span></p>
+                    </div>
+                    <div class="p-3 bg-orange-50/80 rounded-xl border border-orange-100">
+                        <p class="text-[10px] font-bold text-orange-800 uppercase tracking-widest mb-0.5">🤝 Avances Salaire</p>
+                        <p class="text-lg font-black text-orange-950">- {{ stats_ml.avances_salaires|default:"0"|floatformat:0|intcomma }} <span class="text-xs text-orange-700 font-normal">FCFA</span></p>
+                    </div>
                 </div>
-                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Poids Total</p>
-                    <p class="text-xl font-black text-gray-800">{{ stats_ml.poids_total|default:"0"|floatformat:1|intcomma }} <span class="text-sm text-gray-500 font-medium">kg</span></p>
-                </div>
-                <div class="p-4 bg-red-50/50 rounded-xl border border-red-100">
-                    <p class="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Total Dépenses</p>
-                    <p class="text-xl font-black text-red-600">- {{ stats_ml.cout_transport|add:stats_ml.cout_douane|add:stats_ml.autres_depenses|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
-                </div>
-                <div class="p-4 {% if stats_ml.benefice >= 0 %}bg-green-50 border-green-200{% else %}bg-red-50 border-red-200{% endif %} rounded-xl border shadow-sm">
-                    <p class="text-xs font-bold {% if stats_ml.benefice >= 0 %}text-green-600{% else %}text-red-600{% endif %} uppercase tracking-widest mb-1">Bénéfice Net</p>
-                    <p class="text-xl font-black {% if stats_ml.benefice >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ stats_ml.benefice|default:"0"|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
+
+                <div class="p-4 bg-white border-2 border-emerald-500 rounded-xl shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">💰 Bénéfice Net Final</p>
+                        <p class="text-xl font-black text-gray-900 mt-0.5">{{ stats_ml.benefice|default:"0"|floatformat:0|intcomma }} FCFA</p>
+                    </div>
+                    <span class="text-xs font-bold text-gray-500">Poids : {{ stats_ml.poids_total|default:"0"|floatformat:1 }} kg</span>
                 </div>
             </div>
         </div>
@@ -181,22 +191,32 @@
                 </span>
             </div>
             
-            <div class="p-6 grid grid-cols-2 gap-4">
-                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Chiffre d'Affaires</p>
-                    <p class="text-xl font-black text-gray-800">{{ stats_ci.montant_colis|default:"0"|floatformat:0|intcomma }} <span class="text-sm text-gray-500 font-medium">FCFA</span></p>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Chiffre d'Affaires</p>
+                        <p class="text-lg font-black text-gray-800">{{ stats_ci.montant_colis|default:"0"|floatformat:0|intcomma }} <span class="text-xs text-gray-500 font-normal">FCFA</span></p>
+                    </div>
+                    <div class="p-3 bg-blue-50/80 rounded-xl border border-blue-100">
+                        <p class="text-[10px] font-bold text-blue-700 uppercase tracking-widest mb-0.5">📈 Bénéfice Brut</p>
+                        <p class="text-lg font-black text-blue-950">{{ stats_ci.benefice_brut_commercial|default:"0"|floatformat:0|intcomma }} <span class="text-xs text-blue-700 font-normal">FCFA</span></p>
+                    </div>
+                    <div class="p-3 bg-amber-50/80 rounded-xl border border-amber-100">
+                        <p class="text-[10px] font-bold text-amber-800 uppercase tracking-widest mb-0.5">🏢 Dépenses Bureau</p>
+                        <p class="text-lg font-black text-amber-950">- {{ stats_ci.depenses_bureau_reelles|default:"0"|floatformat:0|intcomma }} <span class="text-xs text-amber-700 font-normal">FCFA</span></p>
+                    </div>
+                    <div class="p-3 bg-orange-50/80 rounded-xl border border-orange-100">
+                        <p class="text-[10px] font-bold text-orange-800 uppercase tracking-widest mb-0.5">🤝 Avances Salaire</p>
+                        <p class="text-lg font-black text-orange-950">- {{ stats_ci.avances_salaires|default:"0"|floatformat:0|intcomma }} <span class="text-xs text-orange-700 font-normal">FCFA</span></p>
+                    </div>
                 </div>
-                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Poids Total</p>
-                    <p class="text-xl font-black text-gray-800">{{ stats_ci.poids_total|default:"0"|floatformat:1|intcomma }} <span class="text-sm text-gray-500 font-medium">kg</span></p>
-                </div>
-                <div class="p-4 bg-red-50/50 rounded-xl border border-red-100">
-                    <p class="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Total Dépenses</p>
-                    <p class="text-xl font-black text-red-600">- {{ stats_ci.cout_transport|add:stats_ci.cout_douane|add:stats_ci.autres_depenses|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
-                </div>
-                <div class="p-4 {% if stats_ci.benefice >= 0 %}bg-green-50 border-green-200{% else %}bg-red-50 border-red-200{% endif %} rounded-xl border shadow-sm">
-                    <p class="text-xs font-bold {% if stats_ci.benefice >= 0 %}text-green-600{% else %}text-red-600{% endif %} uppercase tracking-widest mb-1">Bénéfice Net</p>
-                    <p class="text-xl font-black {% if stats_ci.benefice >= 0 %}text-green-700{% else %}text-red-700{% endif %}">{{ stats_ci.benefice|default:"0"|floatformat:0|intcomma }} <span class="text-sm font-medium">FCFA</span></p>
+
+                <div class="p-4 bg-white border-2 border-emerald-500 rounded-xl shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">💰 Bénéfice Net Final</p>
+                        <p class="text-xl font-black text-gray-900 mt-0.5">{{ stats_ci.benefice|default:"0"|floatformat:0|intcomma }} FCFA</p>
+                    </div>
+                    <span class="text-xs font-bold text-gray-500">Poids : {{ stats_ci.poids_total|default:"0"|floatformat:1 }} kg</span>
                 </div>
             </div>
         </div>

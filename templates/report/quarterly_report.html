@@ -220,18 +220,18 @@
                             <td class="py-2 px-3 text-right font-black {% if entry.totals.benefice_brut >= 0 %}text-green-800{% else %}text-red-800{% endif %} bg-indigo-50">{{ entry.totals.benefice_brut|floatformat:0|intcomma }}</td>
                         </tr>
                         <tr>
-                            <td class="py-2 px-3 font-medium text-gray-700">Dépenses</td>
+                            <td class="py-2 px-3 font-medium text-amber-800">🏢 Dépenses Bureau (frais de fonctionnement)</td>
                             {% for perf in entry.months %}
-                            <td class="py-2 px-3 text-right text-red-600">- {{ perf.total_depenses|floatformat:0|intcomma }}</td>
+                            <td class="py-2 px-3 text-right text-amber-800 font-semibold">- {{ perf.depenses_bureau_reelles|default:perf.total_depenses|floatformat:0|intcomma }}</td>
                             {% endfor %}
-                            <td class="py-2 px-3 text-right font-bold text-red-700 bg-indigo-50">- {{ entry.totals.total_depenses|floatformat:0|intcomma }}</td>
+                            <td class="py-2 px-3 text-right font-bold text-amber-900 bg-indigo-50">- {{ entry.totals.depenses_bureau_reelles|default:entry.totals.total_depenses|floatformat:0|intcomma }}</td>
                         </tr>
                         <tr>
-                            <td class="py-2 px-3 font-medium text-gray-700">RH (Salaires + Avances)</td>
+                            <td class="py-2 px-3 font-medium text-orange-800">🤝 Avances sur Salaire (agents)</td>
                             {% for perf in entry.months %}
-                            <td class="py-2 px-3 text-right text-red-600">- {{ perf.total_rh|floatformat:0|intcomma }}</td>
+                            <td class="py-2 px-3 text-right text-orange-800 font-semibold">- {{ perf.total_avances_salaire|default:perf.total_rh|floatformat:0|intcomma }}</td>
                             {% endfor %}
-                            <td class="py-2 px-3 text-right font-bold text-red-700 bg-indigo-50">- {{ entry.totals.total_rh|floatformat:0|intcomma }}</td>
+                            <td class="py-2 px-3 text-right font-bold text-orange-900 bg-indigo-50">- {{ entry.totals.total_avances_salaire|default:entry.totals.total_rh|floatformat:0|intcomma }}</td>
                         </tr>
                         <tr class="bg-gray-100 border-t-2 border-gray-300">
                             <td class="py-3 px-3 font-black text-gray-900 text-base">Bénéfice Net</td>
