@@ -136,10 +136,11 @@ class FinanceEngine:
                 Q(type_transport="AVION") | Q(type_transport__isnull=True) | Q(type_transport="")
             ).exclude(enregistre_par__role__in=["ADMIN_CHINE", "AGENT_CHINE"])
 
+            # Les transferts vers la Chine ne sont pas des sorties de caisse locales
             transferts_jour = TransfertArgent.objects.filter(
                 date=target_date,
                 pays_expediteur=country
-            )
+            ).exclude(destinataire="CHINE")
             total_transferts = transferts_jour.aggregate(total=Sum("montant"))["total"] or 0
 
             paiements_agents = PaiementAgent.objects.filter(
@@ -181,7 +182,7 @@ class FinanceEngine:
             transferts_avant = TransfertArgent.objects.filter(
                 date__lt=target_date,
                 pays_expediteur=country
-            ).aggregate(total=Sum("montant"))["total"] or 0
+            ).exclude(destinataire="CHINE").aggregate(total=Sum("montant"))["total"] or 0
 
             paiements_agents_avant = PaiementAgent.objects.filter(
                 date_paiement__date__lt=target_date,
@@ -189,15 +190,29 @@ class FinanceEngine:
             ).aggregate(total=Sum("montant"))["total"] or 0
 
             if pivot_date:
-                recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
-                legacy_recettes_avant = legacy_recettes_avant.filter(date_encaissement__gte=pivot_date)
-                depenses_avant = depenses_avant.filter(date__gte=pivot_date)
-                transferts_avant = TransfertArgent.objects.filter(
-                    date__lt=target_date, date__gte=pivot_date, pays_expediteur=country
-                ).aggregate(total=Sum("montant"))["total"] or 0
-                paiements_agents_avant = PaiementAgent.objects.filter(
-                    date_paiement__date__lt=target_date, date_paiement__date__gte=pivot_date, agent__country=country
-                ).aggregate(total=Sum("montant"))["total"] or 0
+                if target_date <= pivot_date:
+                    recettes_reelles_avant = EncaissementColis.objects.none()
+                    legacy_recettes_avant = Colis.objects.none()
+                    depenses_avant = Depense.objects.none()
+                    depôts_avant = Decimal("0")
+                    transferts_avant = Decimal("0")
+                    paiements_agents_avant = Decimal("0")
+                else:
+                    recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
+                    legacy_recettes_avant = legacy_recettes_avant.filter(date_encaissement__gte=pivot_date)
+                    depenses_avant = depenses_avant.filter(date__gte=pivot_date)
+                    depôts_avant = AvoirMouvement.objects.filter(
+                        created_at__date__lt=target_date,
+                        created_at__date__gte=pivot_date,
+                        client__country=country,
+                        type="DEPOT"
+                    ).aggregate(total=Sum("montant"))["total"] or 0
+                    transferts_avant = TransfertArgent.objects.filter(
+                        date__lt=target_date, date__gte=pivot_date, pays_expediteur=country
+                    ).exclude(destinataire="CHINE").aggregate(total=Sum("montant"))["total"] or 0
+                    paiements_agents_avant = PaiementAgent.objects.filter(
+                        date_paiement__date__lt=target_date, date_paiement__date__gte=pivot_date, agent__country=country
+                    ).aggregate(total=Sum("montant"))["total"] or 0
 
         else:
             # Comportement global par défaut
@@ -230,7 +245,7 @@ class FinanceEngine:
             transferts_jour = TransfertArgent.objects.filter(
                 date=target_date,
                 pays_expediteur=country
-            )
+            ).exclude(destinataire="CHINE")
             total_transferts = transferts_jour.aggregate(total=Sum("montant"))["total"] or 0
 
             paiements_agents = PaiementAgent.objects.filter(
@@ -267,7 +282,7 @@ class FinanceEngine:
             transferts_avant = TransfertArgent.objects.filter(
                 date__lt=target_date,
                 pays_expediteur=country
-            ).aggregate(total=Sum("montant"))["total"] or 0
+            ).exclude(destinataire="CHINE").aggregate(total=Sum("montant"))["total"] or 0
 
             paiements_agents_avant = PaiementAgent.objects.filter(
                 date_paiement__date__lt=target_date,
@@ -275,15 +290,29 @@ class FinanceEngine:
             ).aggregate(total=Sum("montant"))["total"] or 0
 
             if pivot_date:
-                recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
-                legacy_recettes_avant = legacy_recettes_avant.filter(date_encaissement__gte=pivot_date)
-                depenses_avant = depenses_avant.filter(date__gte=pivot_date)
-                transferts_avant = TransfertArgent.objects.filter(
-                    date__lt=target_date, date__gte=pivot_date, pays_expediteur=country
-                ).aggregate(total=Sum("montant"))["total"] or 0
-                paiements_agents_avant = PaiementAgent.objects.filter(
-                    date_paiement__date__lt=target_date, date_paiement__date__gte=pivot_date, agent__country=country
-                ).aggregate(total=Sum("montant"))["total"] or 0
+                if target_date <= pivot_date:
+                    recettes_reelles_avant = EncaissementColis.objects.none()
+                    legacy_recettes_avant = Colis.objects.none()
+                    depenses_avant = Depense.objects.none()
+                    depôts_avant = Decimal("0")
+                    transferts_avant = Decimal("0")
+                    paiements_agents_avant = Decimal("0")
+                else:
+                    recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
+                    legacy_recettes_avant = legacy_recettes_avant.filter(date_encaissement__gte=pivot_date)
+                    depenses_avant = depenses_avant.filter(date__gte=pivot_date)
+                    depôts_avant = AvoirMouvement.objects.filter(
+                        created_at__date__lt=target_date,
+                        created_at__date__gte=pivot_date,
+                        client__country=country,
+                        type="DEPOT"
+                    ).aggregate(total=Sum("montant"))["total"] or 0
+                    transferts_avant = TransfertArgent.objects.filter(
+                        date__lt=target_date, date__gte=pivot_date, pays_expediteur=country
+                    ).exclude(destinataire="CHINE").aggregate(total=Sum("montant"))["total"] or 0
+                    paiements_agents_avant = PaiementAgent.objects.filter(
+                        date_paiement__date__lt=target_date, date_paiement__date__gte=pivot_date, agent__country=country
+                    ).aggregate(total=Sum("montant"))["total"] or 0
 
         # --- CALCULS ---
         total_encaissements_colis_reels = encaissements_jour.aggregate(total=Sum("montant"))["total"] or 0
