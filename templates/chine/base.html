@@ -458,24 +458,4 @@
     </script>
     {% endif %}
 {% endblock %}
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        var sidebarNav = document.querySelector("aside .overflow-y-auto") || document.querySelector("aside") || document.querySelector(".sidebar") || document.querySelector("nav");
-        if (sidebarNav) {
-            var key = "sidebar_scroll_chine";
-            var savedPos = sessionStorage.getItem(key);
-            if (savedPos !== null) {
-                sidebarNav.scrollTop = parseInt(savedPos, 10);
-            }
-            window.addEventListener("beforeunload", function () {
-                sessionStorage.setItem(key, sidebarNav.scrollTop);
-            });
-            var activeItem = sidebarNav.querySelector(".bg-indigo-600");
-            if (activeItem && savedPos === null) {
-                activeItem.scrollIntoView({ block: "nearest" });
-            }
-        }
-    });
-</script>
 {% endblock %}

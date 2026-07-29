@@ -31,6 +31,7 @@ from core.models import (
     ClientLotTarif,
     EncaissementColis,
     AvoirMouvement,
+    SoldeInitialCaisse,
 )
 from report.models import Depense, TransfertArgent, PaiementAgent
 from report.finance_engine import FinanceEngine
