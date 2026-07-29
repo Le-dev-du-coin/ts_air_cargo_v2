@@ -3893,6 +3893,36 @@ class StockMaliView(LoginRequiredMixin, DestinationAgentRequiredMixin, ListView)
         return context
 
 
+class MaliStockDestockageBulkView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
+    """
+    Permet à l'agent Mali de marquer des colis en stock comme LIVRÉS 
+    et de les sortir du stock entrepôt SANS affecter la caisse du jour.
+    """
+    def post(self, request, *args, **kwargs):
+        mali = self.get_current_country()
+        colis_ids = request.POST.getlist("colis_ids")
+        if not colis_ids:
+            messages.warning(request, "Aucun colis sélectionné.")
+            return redirect(request.META.get("HTTP_REFERER", "mali:stock"))
+
+        today = timezone.now().date()
+        colis_qs = Colis.objects.filter(id__in=colis_ids, lot__destination=mali)
+        count = 0
+        for colis in colis_qs:
+            colis.status = "LIVRE"
+            colis.date_livraison = today
+            colis.reste_a_payer = 0
+            colis.est_paye = True
+            colis.save()
+            count += 1
+
+        messages.success(
+            request,
+            f"✅ {count} colis ont été marqués comme LIVRÉS et retirés du stock (sans aucun impact sur la caisse du jour)."
+        )
+        return redirect(request.META.get("HTTP_REFERER", "mali:stock"))
+
+
 class LotBateauMaliCreateView(LoginRequiredMixin, DestinationAgentRequiredMixin, CreateView):
     """Permet à l'agent Mali de créer un lot bateau pour régulariser des anciens envois"""
     model = Lot
