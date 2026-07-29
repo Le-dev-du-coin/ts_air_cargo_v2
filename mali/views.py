@@ -328,6 +328,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
                 Q(status__in=["ARRIVE", "LIVRE", "PERDU"]),
                 Q(date_livraison=today) | Q(date_encaissement=today),
             )
+            .exclude(is_regularise=True)
             .select_related("client", "lot")
             .annotate(
                 sort_date=Coalesce(

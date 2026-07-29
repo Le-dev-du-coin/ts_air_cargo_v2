@@ -153,6 +153,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
                 status__in=["ARRIVE", "LIVRE", "PERDU"],
                 updated_at__date=today,
             )
+            .exclude(is_regularise=True)
             .select_related("client", "lot")
             .order_by("-updated_at")[:10]
         )
