@@ -94,46 +94,21 @@ class AdminChineRequiredMixin(RoleRequiredMixin):
     allowed_roles = ["ADMIN_CHINE"]
 
 
-def get_country_stats(country_code, year=None, month=None):
+def get_country_stats(country_code, year=None, month=None, quarter=None):
     """Fonction utilitaire pour calculer les stats par pays, avec filtre optionnel par date (Mise en cache 1 Heure)"""
-    cache_key = f"stats_{country_code}_{year}_{month}"
+    cache_key = f"stats_{country_code}_{year}_{month}_{quarter}"
     cached_stats = cache.get(cache_key)
 
     if cached_stats is not None:
         return cached_stats
 
-    lots = Lot.objects.filter(destination__code=country_code)
-    colis = Colis.objects.filter(lot__destination__code=country_code)
-    depenses = Depense.objects.filter(pays__code=country_code)
-    transferts = TransfertArgent.objects.filter(pays_expediteur__code=country_code)
-
-    if year and month:
-        if country_code == "CN":
-            # Chine: Fait générateur = Expédition
-            date_filter_lots = {"date_expedition__year": year, "date_expedition__month": month}
-            date_filter_colis = {"lot__date_expedition__year": year, "lot__date_expedition__month": month}
-        else:
-            # Destinations (Mali, RCI, etc.): Fait générateur = Arrivée
-            date_filter_lots = {"date_arrivee__year": year, "date_arrivee__month": month}
-            date_filter_colis = {"lot__date_arrivee__year": year, "lot__date_arrivee__month": month}
-
-        lots = lots.filter(**date_filter_lots)
-        colis = colis.filter(**date_filter_colis)
-        depenses = depenses.filter(date__year=year, date__month=month)
-        transferts = transferts.filter(date__year=year, date__month=month)
-
-    # ... [rest of calculation] ...
-    # (I'll keep the rest as is but I need to make sure I don't break the existing code)
-    # Actually, I should use the specific logic for agents filtering too.
-
     # --- CALCULS VIA LE MOTEUR FINANCIER CENTRALISÉ ---
-    perf = FinanceEngine.get_monthly_performance(year, month, country_code)
+    perf = FinanceEngine.get_monthly_performance(year, month=month, country_code=country_code, quarter=quarter)
 
     stats = {}
     stats["montant_colis"] = perf["chiffre_affaires"]
     stats["poids_total"] = perf["poids_total"]
     
-    # Pour info seulement, les transferts ne sont plus déduits du bénéfice
     transferts = TransfertArgent.objects.filter(pays_expediteur__code=country_code)
     if year and month:
         transferts = transferts.filter(date__year=year, date__month=month)
@@ -141,12 +116,17 @@ def get_country_stats(country_code, year=None, month=None):
 
     stats["cout_transport"] = perf["cout_fret"]
     stats["cout_douane"] = perf["cout_douane"]
-    stats["autres_depenses"] = perf["total_depenses"]
-
-    stats["total_rh"] = perf["total_rh"]
-    stats["total_depenses_global"] = stats["autres_depenses"] + stats["total_rh"] # Note: On n'inclut plus les transferts ici
     
-    # Le Bénéfice Net = Recettes - (Fret + Douane + Dépenses + RH)
+    # DÉCOMPOSITIONS FINANCIÈRES EXPLICITES POUR L'ADMIN
+    stats["benefice_brut_commercial"] = perf["benefice_brut"]
+    stats["depenses_bureau_reelles"] = perf["depenses_bureau_reelles"]
+    stats["benefice_brut_apres_depenses"] = perf["benefice_brut_apres_depenses"]
+    stats["avances_salaires"] = perf["total_avances_salaire"]
+    stats["salaires_payes"] = perf["total_salaires_payes"]
+    stats["total_rh"] = perf["total_rh"]
+    
+    stats["autres_depenses"] = perf["depenses_bureau_reelles"]
+    stats["total_depenses_global"] = perf["depenses_bureau_reelles"] + perf["total_rh"]
     stats["benefice"] = perf["benefice_net"]
 
     # Détails Avion / Bateau (Segmentation Complète)
