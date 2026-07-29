@@ -447,6 +447,17 @@ class FinanceEngine:
         avances_rh_qs = AvanceSalaire.objects.filter(agent__country__code=country_code)
         salaires_rh_qs = PaiementAgent.objects.filter(agent__country__code=country_code)
 
+        # Exclure également les dépenses, avances RH et salaires antérieurs aux pivots
+        min_pivot = None
+        pivots = [p for p in [pivot_aerien, pivot_bateau] if p and p.date_pivot]
+        if pivots:
+            min_pivot = min(p.date_pivot for p in pivots)
+
+        if min_pivot:
+            depenses_exploit_qs = depenses_exploit_qs.filter(date__gte=min_pivot)
+            avances_rh_qs = avances_rh_qs.filter(date__gte=min_pivot)
+            salaires_rh_qs = salaires_rh_qs.filter(date_paiement__date__gte=min_pivot)
+
         if pivot_aerien:
             depenses_exploit_qs = depenses_exploit_qs.exclude(type_transport="AVION", date__lt=pivot_aerien.date_pivot)
         if pivot_bateau:
