@@ -135,9 +135,13 @@
                         <a href="{{ transport_prefix }}{% url 'mali:prets_retrait' %}" class="{% if 'prets_retrait' in request.resolver_match.url_name %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             {% if request.is_maritime %}🎁 Colis Prêts pour Livraison{% else %}🎁 Prêts pour Retrait{% endif %}
                         </a>
-                        
                         <a href="{{ transport_prefix }}{% url 'mali:colis_attente_paiement' %}" class="{% if request.resolver_match.url_name == 'colis_attente_paiement' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Paiements</a>
-                        
+                            <a href="{{ transport_prefix }}{% url 'mali:colis_regularises' %}"
+                                    class="{% if request.resolver_match.url_name == 'colis_regularises' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                Régularisés (Déstockés)
+                            </a>
+
+                        <a href="{{ transport_prefix }}{% url 'mali:colis_regularises' %}" class="{% if request.resolver_match.url_name == 'colis_regularises' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Régularisés (Déstockés)</a>
                         <a href="{{ transport_prefix }}{% url 'mali:colis_sortie_garantie' %}" class="{% if request.resolver_match.url_name == 'colis_sortie_garantie' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">
                             {% if request.is_maritime %}Sorties{% else %}Sorties Garantie{% endif %}
                         </a>
@@ -163,6 +167,11 @@
                         {% endif %}
                         <a href="{{ transport_prefix }}{% url 'mali:rapport_financier' %}" class="{% if request.resolver_match.url_name == 'rapport_financier' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rapport Avancé</a>
                         <a href="{{ transport_prefix }}{% url 'mali:historique_paiements' %}" class="{% if request.resolver_match.url_name == 'historique_paiements' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Historique Paiements</a>
+                            <a href="{{ transport_prefix }}{% url 'mali:colis_regularises' %}"
+                                    class="{% if request.resolver_match.url_name == 'colis_regularises' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                Régularisés (Déstockés)
+                            </a>
+
                         
                         {% if not request.is_maritime %}
                         <a href="{{ transport_prefix }}{% url 'mali:client_avoir' %}" class="{% if request.resolver_match.url_name == 'client_avoir' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Portefeuille Client</a>
@@ -311,6 +320,11 @@
                                             d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Paiements en attente
+                            <a href="{{ transport_prefix }}{% url 'mali:colis_regularises' %}"
+                                    class="{% if request.resolver_match.url_name == 'colis_regularises' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                Régularisés (Déstockés)
+                            </a>
+
                                 </a>
                                 <a href="{{ transport_prefix }}{% url 'mali:colis_sortie_garantie' %}"
                                     class="{% if request.resolver_match.url_name == 'colis_sortie_garantie' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
@@ -410,6 +424,11 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                                     </svg>
                                     Historique Paiements
+                            <a href="{{ transport_prefix }}{% url 'mali:colis_regularises' %}"
+                                    class="{% if request.resolver_match.url_name == 'colis_regularises' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                Régularisés (Déstockés)
+                            </a>
+
                                 </a>
                             </div>
                         </div>

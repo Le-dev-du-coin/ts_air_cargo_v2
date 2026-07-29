@@ -284,7 +284,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         colis_avion_quarter_qs = colis_avion_global_qs.filter(
             Q(lot__date_expedition__month__in=months_q) | Q(created_at__month__in=months_q)
         )
-        ca_brut_avion = colis_avion_quarter_qs.aggregate(total=Sum("prix_final"))["total"] or 0
+        ca_brut_avion = colis_avion_quarter_qs.exclude(is_regularise=True).aggregate(total=Sum("prix_final"))["total"] or 0
         lots_avion_q = Lot.objects.filter(destination=mali).avion().filter(
             Q(date_expedition__month__in=months_q) | Q(created_at__month__in=months_q)
         )
@@ -293,7 +293,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         depenses_bureau_avion = Depense.objects.filter(pays=mali, type_transport="AERIEN", date__month__in=months_q).aggregate(total=Sum("montant"))["total"] or 0
 
         # 3. FINANCIER BATEAU (Carte Bleue - Global / All Time)
-        ca_brut_bateau = colis_bateau_global_qs.aggregate(total=Sum("prix_final"))["total"] or 0
+        ca_brut_bateau = colis_bateau_global_qs.exclude(is_regularise=True).aggregate(total=Sum("prix_final"))["total"] or 0
         lots_bateau_qs = Lot.objects.filter(destination=mali).bateau()
         fret_bateau = lots_bateau_qs.aggregate(total=Sum("frais_transport"))["total"] or 0
         douane_bateau = lots_bateau_qs.aggregate(total=Sum("frais_douane"))["total"] or 0
@@ -1857,7 +1857,7 @@ class ColisAttentePaiementView(
         from django.db.models import F, Case, When, DecimalField
 
         queryset = (
-            Colis.objects.filter(lot__destination=mali, status="LIVRE", est_paye=False)
+            Colis.objects.filter(lot__destination=mali, status="LIVRE", est_paye=False, is_regularise=False)
             .select_related("client", "lot")
             .annotate(
                 montant_du=Case(
@@ -1964,6 +1964,89 @@ class ColisEncaissementView(LoginRequiredMixin, DestinationAgentRequiredMixin, V
 
         # Redirection vers la liste des paiements en attente (ou la page précédente)
         return redirect("mali:colis_attente_paiement")
+
+
+class ColisRegularisesView(
+    LoginRequiredMixin, DestinationAgentRequiredMixin, ListView
+):
+    """Liste des colis sortis du stock pour régularisation (perdus, introuvables, etc.)"""
+
+    template_name = "mali/colis_regularises.html"
+    context_object_name = "colis_list"
+    paginate_by = 20
+
+    def get_queryset(self):
+        mali = self.get_current_country()
+        if not mali:
+            return Colis.objects.none()
+
+        from django.db.models import F, Case, When, DecimalField
+
+        queryset = (
+            Colis.objects.filter(lot__destination=mali, status="LIVRE", is_regularise=True)
+            .select_related("client", "lot")
+            .annotate(
+                sort_date=Coalesce(
+                    "date_livraison", "updated_at", output_field=DateField()
+                )
+            )
+            .order_by("-sort_date", "-updated_at")
+        )
+
+        # Filtre par mois/année
+        year = self.request.GET.get("year")
+        month = self.request.GET.get("month")
+        if year:
+            queryset = queryset.filter(sort_date__year=year)
+        if month:
+            queryset = queryset.filter(sort_date__month=month)
+
+        # Filtre par type de transport
+        transport = self.request.GET.get("transport")
+        if transport == "avion":
+            queryset = queryset.filter(lot__type_transport__in=["CARGO", "EXPRESS"])
+        elif transport == "bateau":
+            queryset = queryset.filter(lot__type_transport="BATEAU")
+
+        # Recherche textuelle
+        q = self.request.GET.get("q")
+        if q:
+            queryset = queryset.filter(
+                models.Q(reference__icontains=q)
+                | models.Q(client__nom__icontains=q)
+                | models.Q(client__telephone__icontains=q)
+            )
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.utils import timezone
+        
+        # Options de filtrage
+        context["years"] = range(2023, timezone.now().year + 1)
+        context["months"] = [
+            (1, "Janvier"),
+            (2, "Février"),
+            (3, "Mars"),
+            (4, "Avril"),
+            (5, "Mai"),
+            (6, "Juin"),
+            (7, "Juillet"),
+            (8, "Août"),
+            (9, "Septembre"),
+            (10, "Octobre"),
+            (11, "Novembre"),
+            (12, "Décembre"),
+        ]
+
+        # Valeurs actuelles des filtres
+        context["selected_year"] = self.request.GET.get("year", "")
+        context["selected_month"] = self.request.GET.get("month", "")
+        context["active_transport"] = self.request.GET.get("transport", "")
+        context["q"] = self.request.GET.get("q", "")
+
+        return context
 
 
 class ColisSolderJCView(LoginRequiredMixin, DestinationAgentRequiredMixin, View):
@@ -3911,8 +3994,7 @@ class MaliStockDestockageBulkView(LoginRequiredMixin, DestinationAgentRequiredMi
         for colis in colis_qs:
             colis.status = "LIVRE"
             colis.date_livraison = today
-            colis.reste_a_payer = 0
-            colis.est_paye = True
+            colis.is_regularise = True
             colis.save()
             count += 1
 

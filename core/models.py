@@ -381,6 +381,10 @@ class Colis(TenantAwareModel):
         default=False,
         help_text=_("Indique si le colis a été encaissé par l'agence en Chine"),
     )
+    is_regularise = models.BooleanField(
+        default=False,
+        help_text=_("Colis sorti du stock (perte/introuvable) sans encaissement"),
+    )
     reste_a_payer = models.DecimalField(
         max_digits=12,
         decimal_places=2,

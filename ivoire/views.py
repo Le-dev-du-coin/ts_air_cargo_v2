@@ -139,7 +139,7 @@ class DashboardView(LoginRequiredMixin, DestinationAgentRequiredMixin, TemplateV
         # 8. Encaissements du Jour (Montant total des livraisons du jour)
         encaissements = Colis.objects.filter(
             lot__destination=mali, status="LIVRE", updated_at__date=today
-        ).aggregate(total=Sum("prix_final"))
+        ).exclude(is_regularise=True).aggregate(total=Sum("prix_final"))
         context["encaissements_jour"] = encaissements["total"] or 0
 
         # 9. Total Clients Côte d'Ivoire
@@ -1027,6 +1027,7 @@ class ColisAttentePaiementView(
 
         queryset = (
             Colis.objects.filter(lot__destination=mali, status="LIVRE", est_paye=False)
+            .exclude(is_regularise=True)
             .select_related("client", "lot")
             .order_by("-updated_at")
         )

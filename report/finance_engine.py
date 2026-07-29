@@ -410,7 +410,7 @@ class FinanceEngine:
             country__code=country_code, type_transport__in=["BATEAU", "GLOBAL"]
         ).order_by("-date_pivot").first()
 
-        colis_periode = Colis.objects.filter(lot__destination__code=country_code).filter(**date_filter_colis)
+        colis_periode = Colis.objects.filter(lot__destination__code=country_code).filter(**date_filter_colis).exclude(is_regularise=True)
         lots_periode = Lot.objects.filter(destination__code=country_code).filter(**date_filter_lots)
 
         # Filtrage strict de la branche Aérienne si un Pivot Aérien existe

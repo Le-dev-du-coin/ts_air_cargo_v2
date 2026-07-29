@@ -252,7 +252,7 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
         context["colis_livres_count"] = Colis.objects.filter(status="LIVRE").count()
 
         # Calculs Financiers pour la 1ère Carte
-        ca_brut = Colis.objects.aggregate(total=Sum("prix_final"))["total"] or 0
+        ca_brut = Colis.objects.exclude(is_regularise=True).aggregate(total=Sum("prix_final"))["total"] or 0
         fret_total = Lot.objects.filter(country__code="CN").aggregate(total=Sum("frais_transport"))["total"] or 0
         douane_total = Lot.objects.filter(country__code="CN").aggregate(total=Sum("frais_douane"))["total"] or 0
         depenses_totales = Depense.objects.aggregate(total=Sum("montant"))["total"] or 0
@@ -284,15 +284,15 @@ class DashboardView(LoginRequiredMixin, AgentChineRequiredMixin, TemplateView):
             context["lots_arrives_mali_avion"] = lots_arrives_qs.avion().count()
             context["lots_arrives_mali_bateau"] = lots_arrives_qs.bateau().count()
 
-            # Stats financières Agent Chine - User didn't specify, assume all time or unchanged.
+            # Stats financières Agent Chine
             context["montant_total_colis_agent"] = (
-                Colis.objects.aggregate(total=Sum("prix_final"))["total"] or 0
+                Colis.objects.exclude(is_regularise=True).aggregate(total=Sum("prix_final"))["total"] or 0
             )
             context["montant_total_colis_avion"] = (
-                Colis.objects.avion().aggregate(total=Sum("prix_final"))["total"] or 0
+                Colis.objects.avion().exclude(is_regularise=True).aggregate(total=Sum("prix_final"))["total"] or 0
             )
             context["montant_total_colis_bateau"] = (
-                Colis.objects.bateau().aggregate(total=Sum("prix_final"))["total"] or 0
+                Colis.objects.bateau().exclude(is_regularise=True).aggregate(total=Sum("prix_final"))["total"] or 0
             )
 
             context["montant_total_transport_agent"] = (
