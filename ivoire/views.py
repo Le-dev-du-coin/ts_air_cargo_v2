@@ -221,7 +221,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         # --- 2. ACTIVITÉ DU JOUR (Cargo, Express, Bateau) ---
         colis_livres_jour = Colis.objects.filter(
             lot__destination=mali, status="LIVRE", est_paye=True, updated_at__date=today
-        ).select_related("client", "lot")
+        ).exclude(is_regularise=True).select_related("client", "lot")
 
         # Séparation par type de transport (via le Lot)
         # Note: Lot.type_transport choices: CARGO, EXPRESS, BATEAU

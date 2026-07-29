@@ -415,6 +415,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
                 Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True) |
                 Q(updated_at__date=today, montant_jc__gt=0)
             )
+            .exclude(is_regularise=True)
             .distinct()
             .select_related("client", "lot")
         )
