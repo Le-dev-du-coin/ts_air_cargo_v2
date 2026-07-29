@@ -1,0 +1,130 @@
+{% extends "chine/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block header %}Gestion des Soldes Initiaux & Dates Pivot{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header banner -->
+    <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-xl shadow-xl p-6">
+        <div class="flex items-start space-x-4">
+            <div class="bg-white/10 backdrop-blur p-3 rounded-lg text-2xl">
+                🛡️
+            </div>
+            <div class="flex-1">
+                <h3 class="text-xl font-black text-white">Administration des Soldes Initiaux & Cadrage Caisse</h3>
+                <p class="text-xs text-blue-200 mt-1 leading-relaxed max-w-3xl">
+                    Cette interface est réservée à la Direction/Admin Chine. Elle permet de fixer la Date Pivot et le montant physique réel certifié de la caisse pour chaque pays.
+                    Toutes les opérations antérieures sont archivées et exclues du calcul de caisse courante.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtre par pays -->
+    <div class="bg-white p-4 rounded-xl shadow border border-gray-200 flex items-center justify-between">
+        <span class="text-xs font-bold text-gray-700 uppercase tracking-wider">Sélectionner le Pays à Réconcilier :</span>
+        <form method="get" class="flex items-center space-x-3">
+            <select name="country_id" onchange="this.form.submit()" class="pl-3 pr-8 py-1.5 text-xs font-bold border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-50">
+                {% for c in countries %}
+                <option value="{{ c.pk }}" {% if selected_country.pk == c.pk %}selected{% endif %}>{{ c.name }} ({{ c.code }})</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Formulaire d'enregistrement -->
+        <div class="bg-white rounded-xl shadow border border-gray-200 p-6 h-fit">
+            <h3 class="text-sm font-extrabold text-gray-900 mb-4 pb-2 border-b border-gray-100 flex items-center">
+                <span class="mr-2">⚙️</span> Certifier une Date Pivot - {{ selected_country.name }}
+            </h3>
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="country_id" value="{{ selected_country.pk }}">
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Date Pivot (Début Réconciliation)</label>
+                    <input type="date" name="date_pivot" value="{% now 'Y-m-d' %}" required class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                    <span class="text-[10px] text-gray-500 mt-0.5 block">Ex: 30/07/2026 (Après la descente)</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Montant Réel en Caisse (FCFA)</label>
+                    <input type="number" step="0.01" name="montant_initial" placeholder="Ex: 1500000" required class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                    <span class="text-[10px] text-gray-500 mt-0.5 block">Décompte physique réel certifié</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Périmètre / Transport</label>
+                    <select name="type_transport" class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                        <option value="GLOBAL" selected>GLOBAL (Caisse Générale {{ selected_country.name }})</option>
+                        <option value="AERIEN">Aérien uniquement</option>
+                        <option value="BATEAU">Maritime uniquement</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Note / Observation</label>
+                    <input type="text" name="note" placeholder="Ex: Reprise certifiée par l'Admin Chine" class="w-full border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <button type="submit" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-lg shadow transition-colors uppercase tracking-wider">
+                    Certifier le Solde Initial
+                </button>
+            </form>
+        </div>
+
+        <!-- Historique des soldes initiaux -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h3 class="text-xs font-extrabold text-gray-900 uppercase">Historique des Reprises - {{ selected_country.name }}</h3>
+                {% if solde_actuel_pivot %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Active: {{ solde_actuel_pivot.date_pivot|date:"d/m/Y" }} &rarr; {{ solde_actuel_pivot.montant_initial|fcfa }}
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date Pivot</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Périmètre</th>
+                            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Solde Certifié</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Note / Enregistré par</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                        {% for item in soldes_initiaux %}
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                🗓️ {{ item.date_pivot|date:"d/m/Y" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-xs font-extrabold text-blue-700">
+                                {{ item.get_type_transport_display }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-black text-right text-emerald-700">
+                                {{ item.montant_initial|fcfa }}
+                            </td>
+                            <td class="px-6 py-4 text-xs text-gray-600">
+                                {{ item.note|default:"—" }}
+                                <span class="block text-[10px] text-gray-400">Enregistré par {{ item.created_by.get_full_name|default:item.created_by.username|default:"Admin Chine" }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-xs text-gray-500">
+                                Aucun solde initial certifié enregistré pour {{ selected_country.name }}. Le calcul remonte à l'origine du système.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

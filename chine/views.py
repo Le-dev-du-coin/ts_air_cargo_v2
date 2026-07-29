@@ -2350,3 +2350,57 @@ class MonthlyDetailedStatsView(LoginRequiredMixin, AdminChineRequiredMixin, Temp
         )
 
         return context
+
+
+class ChineSoldeInitialView(LoginRequiredMixin, AdminChineRequiredMixin, TemplateView):
+    """
+    Interface Admin Chine réservée pour fixer la Date Pivot et le Solde Initial de caisse.
+    """
+    template_name = "chine/solde_initial.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        countries = Country.objects.all()
+        selected_country_id = self.request.GET.get("country_id")
+        if selected_country_id:
+            country = Country.objects.filter(pk=selected_country_id).first()
+        else:
+            country = Country.objects.filter(code="ML").first() or countries.first()
+
+        context["countries"] = countries
+        context["selected_country"] = country
+        context["soldes_initiaux"] = SoldeInitialCaisse.objects.filter(country=country).order_by("-date_pivot", "-created_at") if country else []
+        context["solde_actuel_pivot"] = SoldeInitialCaisse.objects.filter(country=country).order_by("-date_pivot").first() if country else None
+        return context
+
+    def post(self, request, *args, **kwargs):
+        country_id = request.POST.get("country_id")
+        country = get_object_or_404(Country, pk=country_id) if country_id else Country.objects.filter(code="ML").first()
+        date_pivot_str = request.POST.get("date_pivot")
+        montant_str = request.POST.get("montant_initial")
+        note = request.POST.get("note", "")
+        type_transport = request.POST.get("type_transport", "GLOBAL")
+
+        if date_pivot_str and montant_str:
+            try:
+                from datetime import datetime
+                from decimal import Decimal
+                date_pivot = datetime.strptime(date_pivot_str, "%Y-%m-%d").date()
+                montant = Decimal(montant_str)
+
+                SoldeInitialCaisse.objects.create(
+                    country=country,
+                    date_pivot=date_pivot,
+                    montant_initial=montant,
+                    type_transport=type_transport,
+                    note=note,
+                    created_by=request.user
+                )
+                messages.success(
+                    request,
+                    f"✅ Reprise de solde certifiée à {montant} FCFA au {date_pivot.strftime('%d/%m/%Y')} enregistrée pour {country.name}."
+                )
+            except Exception as e:
+                messages.error(request, f"Erreur lors de l'enregistrement du solde initial : {e}")
+
+        return redirect(reverse("chine:solde_initial") + f"?country_id={country.pk if country else ''}")
