@@ -159,6 +159,7 @@
                         {% if not request.is_maritime %}
                         <a href="{{ transport_prefix }}{% url 'mali:transferts_list' %}" class="{% if request.resolver_match.url_name == 'transferts_list' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Transferts</a>
                         <a href="{{ transport_prefix }}{% url 'mali:douane_transferts_list' %}" class="{% if request.resolver_match.url_name == 'douane_transferts_list' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Douane</a>
+                        <a href="{{ transport_prefix }}{% url 'mali:avances_list' %}" class="{% if request.resolver_match.url_name == 'avances_list' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Avances sur Salaire</a>
                         {% endif %}
                         <a href="{{ transport_prefix }}{% url 'mali:rapport_financier' %}" class="{% if request.resolver_match.url_name == 'rapport_financier' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Rapport Avancé</a>
                         <a href="{{ transport_prefix }}{% url 'mali:historique_paiements' %}" class="{% if request.resolver_match.url_name == 'historique_paiements' %}sidebar-link-active shadow-lg{% else %}sidebar-link-inactive{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all">Historique Paiements</a>
@@ -368,6 +369,14 @@
                                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Douane
+                                </a>
+                                <a href="{{ transport_prefix }}{% url 'mali:avances_list' %}"
+                                    class="{% if request.resolver_match.url_name == 'avances_list' %}sidebar-link-active{% else %}sidebar-link-inactive{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                    <svg class="mr-3 flex-shrink-0 h-6 w-6 sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    Avances sur Salaire
                                 </a>
                                 {% endif %}
                                 <a href="{{ transport_prefix }}{% url 'mali:rapport_financier' %}"

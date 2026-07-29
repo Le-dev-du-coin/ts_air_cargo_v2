@@ -2213,30 +2213,46 @@ class RapportJourPDFView(LoginRequiredMixin, DestinationAgentRequiredMixin, View
         fin_stats = FinanceEngine.get_daily_summary(today, mali)
         
         # --- 2. IDENTIFICATION DES COLIS DU JOUR ---
-        # On définit le périmètre : soit un encaissement aujourd'hui, soit livré aujourd'hui sans encaissement précédent
-        colis_livres_jour_base = Colis.objects.filter(lot__destination=mali).filter(
-            Q(encaissements__date=today) | 
-            Q(date_encaissement=today) |
-            Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True)
-        ).distinct()
+        colis_livres_jour_base = (
+            Colis.objects.filter(lot__destination=mali)
+            .filter(
+                Q(encaissements__date=today) | 
+                Q(date_encaissement=today) |
+                Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True) |
+                Q(updated_at__date=today, montant_jc__gt=0)
+            )
+            .distinct()
+        )
 
         if report_type in ["cargo", "express", "bateau"]:
             colis_livres_jour_base = colis_livres_jour_base.filter(
                 lot__type_transport=report_type.upper()
             )
 
-        # Annotation pour le montant payé dans la journée (pour la liste détaillée)
+        # Annotation identique à la vue Aujourd'hui
         enc_day_qs = EncaissementColis.objects.filter(colis=OuterRef("pk"), date=today)
+        enc_day_hors_avance_qs = enc_day_qs.exclude(methode="AVANCE")
+
         sum_enc_day = enc_day_qs.values("colis").annotate(total=Sum("montant")).values("total")
-        
+        sum_enc_day_hors_avance = enc_day_hors_avance_qs.values("colis").annotate(total=Sum("montant")).values("total")
+        latest_enc = enc_day_qs.order_by("-created_at")
+
         colis_qs = (
             colis_livres_jour_base.select_related("client", "lot")
             .annotate(
-                montant_paye_jour=Coalesce(Subquery(sum_enc_day[:1]), Value(0), output_field=DecimalField()),
-                # net_price pour le template
+                heure_paiement=Subquery(latest_enc.values("created_at")[:1]),
+                sum_enc=Coalesce(Subquery(sum_enc_day[:1]), Value(0), output_field=DecimalField()),
+                sum_enc_hors_avance=Coalesce(Subquery(sum_enc_day_hors_avance[:1]), Value(0), output_field=DecimalField()),
+                val_legacy=Case(
+                    When(date_encaissement=today, encaissements__isnull=True, then=F("prix_final") - Coalesce(F("montant_jc"), Value(0))),
+                    default=Value(0),
+                    output_field=DecimalField()
+                ),
+                montant_paye_jour=F("sum_enc") + F("val_legacy"),
+                montant_paye_jour_hors_avance=F("sum_enc_hors_avance") + F("val_legacy"),
                 net_price=F("montant_paye_jour")
             )
-            .order_by("-date_livraison", "-updated_at")
+            .order_by("-heure_paiement", "-date_livraison", "-updated_at")
         )
 
         # Totaux pour le rapport
@@ -2782,6 +2798,37 @@ class MaliAgentRemunerationView(AdminMaliRequiredMixin, TemplateView):
         ).order_by("-date")
 
         return context
+
+
+class MaliAgentAvanceListView(LoginRequiredMixin, DestinationAgentRequiredMixin, CreateView):
+    """Page permettant à l'agent Mali de consulter et d'enregistrer les avances sur salaire."""
+    model = AvanceSalaire
+    form_class = AvanceSalaireForm
+    template_name = "mali/avances_list.html"
+    success_url = reverse_lazy("mali:avances_list")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        mali = self.get_current_country()
+        kwargs["country"] = mali
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mali = self.get_current_country()
+        avances = AvanceSalaire.objects.filter(agent__country=mali).order_by("-date", "-created_at")
+        context["avances"] = avances
+        context["total_avances"] = avances.aggregate(total=Sum("montant"))["total"] or 0
+        return context
+
+    def form_valid(self, form):
+        avance = form.save(commit=False)
+        avance.save()
+        messages.success(
+            self.request,
+            f"Avance de {avance.montant} FCFA enregistrée avec succès pour {avance.agent.get_full_name() or avance.agent.username}.",
+        )
+        return super().form_valid(form)
 
 
 class MaliAgentAvanceCreateView(AdminMaliRequiredMixin, CreateView):

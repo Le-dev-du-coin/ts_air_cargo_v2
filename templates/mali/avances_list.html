@@ -1,0 +1,126 @@
+{% extends "mali/base.html" %}
+{% load humanize %}
+{% load currency_tags %}
+
+{% block header %}Avances sur Salaire{% endblock %}
+
+{% block actions %}
+<button onclick="document.getElementById('add-avance-modal').classList.remove('hidden')" 
+        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">
+    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+    </svg>
+    Enregistrer une Avance
+</button>
+{% endblock %}
+
+{% block mali_content %}
+<!-- Card Synthèse -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
+    <div class="bg-white overflow-hidden shadow rounded-xl border-l-4 border-indigo-600 p-5">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-indigo-100 p-3 rounded-lg text-indigo-600">
+                💵
+            </div>
+            <div class="ml-5 w-0 flex-1">
+                <dl>
+                    <dt class="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Total Avances sur Salaire Octroyées</dt>
+                    <dd class="text-2xl font-black text-indigo-900 mt-1">{{ total_avances|fcfa }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-indigo-50/80 overflow-hidden shadow rounded-xl border border-indigo-200 p-5 flex items-center justify-between">
+        <div>
+            <h4 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">ℹ️ Information Gestion</h4>
+            <p class="text-xs text-indigo-700 mt-1">Toute avance enregistrée ici est automatiquement comptabilisée et transmise sur le registre de l'administration.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Liste des Avances -->
+<div class="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+    <div class="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200 bg-gray-50">
+        <div>
+            <h3 class="text-base font-bold text-gray-900">Historique des Avances sur Salaire</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Registre des acomptes et avances versés aux agents</p>
+        </div>
+        <span class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
+            {{ avances.count }} avance(s)
+        </span>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Agent Beneficiaire</th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Montant Avance</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Motif / Observation</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for avance in avances %}
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                        {{ avance.date|date:"d/m/Y" }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                            👤 {{ avance.agent.get_full_name|default:avance.agent.username }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-black text-right text-indigo-900">
+                        {{ avance.montant|fcfa }}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        {{ avance.motif|default:"Acompte sur salaire" }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                        Aucune avance sur salaire enregistrée pour le moment.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Ajout Avance -->
+<div id="add-avance-modal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+            <h3 class="text-lg font-bold text-gray-900">Enregistrer une Avance sur Salaire</h3>
+            <button onclick="document.getElementById('add-avance-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✖</button>
+        </div>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Agent Bénéﬁciaire</label>
+                {{ form.agent }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Montant Avance (FCFA)</label>
+                {{ form.montant }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Date</label>
+                {{ form.date }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Motif / Observation</label>
+                {{ form.motif }}
+            </div>
+            <div class="flex justify-end space-x-3 pt-3 border-t border-gray-100">
+                <button type="button" onclick="document.getElementById('add-avance-modal').classList.add('hidden')" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800">Annuler</button>
+                <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 shadow-sm">Enregistrer l'Avance</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

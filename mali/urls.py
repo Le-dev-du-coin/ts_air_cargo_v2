@@ -39,6 +39,7 @@ from .views import (
     MaliCorrectionLotDetailView,
     MaliActionRevertView,
     MaliAgentRemunerationView,
+    MaliAgentAvanceListView,
     MaliAgentAvanceCreateView,
     MaliAgentAvanceUpdateView,
     MaliAgentAvanceDeleteView,
@@ -177,6 +178,7 @@ urlpatterns = [
         name="lot_manifeste_pdf",
     ),
     # Finance
+    path("avances/", MaliAgentAvanceListView.as_view(), name="avances_list"),
     path(
         "finance/depenses/",
         DepenseListView.as_view(template_name="mali/finance/depenses.html"),
