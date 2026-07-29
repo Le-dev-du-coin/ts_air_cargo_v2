@@ -419,8 +419,20 @@ class FinanceEngine:
                 colis_periode = colis_periode.exclude(lot__type_transport__in=["CARGO", "EXPRESS"], lot__date_expedition__lt=pivot_aerien.date_pivot)
                 lots_periode = lots_periode.exclude(type_transport__in=["CARGO", "EXPRESS"], date_expedition__lt=pivot_aerien.date_pivot)
             else:
-                colis_periode = colis_periode.exclude(lot__type_transport__in=["CARGO", "EXPRESS"], lot__date_arrivee__lt=pivot_aerien.date_pivot)
-                lots_periode = lots_periode.exclude(type_transport__in=["CARGO", "EXPRESS"], date_arrivee__lt=pivot_aerien.date_pivot)
+                colis_periode = colis_periode.exclude(
+                    Q(lot__type_transport__in=["CARGO", "EXPRESS"]) & 
+                    (
+                        Q(lot__date_arrivee__lt=pivot_aerien.date_pivot) | 
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__lt=pivot_aerien.date_pivot)
+                    )
+                )
+                lots_periode = lots_periode.exclude(
+                    Q(type_transport__in=["CARGO", "EXPRESS"]) & 
+                    (
+                        Q(date_arrivee__lt=pivot_aerien.date_pivot) | 
+                        Q(date_arrivee__isnull=True, date_expedition__lt=pivot_aerien.date_pivot)
+                    )
+                )
 
         # Filtrage strict de la branche Maritime si un Pivot Bateau existe
         if pivot_bateau:
@@ -428,8 +440,20 @@ class FinanceEngine:
                 colis_periode = colis_periode.exclude(lot__type_transport="BATEAU", lot__date_expedition__lt=pivot_bateau.date_pivot)
                 lots_periode = lots_periode.exclude(type_transport="BATEAU", date_expedition__lt=pivot_bateau.date_pivot)
             else:
-                colis_periode = colis_periode.exclude(lot__type_transport="BATEAU", lot__date_arrivee__lt=pivot_bateau.date_pivot)
-                lots_periode = lots_periode.exclude(type_transport="BATEAU", date_arrivee__lt=pivot_bateau.date_pivot)
+                colis_periode = colis_periode.exclude(
+                    Q(lot__type_transport="BATEAU") & 
+                    (
+                        Q(lot__date_arrivee__lt=pivot_bateau.date_pivot) | 
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__lt=pivot_bateau.date_pivot)
+                    )
+                )
+                lots_periode = lots_periode.exclude(
+                    Q(type_transport="BATEAU") & 
+                    (
+                        Q(date_arrivee__lt=pivot_bateau.date_pivot) | 
+                        Q(date_arrivee__isnull=True, date_expedition__lt=pivot_bateau.date_pivot)
+                    )
+                )
 
         ca_brut = colis_periode.aggregate(total=Sum("prix_final"))["total"] or 0
         total_jc = colis_periode.aggregate(total=Sum("montant_jc"))["total"] or 0
