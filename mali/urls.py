@@ -42,6 +42,7 @@ from .views import (
     MaliAgentRemunerationView,
     MaliAgentAvanceListView,
     MaliSoldeInitialView,
+    MaliSoldeInitialDeleteView,
     MaliAgentAvanceCreateView,
     MaliAgentAvanceUpdateView,
     MaliAgentAvanceDeleteView,
@@ -218,6 +219,11 @@ urlpatterns = [
         "finance/solde-initial/",
         MaliSoldeInitialView.as_view(),
         name="solde_initial",
+    ),
+    path(
+        "finance/solde-initial/<int:pk>/delete/",
+        MaliSoldeInitialDeleteView.as_view(),
+        name="solde_initial_delete",
     ),
     path(
         "finance/transferts/add/",

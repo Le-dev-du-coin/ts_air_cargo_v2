@@ -2961,6 +2961,17 @@ class MaliSoldeInitialView(LoginRequiredMixin, AdminMaliRequiredMixin, Destinati
         return redirect("mali:solde_initial")
 
 
+class MaliSoldeInitialDeleteView(LoginRequiredMixin, AdminMaliRequiredMixin, View):
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            solde = get_object_or_404(SoldeInitialCaisse, pk=pk)
+            # Optionnel: on pourrait vérifier le pays, mais AdminMaliRequiredMixin filtre déjà globalement
+            solde.delete()
+            messages.success(request, "🗑️ Le Solde Initial (Date Pivot) a été supprimé avec succès. Les calculs normaux ont repris.")
+        except Exception as e:
+            messages.error(request, f"Erreur lors de la suppression : {e}")
+        return redirect("mali:solde_initial")
+
 class MaliAgentAvanceCreateView(AdminMaliRequiredMixin, CreateView):
     model = AvanceSalaire
     form_class = AvanceSalaireForm

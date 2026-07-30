@@ -91,6 +91,7 @@
                         <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Mode</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Solde Initial Certifié</th>
                         <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Note / Auteur</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 bg-white">
@@ -109,10 +110,18 @@
                             {{ item.note|default:"—" }}
                             <span class="block text-[10px] text-gray-400">Enregistré par {{ item.created_by.get_full_name|default:item.created_by.username|default:"Admin" }}</span>
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <form action="{% url 'mali:solde_initial_delete' item.pk %}" method="post" class="inline-block" id="form-delete-pivot-{{ item.pk }}">
+                                {% csrf_token %}
+                                <button type="button" onclick="confirmAction('Supprimer cette Date Pivot ?', 'Voulez-vous vraiment annuler ce cadrage de caisse ? Le calcul du CA reprendra son cours normal.', 'form-delete-pivot-{{ item.pk }}', 'Oui, supprimer', '#DC2626')" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-md text-xs font-bold transition-colors">
+                                    Supprimer
+                                </button>
+                            </form>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="px-6 py-8 text-center text-xs text-gray-500">
+                        <td colspan="5" class="px-6 py-8 text-center text-xs text-gray-500">
                             Aucun solde initial certifié enregistré pour le moment. Le calcul remonte à l'origine du système.
                         </td>
                     </tr>
