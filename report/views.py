@@ -191,8 +191,41 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
             Q(date_encaissement__isnull=True, date_livraison__isnull=True, updated_at__year=year, updated_at__month=month)
         )
 
+        # On exclut toujours les colis déstockés gratuitement
+        colis_qs = colis_qs.exclude(is_regularise=True)
+
         if country:
             colis_qs = colis_qs.filter(lot__destination=country)
+            
+            # Application de la Date Pivot pour exclure l'historique
+            from core.models import SoldeInitialCaisse
+            pivot_aerien = SoldeInitialCaisse.objects.filter(country=country, type_transport__in=["AERIEN", "GLOBAL"]).order_by("-date_pivot").first()
+            if pivot_aerien:
+                colis_qs = colis_qs.exclude(
+                    Q(lot__type_transport__in=["CARGO", "EXPRESS"]) & 
+                    (
+                        Q(lot__date_arrivee__lt=pivot_aerien.date_pivot) | 
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__lt=pivot_aerien.date_pivot) |
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__isnull=True, lot__created_at__date__lt=pivot_aerien.date_pivot)
+                    )
+                )
+                
+            pivot_bateau = SoldeInitialCaisse.objects.filter(country=country, type_transport__in=["BATEAU", "GLOBAL"]).order_by("-date_pivot").first()
+            if pivot_bateau:
+                colis_qs = colis_qs.exclude(
+                    Q(lot__type_transport="BATEAU") & 
+                    (
+                        Q(lot__date_arrivee__lt=pivot_bateau.date_pivot) | 
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__lt=pivot_bateau.date_pivot) |
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__isnull=True, lot__created_at__date__lt=pivot_bateau.date_pivot)
+                    )
+                )
+
+            # Détermination de la date pivot minimale pour couper les Dépenses et Transferts
+            pivots = [p for p in [pivot_aerien, pivot_bateau] if p and p.date_pivot]
+            min_pivot = min([p.date_pivot for p in pivots]) if pivots else None
+        else:
+            min_pivot = None
 
         # Calcul montant net réellement encaissé (en excluant les colis payés en Chine)
         from django.db.models import Case, When, Value, DecimalField
@@ -214,6 +247,9 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
         if country:
             depenses_qs = depenses_qs.filter(pays=country)
 
+        if min_pivot:
+            depenses_qs = depenses_qs.filter(date__gte=min_pivot)
+
         total_depenses_reelles = (
             depenses_qs.aggregate(Sum("montant"))["montant__sum"] or 0
         )
@@ -224,6 +260,9 @@ class RapportFinancierView(LoginRequiredMixin, TemplateView):
         )
         if country:
             transferts_qs = transferts_qs.filter(pays_expediteur=country)
+
+        if min_pivot:
+            transferts_qs = transferts_qs.filter(date__gte=min_pivot)
 
         total_transferts = transferts_qs.aggregate(Sum("montant"))["montant__sum"] or 0
 
