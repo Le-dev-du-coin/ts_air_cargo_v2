@@ -423,14 +423,16 @@ class FinanceEngine:
                     Q(lot__type_transport__in=["CARGO", "EXPRESS"]) & 
                     (
                         Q(lot__date_arrivee__lt=pivot_aerien.date_pivot) | 
-                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__lt=pivot_aerien.date_pivot)
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__lt=pivot_aerien.date_pivot) |
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__isnull=True, lot__created_at__date__lt=pivot_aerien.date_pivot)
                     )
                 )
                 lots_periode = lots_periode.exclude(
                     Q(type_transport__in=["CARGO", "EXPRESS"]) & 
                     (
                         Q(date_arrivee__lt=pivot_aerien.date_pivot) | 
-                        Q(date_arrivee__isnull=True, date_expedition__lt=pivot_aerien.date_pivot)
+                        Q(date_arrivee__isnull=True, date_expedition__lt=pivot_aerien.date_pivot) |
+                        Q(date_arrivee__isnull=True, date_expedition__isnull=True, created_at__date__lt=pivot_aerien.date_pivot)
                     )
                 )
 
@@ -444,14 +446,16 @@ class FinanceEngine:
                     Q(lot__type_transport="BATEAU") & 
                     (
                         Q(lot__date_arrivee__lt=pivot_bateau.date_pivot) | 
-                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__lt=pivot_bateau.date_pivot)
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__lt=pivot_bateau.date_pivot) |
+                        Q(lot__date_arrivee__isnull=True, lot__date_expedition__isnull=True, lot__created_at__date__lt=pivot_bateau.date_pivot)
                     )
                 )
                 lots_periode = lots_periode.exclude(
                     Q(type_transport="BATEAU") & 
                     (
                         Q(date_arrivee__lt=pivot_bateau.date_pivot) | 
-                        Q(date_arrivee__isnull=True, date_expedition__lt=pivot_bateau.date_pivot)
+                        Q(date_arrivee__isnull=True, date_expedition__lt=pivot_bateau.date_pivot) |
+                        Q(date_arrivee__isnull=True, date_expedition__isnull=True, created_at__date__lt=pivot_bateau.date_pivot)
                     )
                 )
 
