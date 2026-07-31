@@ -370,8 +370,9 @@ def send_daily_report_mali(target_date_str=None):
             logger.error("[RapportJour] Pays Mali (code=ML) non trouvé en BDD.")
             return "Erreur : pays Mali non configuré."
 
-        # --- CALCULS VIA LE MOTEUR CENTRALISÉ ---
-        fin_stats = FinanceEngine.get_daily_summary(today, mali)
+        # --- CALCULS VIA LE MOTEUR CENTRALISÉ (SÉPARÉS) ---
+        fin_stats_aerien = FinanceEngine.get_daily_summary(today, mali, "AERIEN")
+        fin_stats_bateau = FinanceEngine.get_daily_summary(today, mali, "BATEAU")
 
         # Détails par type (pour le message)
         def get_nb_ca(transport_type):
@@ -409,40 +410,39 @@ def send_daily_report_mali(target_date_str=None):
         nb_express, ca_express = get_nb_ca("EXPRESS")
         nb_bateau, ca_bateau = get_nb_ca("BATEAU")
 
-        total_recettes_colis = ca_cargo + ca_express + ca_bateau
-        total_rechargements = fin_stats["total_rechargements_avoir"]
-        total_recettes_global = fin_stats["total_recettes_jour"]
-        
-        total_depenses = fin_stats["total_depenses"]
-        total_transferts = fin_stats["total_transferts"]
-        total_sorties = fin_stats["total_sorties_jour"]
-
-        solde_veille = fin_stats["solde_veille"]
-        solde_caisse = fin_stats["solde_caisse_actuel"]
+        total_rechargements = fin_stats_aerien["total_rechargements_avoir"]
 
         # --- Construction du message ---
         date_str = today.strftime("%d/%m/%Y")
         message = (
             f"📊 *RAPPORT JOURNALIER MALI — {date_str}*\n"
             f"{'─' * 30}\n\n"
+            f"✈️ *CAISSE AÉRIENNE (Cargo + Express)*\n"
+            f"{'─' * 30}\n"
             f"📦 *CARGO*\n"
             f"   • Colis livrés : {nb_cargo}\n"
             f"   • Recette : {ca_cargo:,.0f} FCFA\n\n"
             f"✈️ *EXPRESS*\n"
             f"   • Colis livrés : {nb_express}\n"
             f"   • Recette : {ca_express:,.0f} FCFA\n\n"
-            f"🚢 *BATEAU*\n"
-            f"   • Colis livrés : {nb_bateau}\n"
-            f"   • Recette : {ca_bateau:,.0f} FCFA\n\n"
             f"💳 *AVANCES SUR COLIS*\n"
             f"   • Total : {total_rechargements:,.0f} FCFA\n\n"
+            f"💰 *Total Recettes Aérien :* {fin_stats_aerien['total_recettes_jour']:,.0f} FCFA\n"
+            f"💸 *Dépenses Aérien :* {fin_stats_aerien['total_depenses']:,.0f} FCFA\n"
+            f"🔄 *Transferts Aérien :* {fin_stats_aerien['total_transferts']:,.0f} FCFA\n"
+            f"🏦 *Solde Veille Aérien :* {fin_stats_aerien['solde_veille']:,.0f} FCFA\n"
+            f"✅ *Solde Caisse Aérien :* {fin_stats_aerien['solde_caisse_actuel']:,.0f} FCFA\n\n"
             f"{'─' * 30}\n"
-            f"💰 *Total Recettes :* {total_recettes_global:,.0f} FCFA\n"
-            f"💸 *Dépenses :* {total_depenses:,.0f} FCFA\n"
-            f"🔄 *Transferts :* {total_transferts:,.0f} FCFA\n"
+            f"🚢 *CAISSE MARITIME (Bateau)*\n"
             f"{'─' * 30}\n"
-            f"🏦 *Solde Veille :* {solde_veille:,.0f} FCFA\n"
-            f"✅ *Solde Caisse :* {solde_caisse:,.0f} FCFA"
+            f"📦 *BATEAU*\n"
+            f"   • Colis livrés : {nb_bateau}\n"
+            f"   • Recette : {ca_bateau:,.0f} FCFA\n\n"
+            f"💰 *Total Recettes Bateau :* {fin_stats_bateau['total_recettes_jour']:,.0f} FCFA\n"
+            f"💸 *Dépenses Bateau :* {fin_stats_bateau['total_depenses']:,.0f} FCFA\n"
+            f"🔄 *Transferts Bateau :* {fin_stats_bateau['total_transferts']:,.0f} FCFA\n"
+            f"🏦 *Solde Veille Bateau :* {fin_stats_bateau['solde_veille']:,.0f} FCFA\n"
+            f"✅ *Solde Caisse Bateau :* {fin_stats_bateau['solde_caisse_actuel']:,.0f} FCFA"
         )
 
         # --- Envoi WhatsApp ---
