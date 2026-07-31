@@ -387,10 +387,10 @@
         {% include "mali/partials/today_colis_table.html" with colis_list=colis_bateau_list type="Bateau" total_recette=recette_bateau_jour %}
     </div>
 
-    <!-- 4. Rechargements Avoir -->
+    <!-- 4. Avances sur Colis -->
     <div x-show="activeTab === 'avoirs'" class="p-4" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Rechargements Avoir ({{ target_date|date:"d/m/Y" }})</h3>
+            <h3 class="text-lg font-medium text-gray-900">Avances sur Colis ({{ target_date|date:"d/m/Y" }})</h3>
              <div class="flex gap-2">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
                     Total: {{ rechargements_avoir_jour|fcfa }}

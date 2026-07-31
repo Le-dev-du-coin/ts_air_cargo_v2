@@ -382,7 +382,7 @@ def send_daily_report_mali(target_date_str=None):
                 Q(encaissements__date=today) | 
                 Q(date_encaissement=today) |
                 Q(status="LIVRE", date_livraison=today, date_encaissement__isnull=True)
-            ).distinct()
+            ).exclude(is_regularise=True).distinct()
             
             nb = qs.count()
             # On somme les encaissements RÉELS du jour pour ce type
@@ -434,7 +434,7 @@ def send_daily_report_mali(target_date_str=None):
             f"🚢 *BATEAU*\n"
             f"   • Colis livrés : {nb_bateau}\n"
             f"   • Recette : {ca_bateau:,.0f} FCFA\n\n"
-            f"💳 *RECHARGEMENTS AVOIR*\n"
+            f"💳 *AVANCES SUR COLIS*\n"
             f"   • Total : {total_rechargements:,.0f} FCFA\n\n"
             f"{'─' * 30}\n"
             f"💰 *Total Recettes :* {total_recettes_global:,.0f} FCFA\n"
