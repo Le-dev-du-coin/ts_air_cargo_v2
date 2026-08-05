@@ -361,7 +361,7 @@ class FinanceEngine:
         total_entrees_jour = Decimal(total_encaissements_colis) + Decimal(total_rechargements_avoir)
 
         total_depenses = depenses_jour.aggregate(total=Sum("montant"))["total"] or 0
-        total_sorties_jour = Decimal(total_depenses) + Decimal(total_transferts) + Decimal(total_paiements_agents)
+        total_sorties_jour = Decimal(total_depenses) + Decimal(total_transferts) + Decimal(total_paiements_agents) + Decimal(total_avances_agents)
 
         recettes_reelles_avant_sum = recettes_reelles_avant.aggregate(total=Sum("montant"))["total"] or 0
         legacy_recettes_avant_sum = legacy_recettes_avant.aggregate(total=Sum("net_val"))["total"] or 0
@@ -370,9 +370,10 @@ class FinanceEngine:
         depenses_avant_sum = depenses_avant.aggregate(total=Sum("montant"))["total"] or 0
         transferts_avant_sum = Decimal(transferts_avant)
         paiements_agents_avant_sum = Decimal(paiements_agents_avant)
+        avances_agents_avant_sum = Decimal(avances_agents_avant)
 
         solde_veille = base_montant_initial + (Decimal(recettes_avant) + Decimal(depôts_avant)) - \
-                       (Decimal(depenses_avant_sum) + Decimal(transferts_avant_sum) + Decimal(paiements_agents_avant_sum))
+                       (Decimal(depenses_avant_sum) + Decimal(transferts_avant_sum) + Decimal(paiements_agents_avant_sum) + Decimal(avances_agents_avant_sum))
 
         return {
             "total_recettes_jour": total_entrees_jour,
