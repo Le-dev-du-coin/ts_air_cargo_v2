@@ -397,6 +397,7 @@ class AujourdhuiView(LoginRequiredMixin, DestinationAgentRequiredMixin, Template
         context["total_depenses_only"] = fin_stats["total_depenses"]
         context["total_transferts_only"] = fin_stats["total_transferts"]
         context["total_paiements_agents"] = fin_stats["total_paiements_agents"]
+        context["total_avances_agents"] = fin_stats["total_avances_agents"]
         
         context["rechargements_avoir_jour"] = fin_stats["total_rechargements_avoir"]
         context["rechargements_avoir_list"] = fin_stats["rechargements_list"]

@@ -1099,7 +1099,7 @@ class LotCreateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, CreateVie
         return super().form_valid(form)
 
 
-class LotUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, UpdateView):
+class LotUpdateView(LoginRequiredMixin, AgentChineRequiredMixin, UpdateView):
     model = Lot
     form_class = LotForm
     template_name = "chine/lots/form.html"
@@ -1110,12 +1110,20 @@ class LotUpdateView(LoginRequiredMixin, StrictAgentChineRequiredMixin, UpdateVie
 
     def dispatch(self, request, *args, **kwargs):
         lot = self.get_object()
-        # READ-ONLY STRICT si expédié
-        if lot.status == "EXPEDIE":
+        
+        # READ-ONLY STRICT si expédié ou autres statuts avancés
+        if lot.status in ["EXPEDIE", "ARRIVE", "DOUANE", "DISPONIBLE"]:
             messages.error(
-                request, "Impossible de modifier un lot expédié (Lecture Seule)."
+                request, f"Impossible de modifier un lot au statut {lot.get_status_display()} (Lecture Seule)."
             )
             return redirect("chine:lot_detail", pk=lot.pk)
+            
+        if lot.status == "EN_TRANSIT" and request.user.role != "ADMIN_CHINE":
+            messages.error(
+                request, "Seul l'Administrateur peut modifier un lot en transit."
+            )
+            return redirect("chine:lot_detail", pk=lot.pk)
+            
         return super().dispatch(request, *args, **kwargs)
 
 

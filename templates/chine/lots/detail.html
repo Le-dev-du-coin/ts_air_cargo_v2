@@ -37,10 +37,13 @@
                     {{ lot.get_status_display }}
                 </span>
 
-                {# ACTIONS LIFECYCLE (RÉSERVÉ AUX AGENTS) #}
-                {% if user.role == 'AGENT_CHINE' %}
-                    {% if lot.status == 'OUVERT' %}
+                {# ACTIONS LIFECYCLE (RÉSERVÉ AUX AGENTS & ADMIN) #}
+                {% if user.role == 'AGENT_CHINE' or user.role == 'ADMIN_CHINE' %}
+                    {% if lot.status == 'OUVERT' or lot.status == 'EN_TRANSIT' and user.role == 'ADMIN_CHINE' %}
                         <a href="{{ transport_prefix }}{% url 'chine:lot_update' lot.pk %}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium pt-1">Modifier</a>
+                    {% endif %}
+                    
+                    {% if lot.status == 'OUVERT' %}
                         <form id="form-close-lot" action="{{ transport_prefix }}{% url 'chine:lot_close' lot.pk %}" method="POST">
                             {% csrf_token %}
                             <button type="button" 

@@ -69,6 +69,7 @@ class FinanceEngine:
             transferts_jour = TransfertArgent.objects.none()
             total_transferts = Decimal("0")
             total_paiements_agents = Decimal("0")
+            total_avances_agents = Decimal("0")
 
             # 3. VEILLE
             recettes_reelles_avant = EncaissementColis.objects.filter(
@@ -96,6 +97,7 @@ class FinanceEngine:
 
             transferts_avant = Decimal("0")
             paiements_agents_avant = Decimal("0")
+            avances_agents_avant = Decimal("0")
 
             if pivot_date:
                 recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
@@ -157,6 +159,12 @@ class FinanceEngine:
             )
             total_paiements_agents = paiements_agents.aggregate(total=Sum("montant"))["total"] or 0
 
+            avances_agents = AvanceSalaire.objects.filter(
+                date=target_date,
+                agent__country=country
+            )
+            total_avances_agents = avances_agents.aggregate(total=Sum("montant"))["total"] or 0
+
             # 3. VEILLE
             recettes_reelles_avant = EncaissementColis.objects.filter(
                 date__lt=target_date,
@@ -197,6 +205,11 @@ class FinanceEngine:
                 agent__country=country
             ).aggregate(total=Sum("montant"))["total"] or 0
 
+            avances_agents_avant = AvanceSalaire.objects.filter(
+                date__lt=target_date,
+                agent__country=country
+            ).aggregate(total=Sum("montant"))["total"] or 0
+
             if pivot_date:
                 if target_date <= pivot_date:
                     recettes_reelles_avant = EncaissementColis.objects.none()
@@ -205,6 +218,7 @@ class FinanceEngine:
                     depôts_avant = Decimal("0")
                     transferts_avant = Decimal("0")
                     paiements_agents_avant = Decimal("0")
+                    avances_agents_avant = Decimal("0")
                 else:
                     recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
                     legacy_recettes_avant = legacy_recettes_avant.filter(date_encaissement__gte=pivot_date)
@@ -220,6 +234,9 @@ class FinanceEngine:
                     ).aggregate(total=Sum("montant"))["total"] or 0
                     paiements_agents_avant = PaiementAgent.objects.filter(
                         date_paiement__date__lt=target_date, date_paiement__date__gte=pivot_date, agent__country=country
+                    ).aggregate(total=Sum("montant"))["total"] or 0
+                    avances_agents_avant = AvanceSalaire.objects.filter(
+                        date__lt=target_date, date__gte=pivot_date, agent__country=country
                     ).aggregate(total=Sum("montant"))["total"] or 0
 
         else:
@@ -262,6 +279,12 @@ class FinanceEngine:
             )
             total_paiements_agents = paiements_agents.aggregate(total=Sum("montant"))["total"] or 0
 
+            avances_agents = AvanceSalaire.objects.filter(
+                date=target_date,
+                agent__country=country
+            )
+            total_avances_agents = avances_agents.aggregate(total=Sum("montant"))["total"] or 0
+
             recettes_reelles_avant = EncaissementColis.objects.filter(
                 date__lt=target_date,
                 colis__lot__destination=country
@@ -297,6 +320,11 @@ class FinanceEngine:
                 agent__country=country
             ).aggregate(total=Sum("montant"))["total"] or 0
 
+            avances_agents_avant = AvanceSalaire.objects.filter(
+                date__lt=target_date,
+                agent__country=country
+            ).aggregate(total=Sum("montant"))["total"] or 0
+
             if pivot_date:
                 if target_date <= pivot_date:
                     recettes_reelles_avant = EncaissementColis.objects.none()
@@ -305,6 +333,7 @@ class FinanceEngine:
                     depôts_avant = Decimal("0")
                     transferts_avant = Decimal("0")
                     paiements_agents_avant = Decimal("0")
+                    avances_agents_avant = Decimal("0")
                 else:
                     recettes_reelles_avant = recettes_reelles_avant.filter(date__gte=pivot_date)
                     legacy_recettes_avant = legacy_recettes_avant.filter(date_encaissement__gte=pivot_date)
@@ -320,6 +349,9 @@ class FinanceEngine:
                     ).aggregate(total=Sum("montant"))["total"] or 0
                     paiements_agents_avant = PaiementAgent.objects.filter(
                         date_paiement__date__lt=target_date, date_paiement__date__gte=pivot_date, agent__country=country
+                    ).aggregate(total=Sum("montant"))["total"] or 0
+                    avances_agents_avant = AvanceSalaire.objects.filter(
+                        date__lt=target_date, date__gte=pivot_date, agent__country=country
                     ).aggregate(total=Sum("montant"))["total"] or 0
 
         # --- CALCULS ---
@@ -350,6 +382,7 @@ class FinanceEngine:
             "total_depenses": total_depenses,
             "total_transferts": total_transferts,
             "total_paiements_agents": total_paiements_agents,
+            "total_avances_agents": total_avances_agents,
             "solde_veille": solde_veille,
             "solde_caisse_actuel": solde_veille + total_entrees_jour - total_sorties_jour,
             "rechargements_list": rechargements_avoir,

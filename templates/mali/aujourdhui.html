@@ -473,6 +473,28 @@
                             {% endfor %}
                         </ul>
                     </div>
+                    
+                    <!-- Salaires et Avances -->
+                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                        <h5 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">RH (Salaires & Avances)</h5>
+                        <ul class="divide-y divide-gray-100">
+                            {% if total_paiements_agents > 0 %}
+                            <li class="py-2 text-sm flex justify-between">
+                                <span class="text-gray-600">Salaires Payés</span>
+                                <span class="font-bold text-gray-900">-{{ total_paiements_agents|fcfa }}</span>
+                            </li>
+                            {% endif %}
+                            {% if total_avances_agents > 0 %}
+                            <li class="py-2 text-sm flex justify-between">
+                                <span class="text-gray-600">Avances sur Salaires</span>
+                                <span class="font-bold text-gray-900">-{{ total_avances_agents|fcfa }}</span>
+                            </li>
+                            {% endif %}
+                            {% if total_paiements_agents == 0 and total_avances_agents == 0 %}
+                            <li class="py-2 text-sm text-gray-500 italic">Aucune sortie RH aujourd'hui</li>
+                            {% endif %}
+                        </ul>
+                    </div>
                 </div>
             </div>
 

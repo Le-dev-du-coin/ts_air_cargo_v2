@@ -430,6 +430,8 @@ def send_daily_report_mali(target_date_str=None):
             f"💰 *Total Recettes Aérien :* {fin_stats_aerien['total_recettes_jour']:,.0f} FCFA\n"
             f"💸 *Dépenses Aérien :* {fin_stats_aerien['total_depenses']:,.0f} FCFA\n"
             f"🔄 *Transferts Aérien :* {fin_stats_aerien['total_transferts']:,.0f} FCFA\n"
+            f"🧑‍💼 *Salaires Payés :* {fin_stats_aerien['total_paiements_agents']:,.0f} FCFA\n"
+            f"💳 *Avances Salaires :* {fin_stats_aerien['total_avances_agents']:,.0f} FCFA\n"
             f"🏦 *Solde Veille Aérien :* {fin_stats_aerien['solde_veille']:,.0f} FCFA\n"
             f"✅ *Solde Caisse Aérien :* {fin_stats_aerien['solde_caisse_actuel']:,.0f} FCFA\n\n"
             f"{'─' * 30}\n"
@@ -441,6 +443,8 @@ def send_daily_report_mali(target_date_str=None):
             f"💰 *Total Recettes Bateau :* {fin_stats_bateau['total_recettes_jour']:,.0f} FCFA\n"
             f"💸 *Dépenses Bateau :* {fin_stats_bateau['total_depenses']:,.0f} FCFA\n"
             f"🔄 *Transferts Bateau :* {fin_stats_bateau['total_transferts']:,.0f} FCFA\n"
+            f"🧑‍💼 *Salaires Payés :* {fin_stats_bateau['total_paiements_agents']:,.0f} FCFA\n"
+            f"💳 *Avances Salaires :* {fin_stats_bateau['total_avances_agents']:,.0f} FCFA\n"
             f"🏦 *Solde Veille Bateau :* {fin_stats_bateau['solde_veille']:,.0f} FCFA\n"
             f"✅ *Solde Caisse Bateau :* {fin_stats_bateau['solde_caisse_actuel']:,.0f} FCFA"
         )
