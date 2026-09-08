@@ -5,10 +5,18 @@ DEBUG = False
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["ts-aircargo.com"])
 
 # Security
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://ts-aircargo.com",
+    "https://www.ts-aircargo.com",
+    "https://aerien.ts-aircargo.com",
+    "https://maritime.ts-aircargo.com",
+]
 
 # Emails
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
